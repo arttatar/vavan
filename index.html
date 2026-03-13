@@ -21,9 +21,10 @@
 }
 html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:var(--ink);}
 @media(max-width:600px){
-  #detail{top:auto;bottom:0;right:0;left:0;width:100%;height:70vh;transform:translateY(100%);border-radius:16px 16px 0 0;border-left:none;border-top:1px solid var(--border);}
+  #detail{top:auto;bottom:0;right:0;left:0;width:100%;height:65vh;transform:translateY(100%);border-radius:16px 16px 0 0;border-left:none;border-top:1px solid var(--border);}
   #detail.open{transform:translateY(0);}
-  #sidebar{width:100%;}
+  #sidebar{width:92%;max-width:360px;}
+  #toggle-btn{top:calc(var(--header) + 8px);left:10px;}
 }
 
 /* LOGIN */
@@ -78,6 +79,14 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
 
 /* SIDEBAR */
 #sidebar{position:fixed;top:var(--header);left:0;bottom:0;width:var(--sidebar);z-index:900;background:#fff;display:flex;flex-direction:column;transform:translateX(-100%);transition:transform .25s cubic-bezier(.4,0,.2,1);box-shadow:4px 0 32px rgba(0,0,0,0.18);}
+#results-panel{position:fixed;top:var(--header);left:var(--sidebar);bottom:0;width:var(--sidebar);z-index:890;background:#fff;display:flex;flex-direction:column;border-left:1px solid var(--border);transform:translateX(-200%);transition:transform .3s cubic-bezier(.4,0,.2,1);box-shadow:4px 0 24px rgba(0,0,0,0.1);}
+#results-panel.open{transform:translateX(0);}
+#sidebar.open ~ #results-panel{transform:translateX(0);}
+.rp-hdr{padding:.875rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.rp-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--ink);}
+.rp-close{width:26px;height:26px;border-radius:50%;background:var(--paper2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;color:var(--muted);}
+#rcount{font-size:11px;color:var(--muted);padding:.5rem 1rem .25rem;flex-shrink:0;}
+#biz-list{flex:1;overflow-y:auto;}
 #sidebar.open{transform:translateX(0);}
 #overlay{display:none;position:fixed;top:var(--header);left:0;right:0;bottom:0;background:rgba(0,0,0,0.3);z-index:850;}
 #overlay.show{display:block;}
@@ -247,7 +256,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
   </div>
 
   <div id="map"></div>
-  <div id="overlay" onclick="closeSidebar()"></div>
+  <div id="overlay" onclick="closeSidebar();closeResults();"></div>
 
   <div id="sidebar">
     <div class="panel-hdr">
@@ -350,6 +359,13 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
       <button id="clear-btn" onclick="clearFilters()">Clear Filters</button>
     </div>
 
+  </div>
+
+  <div id="results-panel">
+    <div class="rp-hdr">
+      <div class="rp-title">Results</div>
+      <div class="rp-close" onclick="closeResults()">✕</div>
+    </div>
     <div id="rcount"></div>
     <div id="biz-list"></div>
   </div>
@@ -469,7 +485,7 @@ async function loadData() {
 }
 
 function initMap() {
-  map = new mapboxgl.Map({ container:'map', style:'mapbox://styles/mapbox/dark-v11', center:[-115.1398,36.1699], zoom:11 });
+  map = new mapboxgl.Map({ container:'map', style:'mapbox://styles/mapbox/dark-v11', center:[-115.1398,36.1699], zoom:10 });
   map.addControl(new mapboxgl.NavigationControl(), 'top-right');
   draw = new MapboxDraw({ displayControlsDefault:false });
   map.addControl(draw);
@@ -509,6 +525,8 @@ function renderPins() {
   });
   map.on('mouseenter','biz', function(){ map.getCanvas().style.cursor='pointer'; });
   map.on('mouseleave','biz', function(){ map.getCanvas().style.cursor=''; });
+  map.on('mouseenter','biz-cl', function(){ map.getCanvas().style.cursor='pointer'; });
+  map.on('mouseleave','biz-cl', function(){ map.getCanvas().style.cursor=''; });
   document.getElementById('pcount').textContent = valid.length;
 }
 
@@ -516,6 +534,13 @@ function renderPins() {
 function toggleSidebar() {
   document.getElementById('sidebar').classList.contains('open') ? closeSidebar() : openSidebar();
 }
+function openResults() {
+  document.getElementById('results-panel').classList.add('open');
+}
+function closeResults() {
+  document.getElementById('results-panel').classList.remove('open');
+}
+
 function openSidebar() {
   document.getElementById('sidebar').classList.add('open');
   document.getElementById('overlay').classList.add('show');
@@ -527,7 +552,12 @@ function closeSidebar() {
   document.getElementById('overlay').classList.remove('show');
   document.getElementById('toggle-btn').innerHTML = '☰ Filters &amp; Search';
 }
-function applyAndClose() { applyFilters(); closeSidebar(); updateFilterBadge(); }
+function applyAndClose() {
+  applyFilters();
+  closeSidebar();
+  updateFilterBadge();
+  openResults();
+}
 
 function updateFilterBadge() {
   var parts = [];
@@ -690,6 +720,7 @@ function selectBiz(idx) {
     '<div class="obox"><div class="otitle">Interstate Oil — Sales Intel</div><div class="odesc">'+(s>=80?'Priority prospect. High fuel & lubricant consumption potential. Recommend immediate outreach.':'Assess fleet/equipment size to determine fuel & lubricant opportunity.')+'</div></div>';
   document.getElementById('detail').classList.add('open');
   closeSidebar();
+  closeResults();
 }
 function closeDetail() { document.getElementById('detail').classList.remove('open'); }
 
