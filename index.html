@@ -296,16 +296,15 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
           </div>
           <div id="ind-dropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.12);z-index:2000;padding:6px;">
             <div class="ind-opt" data-val="all">All Industries</div>
-            <div class="ind-opt" data-val="Transportation">Transportation</div>
+            <div class="ind-opt" data-val="Transport">Transport & Logistics</div>
             <div class="ind-opt" data-val="Automotive">Automotive</div>
-            <div class="ind-opt" data-val="Agribusiness">Agribusiness</div>
             <div class="ind-opt" data-val="Construction">Construction</div>
-            <div class="ind-opt" data-val="Industrial">Industrial</div>
-            <div class="ind-opt" data-val="Government">Government & Institutions</div>
+            <div class="ind-opt" data-val="Energy">Energy & Fuel Stations</div>
+            <div class="ind-opt" data-val="Industrial">Industrial & Manufacturing</div>
+            <div class="ind-opt" data-val="Services">Services Business</div>
             <div class="ind-opt" data-val="Hospitality">Hospitality & Leisure</div>
-            <div class="ind-opt" data-val="Energy">Energy & Utilities</div>
-            <div class="ind-opt" data-val="RealEstate">Real Estate</div>
-            <div class="ind-opt" data-val="ServiceBusiness">Service Business</div>
+            <div class="ind-opt" data-val="Government">Government & Institutions</div>
+            <div class="ind-opt" data-val="Competitors">🔴 Competitors</div>
           </div>
         </div>
       </div>
@@ -462,7 +461,7 @@ function calcScore(b) {
 
 async function loadData() {
   try {
-    var r = await sb.from('businesses').select('*').limit(5000);
+    var r = await sb.from('businesses').select('*').eq('market','Las Vegas').limit(6000);
     if (!r.error && r.data && r.data.length > 0) { allData = r.data; prog(60, 'Loaded '+r.data.length+' businesses'); return; }
   } catch(e) {}
   allData = [
@@ -504,7 +503,18 @@ function renderPins() {
   map.addLayer({ id:'biz-cl', type:'circle', source:'biz', filter:['has','point_count'], paint:{'circle-color':'#4a36c8','circle-radius':['step',['get','point_count'],16,10,22,50,28],'circle-opacity':.85} });
   map.addLayer({ id:'biz-cn', type:'symbol', source:'biz', filter:['has','point_count'], layout:{'text-field':'{point_count_abbreviated}','text-size':12}, paint:{'text-color':'#fff'} });
   map.addLayer({ id:'biz', type:'circle', source:'biz', filter:['!',['has','point_count']],
-    paint:{'circle-radius':6,'circle-color':['case',['>=',['get','score'],80],'#EF9F27',['>=',['get','score'],65],'#4a36c8','#9b93d4'],'circle-stroke-width':1.5,'circle-stroke-color':'#fff','circle-opacity':.9}
+    paint:{
+      'circle-radius':6,
+      'circle-color':['case',
+        ['==',['get','is_competitor'],true],'#E53E3E',
+        ['>=',['get','score'],80],'#EF9F27',
+        ['>=',['get','score'],65],'#4a36c8',
+        '#9b93d4'
+      ],
+      'circle-opacity':0.9,
+      'circle-stroke-width':['case',['==',['get','is_competitor'],true],2,0],
+      'circle-stroke-color':'#fff'
+    }
   });
   map.on('click','biz', function(e){ selectBiz(e.features[0].properties.idx); });
   // Touch support for mobile - query features in a larger radius
@@ -662,10 +672,16 @@ function applyFilters() {
   if (name) data = data.filter(function(b){ return (b.name||'').toLowerCase().includes(name); });
   if (city) data = data.filter(function(b){ return (b.locality||'').toLowerCase().includes(city); });
   if (zip) data = data.filter(function(b){ return (b.locality||'').includes(zip)||(b.full_address||'').includes(zip); });
-  if (state) data = data.filter(function(b){ return (b.locality||'').includes(' '+state+' ')||(b.locality||'').includes(', '+state); });
+  if (state) data = data.filter(function(b){ return (b.state||'') === state || (b.locality||'').includes(state); });
 
   if (filters.industry !== 'all' && Array.isArray(filters.industry) && filters.industry.length > 0) {
-    data = data.filter(function(b){ return filters.industry.some(function(ind){ return (b.industry||'').includes(ind); }); });
+    data = data.filter(function(b){
+      return filters.industry.some(function(ind){
+        // Energy filter catches both 'Energy' and 'Fuel Stations'
+        if (ind === 'Energy') return (b.industry||'') === 'Energy' || (b.industry||'') === 'Fuel Stations';
+        return (b.industry||'') === ind;
+      });
+    });
   }
   if (filters.opp==='high') data = data.filter(function(b){ return (b.score||0)>=80; });
   else if (filters.opp==='med') data = data.filter(function(b){ return (b.score||0)>=65&&(b.score||0)<80; });
@@ -691,7 +707,7 @@ function renderList() {
   document.getElementById('biz-list').innerHTML = data.slice(0,150).map(function(b){
     var idx = allData.indexOf(b);
     var s = b.score || calcScore(b);
-    var color = s>=80?'#EF9F27':s>=65?'#4a36c8':'#9b93d4';
+    var color = b.is_competitor?'#E53E3E':s>=80?'#EF9F27':s>=65?'#4a36c8':'#9b93d4';
     return '<div class="bitem" onclick="selectBiz('+idx+')"><div class="bname"><span class="sdot" style="background:'+color+'"></span>'+b.name+'</div><div class="baddr">'+b.street+(b.industry?' · <em style=color:var(--muted)>'+b.industry+'</em>':'')+'</div>'+(b.phone?'<div class="bphone">'+b.phone+'</div>':'')+'</div>';
   }).join('') + (data.length>150?'<div style="padding:.75rem;font-size:12px;color:var(--muted);text-align:center">Showing 150 of '+data.length.toLocaleString()+' — zoom in or filter to narrow</div>':'');
 }
@@ -701,7 +717,7 @@ function selectBiz(idx) {
   var b = allData[idx]; if (!b) return;
   if (b.lat&&b.lon) map.flyTo({center:[b.lon,b.lat],zoom:Math.max(map.getZoom(),14),speed:1.2});
   var s = b.score||calcScore(b);
-  var color = s>=80?'#EF9F27':s>=65?'#4a36c8':'#9b93d4';
+  var color = b.is_competitor?'#E53E3E':s>=80?'#EF9F27':s>=65?'#4a36c8':'#9b93d4';
   var lbl = s>=80?'High Opportunity':s>=65?'Medium Opportunity':'Standard Prospect';
   document.getElementById('det-body').innerHTML =
     '<div style="font-size:11px;font-weight:600;color:var(--accent);background:var(--accent-light);padding:3px 10px;border-radius:100px;display:inline-block;margin-bottom:.75rem">'+(b.industry||'Business')+' · '+(b.market||'Las Vegas')+'</div>'+
