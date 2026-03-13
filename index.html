@@ -512,7 +512,7 @@ function renderIndTags() {
   } else {
     display.innerHTML = selectedIndustries.map(function(v) {
       var label = document.querySelector('.ind-opt[data-val="'+v+'"]').textContent;
-      return '<span class="ind-tag">'+label+'<span class="tx" onclick="removeInd(event,''+v+'')">×</span></span>';
+      return '<span class="ind-tag">'+label+'<span class="tx" data-val="'+v+'" onclick="removeInd(event,this.dataset.val)">×</span></span>';
     }).join('');
   }
 }
