@@ -96,18 +96,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
   }
   #detail.open{transform:translateY(0) !important;}
 
-  /* Drag handle on all panels */
-  #sidebar::before,
-  #results-panel::before,
-  #det-x::before{
-    content:'';
-    display:block;
-    width:40px;height:4px;
-    background:#ddd;
-    border-radius:2px;
-    margin:10px auto 4px;
-    flex-shrink:0;
-  }
+
 
   #det-x{min-height:auto !important;padding:0 !important;flex-direction:column !important;}
 
@@ -119,13 +108,13 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
   /* Results header on mobile */
   .rp-hdr{padding:.5rem 1rem .75rem;flex-direction:column;gap:0;}
 /* ── SHEET COMPONENTS ── */
-.sheet-handle{width:40px;height:4px;background:#ddd;border-radius:2px;margin:12px auto 8px;flex-shrink:0;}
-.sheet-topbar{display:flex;align-items:center;justify-content:space-between;padding:0 8px 12px;border-bottom:1px solid var(--border);}
-.sheet-title{font-size:15px;font-weight:600;color:var(--ink);flex:1;text-align:center;}
-.sheet-close{width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:#f0f0f0;border:none;border-radius:50%;cursor:pointer;font-size:14px;color:var(--ink);flex-shrink:0;}
+.sheet-handle{width:40px;height:4px;background:#ddd;border-radius:2px;margin:12px auto 0;flex-shrink:0;display:block;}
+.sheet-topbar{position:relative;display:flex;align-items:center;justify-content:center;padding:10px 16px 12px;border-bottom:1px solid var(--border);}
+.sheet-title{font-size:15px;font-weight:600;color:var(--ink);text-align:center;}
+.sheet-close{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:#f0f0f0;border:none;border-radius:50%;cursor:pointer;font-size:14px;color:var(--ink);flex-shrink:0;}
 .sheet-close:active{background:#e0e0e0;}
 
-  .rp-hdr::before{content:'';display:block;width:40px;height:4px;background:#ddd;border-radius:2px;margin:6px auto 10px;flex-shrink:0;}
+
   .rp-title{font-size:15px;}
   /* Row with title + close */  
   .rp-hdr-row{display:flex;align-items:center;justify-content:space-between;width:100%;}
@@ -372,9 +361,8 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
     <div class="panel-hdr">
       <div class="sheet-handle"></div>
       <div class="sheet-topbar">
-        <div style="width:44px"></div>
-        <div class="sheet-title">Filters &amp; Search</div>
         <button class="sheet-close" onclick="closeSidebar()">✕</button>
+        <div class="sheet-title">Filters &amp; Search</div>
       </div>
     </div>
 
@@ -493,9 +481,8 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
     <div class="rp-hdr">
       <div class="sheet-handle"></div>
       <div class="sheet-topbar">
-        <div style="width:44px"></div>
-        <div class="sheet-title">Results</div>
         <button class="sheet-close" onclick="closeResults()">✕</button>
+        <div class="sheet-title">Results</div>
       </div>
     </div>
     <div id="rcount"></div>
@@ -503,7 +490,13 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
   </div>
 
   <div id="detail">
-    <div id="det-x"><div class="sheet-handle"></div><div class="sheet-topbar"><button class="sheet-close" onclick="closeDetail()">✕</button><div id="det-x-title" class="sheet-title"></div><div style="width:44px"></div></div></div>
+    <div id="det-x">
+      <div class="sheet-handle"></div>
+      <div class="sheet-topbar">
+        <button class="sheet-close" onclick="closeDetail()">✕</button>
+        <div id="det-x-title" class="sheet-title"></div>
+      </div>
+    </div>
     <div id="det-body"></div>
   </div>
 </div>
