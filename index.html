@@ -18,13 +18,110 @@
   --accent:#4a36c8;--accent-light:#ece9fc;--accent-mid:#7c68e0;
   --muted:#6b6880;--border:rgba(13,13,20,0.1);
   --red:#c44a2e;--header:48px;--sidebar:340px;
+  --safe-top: env(safe-area-inset-top, 0px);
 }
 html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:var(--ink);}
 @media(max-width:600px){
-  #detail{top:auto;bottom:0;right:0;left:0;width:100%;height:65vh;transform:translateY(100%);border-radius:16px 16px 0 0;border-left:none;border-top:1px solid var(--border);}
-  #detail.open{transform:translateY(0);}
-  #sidebar{width:92%;max-width:360px;}
-  #toggle-btn{top:calc(var(--header) + 8px);left:10px;}
+
+  /* ── HEADER ── */
+  #header{padding-left:.75rem;padding-right:.75rem;gap:.5rem;}
+  #pcount-wrap{display:none;}
+  #uinfo{display:none;}
+
+  /* ── SEARCH BUTTON — top left like Google Maps ── */
+  #toggle-btn{
+    top:calc(var(--header) + env(safe-area-inset-top,0px) + 10px) !important;
+    left:12px !important;
+    right:auto !important;
+    z-index:1000 !important;
+    padding:10px 16px !important;
+    font-size:13px !important;
+    box-shadow:0 2px 16px rgba(0,0,0,0.35) !important;
+  }
+
+  /* ── ALL PANELS SLIDE UP FROM BOTTOM ── */
+
+  /* Filter panel */
+  #sidebar{
+    top:auto !important;
+    bottom:0 !important;
+    left:0 !important;
+    right:0 !important;
+    width:100% !important;
+    max-width:100% !important;
+    height:88vh !important;
+    border-radius:20px 20px 0 0 !important;
+    transform:translateY(110%) !important;
+    transition:transform .3s cubic-bezier(.4,0,.2,1) !important;
+    border-right:none !important;
+    border-top:1px solid var(--border) !important;
+    z-index:1800 !important;
+    box-shadow:0 -4px 32px rgba(0,0,0,0.2) !important;
+  }
+  #sidebar.open{transform:translateY(0) !important;}
+
+  /* Results list panel */
+  #results-panel{
+    top:auto !important;
+    bottom:0 !important;
+    left:0 !important;
+    right:0 !important;
+    width:100% !important;
+    height:70vh !important;
+    border-radius:20px 20px 0 0 !important;
+    transform:translateY(110%) !important;
+    transition:transform .3s cubic-bezier(.4,0,.2,1) !important;
+    border-right:none !important;
+    border-top:1px solid var(--border) !important;
+    z-index:1900 !important;
+    box-shadow:0 -4px 32px rgba(0,0,0,0.2) !important;
+  }
+  #results-panel.open{transform:translateY(0) !important;}
+
+  /* Business detail panel */
+  #detail{
+    top:auto !important;
+    bottom:0 !important;
+    right:0 !important;
+    left:0 !important;
+    width:100% !important;
+    height:80vh !important;
+    border-radius:20px 20px 0 0 !important;
+    transform:translateY(110%) !important;
+    transition:transform .3s cubic-bezier(.4,0,.2,1) !important;
+    border-left:none !important;
+    border-top:1px solid var(--border) !important;
+    z-index:2000 !important;
+    box-shadow:0 -4px 32px rgba(0,0,0,0.2) !important;
+  }
+  #detail.open{transform:translateY(0) !important;}
+
+  /* Drag handle on all panels */
+  #sidebar::before,
+  #results-panel::before,
+  #det-x::before{
+    content:'';
+    display:block;
+    width:40px;height:4px;
+    background:#ddd;
+    border-radius:2px;
+    margin:10px auto 4px;
+    flex-shrink:0;
+  }
+
+  /* Make det-x show handle + X cleanly */
+  #det-x{
+    flex-direction:column !important;
+    padding-top:0 !important;
+    min-height:56px !important;
+  }
+  #det-x > button{align-self:flex-start;}
+
+  /* Overlay behind panels */
+  #overlay{z-index:1700;}
+
+  /* Hide desktop-only elements */
+  .rp-hdr .rp-close{display:none;}
 }
 
 /* LOGIN */
@@ -47,7 +144,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
 #app.visible{display:block;}
 
 /* HEADER - clean, minimal */
-#header{position:fixed;top:0;left:0;right:0;z-index:1000;height:var(--header);background:var(--ink);border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;padding:0 1rem;gap:.75rem;}
+#header{position:fixed;top:0;left:0;right:0;z-index:1000;height:calc(var(--header) + env(safe-area-inset-top, 0px));padding-top:env(safe-area-inset-top, 0px);background:var(--ink);border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;padding:0 1rem;gap:.75rem;}
 .logo{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:#fff;letter-spacing:-.02em;}
 .logo span{color:#7c68e0;}
 .spacer{flex:1;}
@@ -59,7 +156,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
 #uinfo b{color:rgba(255,255,255,.7);font-weight:500;}
 #signout-btn{background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:4px 10px;font-size:11px;color:rgba(255,255,255,.5);cursor:pointer;font-family:'Inter',sans-serif;}
 #toggle-btn{
-  position:fixed;top:calc(var(--header) + 10px);left:12px;z-index:1001;
+  position:fixed;top:calc(var(--header) + env(safe-area-inset-top, 0px) + 10px);left:12px;z-index:900;
   width:auto;display:inline-flex;
   background:rgba(20,20,30,0.85);
   backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
@@ -75,7 +172,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
 #toggle-btn.open{display:none;}
 
 /* MAP */
-#map{position:fixed;top:var(--header);left:0;right:0;bottom:0;z-index:1;}
+#map{position:fixed;top:calc(var(--header) + env(safe-area-inset-top, 0px));left:0;right:0;bottom:0;z-index:1;}
 
 /* SIDEBAR */
 #sidebar{position:fixed;top:var(--header);left:0;bottom:0;width:var(--sidebar);z-index:900;background:#fff;display:flex;flex-direction:column;transform:translateX(-100%);transition:transform .25s cubic-bezier(.4,0,.2,1);box-shadow:4px 0 32px rgba(0,0,0,0.18);}
@@ -148,9 +245,17 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
 /* DETAIL PANEL */
 #detail{position:fixed;top:var(--header);right:0;bottom:0;width:320px;z-index:960;background:#fff;border-left:1px solid var(--border);transform:translateX(100%);transition:transform .25s ease;display:flex;flex-direction:column;}
 #detail.open{transform:translateX(0);}
-#det-x{position:sticky;top:0;z-index:10;width:100%;padding:10px 16px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);}
+#det-x{position:sticky;top:0;z-index:10;width:100%;padding:0;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;min-height:48px;}
 #det-body{padding:1.25rem;overflow-y:auto;flex:1;}
 .dname{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--ink);line-height:1.2;margin-bottom:.2rem;}
+.pipeline-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:100px;margin-bottom:.5rem;}
+.pipe-lead{background:#f0f4ff;color:#4a36c8;}
+.pipe-qualified{background:#fff7e6;color:#d97706;}
+.pipe-factfinding{background:#fef2f2;color:#dc2626;}
+.pipe-proposal{background:#f0fdf4;color:#16a34a;}
+.pipe-credit{background:#fdf4ff;color:#9333ea;}
+.pipe-won{background:#ecfdf5;color:#059669;}
+
 .daddr{font-size:13px;color:var(--muted);margin-bottom:.875rem;line-height:1.5;}
 .ddiv{height:1px;background:var(--border);margin:.75rem 0;}
 .drow{display:flex;justify-content:space-between;margin-bottom:.4rem;}
@@ -248,6 +353,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
     <div class="spacer"></div>
     <div id="filter-badge"></div>
     <div id="pcount-wrap"><b id="pcount">0</b> businesses</div>
+    <button onclick="locateMe()" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,0.7);font-size:18px;padding:4px 8px;line-height:1;" title="Find my location">📍</button>
     <div id="uinfo">Signed in as <b id="uemail"></b></div>
     <button id="signout-btn" onclick="doSignOut()">Sign out</button>
   </div>
@@ -320,6 +426,20 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
         </div>
       </div>
 
+      <!-- PIPELINE STAGE -->
+      <div class="sb-sec">
+        <div class="sb-title">Pipeline Stage</div>
+        <select class="sinput" id="s-pipeline" onchange="filters.pipeline=this.value">
+          <option value="all">All Stages</option>
+          <option value="Lead Captured">Lead Captured</option>
+          <option value="Qualified">Qualified</option>
+          <option value="Fact-Finding">Fact-Finding</option>
+          <option value="Proposal Sent">Proposal Sent</option>
+          <option value="Credit Application">Credit Application</option>
+          <option value="Won Opportunity">Won Opportunity</option>
+        </select>
+      </div>
+
       <!-- CONTACT INFO -->
       <div class="sb-sec">
         <div class="sb-title">Contact Info</div>
@@ -367,7 +487,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
   </div>
 
   <div id="detail">
-    <div id="det-x" onclick="closeDetail()">✕ Close</div>
+    <div id="det-x"><button onclick="closeDetail()" style="min-width:48px;min-height:48px;display:flex;align-items:center;justify-content:center;background:none;border:none;cursor:pointer;font-size:20px;color:var(--ink);padding:0 4px;flex-shrink:0;">✕</button><div id="det-x-title" style="font-size:13px;font-weight:600;color:var(--ink);flex:1;text-align:center;padding-right:48px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;padding-right:52px;"></div></div>
     <div id="det-body"></div>
   </div>
 </div>
@@ -389,7 +509,9 @@ var sb = window.supabase.createClient(SURL, SKEY);
 mapboxgl.accessToken = MBOX;
 
 var allData = [], filteredData = [], map, draw;
-var filters = { opp:'all', contact:'all', industry:'all' };
+var filters = { opp:'all', contact:'all', industry:'all', pipeline:'all' };
+  var pipeEl = document.getElementById('s-pipeline');
+  if (pipeEl) pipeEl.value = 'all';
 var activeTool = null, selPoly = null, radMiles = 5;
 
 // ── LOGIN ──
@@ -439,14 +561,16 @@ async function startApp() {
   prog(80, 'Placing pins...');
   // Wait for map to be fully loaded before adding pins
   if (map.isStyleLoaded()) {
+    filteredData = [];
     renderPins();
     prog(100, 'Ready!');
-    setTimeout(function(){ document.getElementById('loader').classList.add('hidden'); renderList(); }, 500);
+    setTimeout(function(){ document.getElementById('loader').classList.add('hidden'); }, 500);
   } else {
     map.once('load', function() {
+      filteredData = [];
       renderPins();
       prog(100, 'Ready!');
-      setTimeout(function(){ document.getElementById('loader').classList.add('hidden'); renderList(); }, 500);
+      setTimeout(function(){ document.getElementById('loader').classList.add('hidden'); }, 500);
     });
   }
 }
@@ -493,20 +617,80 @@ async function loadData() {
 }
 
 function initMap() {
-  map = new mapboxgl.Map({ container:'map', style:'mapbox://styles/mapbox/dark-v11', center:[-115.1398,36.1699], zoom:10 });
+  // Start at user location if available, otherwise Las Vegas
+map = new mapboxgl.Map({ container:'map', style:'mapbox://styles/mapbox/dark-v11', center:[-115.1398,36.1699], zoom:10 });
+if (navigator.geolocation) {
+  navigator.geolocation.getCurrentPosition(function(pos) {
+    map.flyTo({ center:[pos.coords.longitude, pos.coords.latitude], zoom:12, speed:1.5 });
+  }, null, { enableHighAccuracy:true, timeout:5000 });
+}
   map.addControl(new mapboxgl.NavigationControl(), 'top-right');
   draw = new MapboxDraw({ displayControlsDefault:false });
   map.addControl(draw);
   map.on('draw.create', onDraw);
   map.on('click', onMapClick);
-  map.on('load', function() { console.log('Map loaded and ready'); });
+  map.on('load', function() {
+  startLocationTracking();
+});
+
+function startLocationTracking() {
+  if (!navigator.geolocation) return;
+  navigator.geolocation.watchPosition(function(pos) {
+    var coords = [pos.coords.longitude, pos.coords.latitude];
+    // Make sure map style is loaded before adding layers
+    if (!map.isStyleLoaded()) { 
+      map.once('style.load', function(){ startLocationTracking(); });
+      return; 
+    }
+    if (map.getSource('user-loc')) {
+      map.getSource('user-loc').setData({
+        type:'Feature', geometry:{type:'Point', coordinates:coords}
+      });
+    } else {
+      map.addSource('user-loc', {
+        type:'geojson',
+        data:{type:'Feature', geometry:{type:'Point', coordinates:coords}}
+      });
+      // Outer pulse ring
+      map.addLayer({
+        id:'user-pulse', type:'circle', source:'user-loc',
+        paint:{
+          'circle-radius':16,
+          'circle-color':'#4A90E2',
+          'circle-opacity':0.15,
+          'circle-stroke-width':1,
+          'circle-stroke-color':'#4A90E2',
+          'circle-stroke-opacity':0.4
+        }
+      });
+      // Inner solid dot
+      map.addLayer({
+        id:'user-dot', type:'circle', source:'user-loc',
+        paint:{
+          'circle-radius':8,
+          'circle-color':'#4A90E2',
+          'circle-stroke-width':2.5,
+          'circle-stroke-color':'#ffffff',
+          'circle-opacity':1
+        }
+      });
+    }
+    // Center map on first fix
+    if (!window._locatedOnce) {
+      window._locatedOnce = true;
+      map.flyTo({ center:coords, zoom:13, speed:1.5 });
+    }
+  }, function(err) {
+    console.warn('Geolocation error:', err.message);
+  }, { enableHighAccuracy:true, maximumAge:3000, timeout:10000 });
+}
 }
 
 function renderPins() {
   if (!map.isStyleLoaded()) { map.once('load', renderPins); return; }
   
-  var valid = allData.filter(function(b){ return b.lat && b.lon; });
-  filteredData = valid;
+  // Only show pins after filters applied — filteredData starts empty
+  var valid = filteredData.filter(function(b){ return b.lat && b.lon; });
   ['biz','biz-cl','biz-cn'].forEach(function(id){ if(map.getLayer(id)) map.removeLayer(id); });
   if (map.getSource('biz')) map.removeSource('biz');
   map.addSource('biz', { type:'geojson', cluster:true, clusterMaxZoom:13, clusterRadius:40,
@@ -546,7 +730,7 @@ function renderPins() {
   map.on('mouseleave','biz', function(){ map.getCanvas().style.cursor=''; });
   map.on('mouseenter','biz-cl', function(){ map.getCanvas().style.cursor='pointer'; });
   map.on('mouseleave','biz-cl', function(){ map.getCanvas().style.cursor=''; });
-  document.getElementById('pcount').textContent = valid.length;
+  document.getElementById('pcount').textContent = allData.length;
 }
 
 // ── SIDEBAR ──
@@ -555,9 +739,13 @@ function toggleSidebar() {
 }
 function openResults() {
   document.getElementById('results-panel').classList.add('open');
+  var tbtn = document.getElementById('toggle-btn');
+  if (tbtn && window.innerWidth <= 600) tbtn.style.display = 'none';
 }
 function closeResults() {
   document.getElementById('results-panel').classList.remove('open');
+  var tbtn = document.getElementById('toggle-btn');
+  if (tbtn) tbtn.style.display = '';
 }
 
 function openSidebar() {
@@ -583,6 +771,7 @@ function updateFilterBadge() {
   if (filters.industry !== 'all') parts.push(filters.industry);
   if (filters.opp !== 'all') parts.push(filters.opp+' opp');
   if (filters.contact !== 'all') parts.push(filters.contact);
+  if (filters.pipeline !== 'all') parts.push(filters.pipeline);
   var q = document.getElementById('s-city').value.trim() || document.getElementById('s-name').value.trim();
   if (q) parts.push('"'+q+'"');
   var badge = document.getElementById('filter-badge');
@@ -714,7 +903,7 @@ function applyFilters() {
 
 // ── LIST ──
 function renderList() {
-  var data = filteredData.length ? filteredData : allData.filter(function(b){ return b.lat&&b.lon; });
+  var data = filteredData.filter(function(b){ return b.lat&&b.lon; });
   document.getElementById('rcount').textContent = data.length.toLocaleString() + ' businesses';
   document.getElementById('biz-list').innerHTML = data.slice(0,150).map(function(b){
     var idx = allData.indexOf(b);
@@ -725,16 +914,51 @@ function renderList() {
 }
 
 // ── DETAIL ──
+function locateMe() {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(function(pos) {
+      map.flyTo({ center:[pos.coords.longitude, pos.coords.latitude], zoom:14, speed:1.5 });
+    }, function() {
+      alert('Location access denied. Please enable location in your browser settings.');
+    }, { enableHighAccuracy:true, timeout:8000 });
+  }
+}
+
+function openNav(address) {
+  var enc = encodeURIComponent(address);
+  // Detect iOS vs Android vs desktop
+  var ua = navigator.userAgent;
+  if (/iPhone|iPad|iPod/i.test(ua)) {
+    // Try Apple Maps first on iOS
+    window.open('maps://maps.apple.com/?daddr='+enc, '_blank');
+  } else if (/Android/i.test(ua)) {
+    window.open('https://www.google.com/maps/dir/?api=1&destination='+enc, '_blank');
+  } else {
+    // Desktop — open Google Maps in new tab
+    window.open('https://www.google.com/maps/dir/?api=1&destination='+enc, '_blank');
+  }
+}
+
 function selectBiz(idx) {
   var b = allData[idx]; if (!b) return;
   if (b.lat&&b.lon) map.flyTo({center:[b.lon,b.lat],zoom:Math.max(map.getZoom(),14),speed:1.2});
+  // Hide search button when detail card open on mobile
+  var tbtn = document.getElementById('toggle-btn');
+  if (tbtn) tbtn.style.display = 'none';
+  var titleEl = document.getElementById('det-x-title'); if (titleEl) titleEl.textContent = b.name||'';
   var s = b.score||calcScore(b);
   var color = b.is_competitor?'#E53E3E':s>=80?'#EF9F27':s>=65?'#4a36c8':'#9b93d4';
   var lbl = s>=80?'High Opportunity':s>=65?'Medium Opportunity':'Standard Prospect';
   document.getElementById('det-body').innerHTML =
     '<div style="font-size:11px;font-weight:600;color:var(--accent);background:var(--accent-light);padding:3px 10px;border-radius:100px;display:inline-block;margin-bottom:.75rem">'+(b.industry||'Business')+' · '+(b.market||'Las Vegas')+'</div>'+
     '<div class="dname">'+b.name+'</div>'+
-    '<div class="daddr">'+(b.street||'')+'<br>'+(b.locality||'')+'</div>'+
+    (function(){
+      var stage = b.pipeline_stage||'';
+      if (!stage) return '<div class="pipeline-badge pipe-lead">● Lead Captured</div>';
+      var cls = stage==='Lead Captured'?'pipe-lead':stage==='Qualified'?'pipe-qualified':stage==='Fact-Finding'?'pipe-factfinding':stage==='Proposal Sent'?'pipe-proposal':stage==='Credit Application'?'pipe-credit':stage==='Won Opportunity'?'pipe-won':'pipe-lead';
+      return '<div class="pipeline-badge '+cls+'">● '+stage+'</div>';
+    })()+
+    '<div class="daddr" onclick="openNav('+JSON.stringify(b.full_address||((b.street||'')+', '+(b.locality||'')))+')" style="cursor:pointer;" title="Tap to navigate">📍 '+(b.street||'')+'<br>'+(b.locality||'')+'</div>'+'<a href="https://www.google.com/maps/search/'+encodeURIComponent(b.name||'')+'/@'+b.lat+','+b.lon+',17z" target="_blank" style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#4285F4;text-decoration:none;margin-top:4px;margin-bottom:4px;">🔗 View on Google Maps</a>'+
     '<div class="ddiv"></div>'+
     '<div class="drow"><span class="dlbl">Phone</span><span class="dval">'+(b.phone||'—')+'</span></div>'+
     '<div class="drow"><span class="dlbl">Website</span>'+(b.website?'<a href="'+b.website+'" target="_blank" class="dlink">Visit ↗</a>':'<span class="dval">—</span>')+'</div>'+
@@ -747,7 +971,11 @@ function selectBiz(idx) {
   closeSidebar();
   closeResults();
 }
-function closeDetail() { document.getElementById('detail').classList.remove('open'); }
+function closeDetail() {
+  document.getElementById('detail').classList.remove('open');
+  var tbtn = document.getElementById('toggle-btn');
+  if (tbtn) tbtn.style.display = '';
+}
 
 // ── AREA TOOLS ──
 function activateTool(t) {
@@ -780,7 +1008,9 @@ function onDraw(e) {
 }
 function clearFilters() {
   // Reset all filter state
-  filters = { opp:'all', contact:'all', industry:'all' };
+  filters = { opp:'all', contact:'all', industry:'all', pipeline:'all' };
+  var pipeEl = document.getElementById('s-pipeline');
+  if (pipeEl) pipeEl.value = 'all';
   selectedIndustries = [];
   // Reset industry display
   selectedIndustries = [];
