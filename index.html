@@ -1128,14 +1128,9 @@ document.querySelectorAll('.ind-opt').forEach(function(opt) {
   opt.addEventListener('click', function() {
     var val = this.dataset.val;
     if (val === 'all') {
-      // Select ALL industries individually
+      // Clear all — "All Industries" means no filter
       selectedIndustries = [];
-      document.querySelectorAll('.ind-opt').forEach(function(o){
-        if (o.dataset.val !== 'all') {
-          selectedIndustries.push(o.dataset.val);
-          o.classList.add('on');
-        }
-      });
+      document.querySelectorAll('.ind-opt').forEach(function(o){ o.classList.remove('on'); });
       this.classList.add('on');
     } else {
       document.querySelector('.ind-opt[data-val="all"]').classList.remove('on');
