@@ -650,6 +650,14 @@ if (navigator.geolocation) {
   initDragDismiss();
 });
 
+// Refresh list as map moves — shows only what's visible
+map.on('moveend', function() {
+  if (filteredData.length > 0) renderList();
+});
+map.on('zoomend', function() {
+  if (filteredData.length > 0) renderList();
+});
+
 // ── DRAG TO DISMISS BOTTOM SHEETS ──
 function addDragDismiss(panelId, closeFn) {
   var el = document.getElementById(panelId);
@@ -957,14 +965,28 @@ function applyFilters() {
   if (map && map.getSource('biz')) {
     map.getSource('biz').setData({ type:'FeatureCollection', features: data.map(function(b){ return {type:'Feature',geometry:{type:'Point',coordinates:[b.lon,b.lat]},properties:{...b,idx:allData.indexOf(b),score:b.score||calcScore(b)}}; }) });
   }
-  document.getElementById('pcount').textContent = data.length;
+  document.getElementById('pcount').textContent = data.length + ' matched';
   renderList();
 }
 
 // ── LIST ──
+function getVisibleData() {
+  if (!map || !filteredData.length) return filteredData;
+  try {
+    var bounds = map.getBounds();
+    return filteredData.filter(function(b){
+      return b.lat && b.lon &&
+        b.lon >= bounds.getWest() && b.lon <= bounds.getEast() &&
+        b.lat >= bounds.getSouth() && b.lat <= bounds.getNorth();
+    });
+  } catch(e) { return filteredData; }
+}
+
 function renderList() {
-  var data = filteredData.filter(function(b){ return b.lat&&b.lon; });
-  document.getElementById('rcount').textContent = data.length.toLocaleString() + ' businesses';
+  var visible = getVisibleData();
+  var data = visible.filter(function(b){ return b.lat&&b.lon; });
+  var totalFiltered = filteredData.length;
+  document.getElementById('rcount').textContent = data.length.toLocaleString() + ' in view · ' + totalFiltered.toLocaleString() + ' total';
   document.getElementById('biz-list').innerHTML = data.slice(0,150).map(function(b){
     var idx = allData.indexOf(b);
     var s = b.score || calcScore(b);
