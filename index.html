@@ -2711,21 +2711,32 @@ function fmtTime(ts){
 
 function renderDetailPanel(b) {
   var color = bizColor(b);
-  var s = calcScore(b); // always recalculate from current pipeline stage
-  b.score = s; // keep in sync
   var status = b.status||'Lead';
   var stage = b.pipeline_stage||'Lead Captured';
   var addr = b.full_address || ((b.street||'') + ', ' + (b.locality||''));
   var subInd = (b.sub_industry_inferred||[]).slice(0,3).join(', ') || '—';
 
-  // Score label based on pipeline stage
-  var scoreLbl, scoreColor;
-  if      (stage === 'Won Opportunity')     { scoreLbl = 'Won'; scoreColor = '#059669'; }
-  else if (stage === 'Credit Application')  { scoreLbl = 'Credit Stage'; scoreColor = '#059669'; }
-  else if (stage === 'Proposal Sent')       { scoreLbl = 'Proposal Out'; scoreColor = '#d97706'; }
-  else if (stage === 'Fact-Finding')        { scoreLbl = 'In Progress'; scoreColor = '#d97706'; }
-  else if (stage === 'Qualified')           { scoreLbl = 'Qualified'; scoreColor = '#4a36c8'; }
-  else                                       { scoreLbl = 'New Lead'; scoreColor = '#9b93d4'; }
+  var STAGES = ['Lead Captured','Qualified','Fact-Finding','Proposal Sent','Credit Application','Won Opportunity'];
+  var STAGE_COLORS = {
+    'Lead Captured':'#9b93d4','Qualified':'#4a36c8','Fact-Finding':'#d97706',
+    'Proposal Sent':'#16a34a','Credit Application':'#9333ea','Won Opportunity':'#059669'
+  };
+  var stageIdx = STAGES.indexOf(stage);
+  var stagePct = stageIdx < 0 ? 0 : Math.round((stageIdx / (STAGES.length-1)) * 100);
+  var stageColor = STAGE_COLORS[stage] || '#9b93d4';
+
+  // Build pipeline dots for hero
+  var pipeDotsHtml = STAGES.map(function(s, i){
+    var active = s === stage;
+    var isWon = s === 'Won Opportunity';
+    var dotColor = active ? (isWon ? '#059669' : stageColor) : 'var(--border)';
+    var bgColor  = active ? dotColor : '#fff';
+    var label    = s === 'Lead Captured'?'Lead':s==='Qualified'?'Qualified':s==='Fact-Finding'?'Fact-Find':s==='Proposal Sent'?'Proposal':s==='Credit Application'?'Credit':'Won ✓';
+    return '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;" onclick="setDetailStage(\''+s.replace(/'/g,"\\'")+'\')" title="'+s+'">'+
+      '<div style="width:14px;height:14px;border-radius:50%;border:2px solid '+dotColor+';background:'+bgColor+';transition:all .2s;flex-shrink:0;"></div>'+
+      '<div style="font-size:9px;font-weight:600;color:'+(active?stageColor:'var(--muted)')+';white-space:nowrap;max-width:40px;text-align:center;line-height:1.2;">'+label+'</div>'+
+    '</div>';
+  }).join('');
 
   document.getElementById('det-body').innerHTML =
     // ── HERO ──
@@ -2734,19 +2745,19 @@ function renderDetailPanel(b) {
         '<div class="det-biz-name">'+b.name+'</div>'+
         '<button class="det-edit-btn" onclick="toggleEditMode()">✏️ Edit</button>'+
       '</div>'+
-      // Score bar directly under name
-      '<div style="margin:6px 0 8px;">'+
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">'+
-          '<span style="font-size:11px;color:var(--muted);font-weight:500;">Opportunity Score</span>'+
-          '<span style="font-size:13px;font-weight:700;color:'+scoreColor+'">'+s+'/100 · '+scoreLbl+'</span>'+
+      // Pipeline stage slider under name
+      '<div style="margin:8px 0 10px;">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'+
+          '<span style="font-size:11px;color:var(--muted);font-weight:500;">Pipeline Stage</span>'+
+          '<span style="font-size:12px;font-weight:700;color:'+stageColor+'">'+stage+'</span>'+
         '</div>'+
-        '<div style="height:5px;border-radius:3px;background:var(--paper2);overflow:hidden;">'+
-          '<div style="height:100%;width:'+s+'%;background:'+scoreColor+';border-radius:3px;transition:width .4s;"></div>'+
+        '<div style="position:relative;height:4px;background:var(--paper2);border-radius:2px;margin-bottom:10px;">'+
+          '<div style="position:absolute;left:0;top:0;height:100%;width:'+stagePct+'%;background:'+stageColor+';border-radius:2px;transition:width .3s;"></div>'+
         '</div>'+
+        '<div style="display:flex;justify-content:space-between;">'+pipeDotsHtml+'</div>'+
       '</div>'+
       '<div class="det-badges">'+
         '<span class="status-badge '+statusClass(status)+'">'+status+'</span>'+
-        '<span class="pipeline-badge '+pipeClass(stage)+'">● '+stage+'</span>'+
         '<span style="font-size:11px;font-weight:600;color:#fff;background:'+color+';padding:3px 10px;border-radius:100px;">'+
           (b.industry||'Business')+'</span>'+
       '</div>'+
@@ -2821,12 +2832,6 @@ function renderDetailPanel(b) {
             '<option value="Lead"'+(status==='Lead'?' selected':'')+'>Lead</option>'+
             '<option value="Customer"'+(status==='Customer'?' selected':'')+'>Customer</option>'+
             '<option value="Lost Customer"'+(status==='Lost Customer'?' selected':'')+'>Lost Customer</option>'+
-          '</select></div>'+
-        '<div class="edit-field-group"><label class="edit-field-label">Pipeline Stage</label>'+
-          '<select class="edit-input" id="edit-pipeline">'+
-            ['Lead Captured','Qualified','Fact-Finding','Proposal Sent','Credit Application','Won Opportunity'].map(function(ps){
-              return '<option value="'+ps+'"'+(stage===ps?' selected':'')+'>'+ps+'</option>';
-            }).join('')+
           '</select></div>'+
         '<div class="edit-actions">'+
           '<button class="edit-save-btn" onclick="saveBusinessEdits()">Save Changes</button>'+
@@ -2925,7 +2930,7 @@ async function saveBusinessEdits() {
   var website  = document.getElementById('edit-website').value.trim();
   var rep      = document.getElementById('edit-rep').value.trim();
   var status   = document.getElementById('edit-status').value;
-  var pipeline = document.getElementById('edit-pipeline').value;
+  var pipeline = b.pipeline_stage || 'Lead Captured'; // set by dot clicks, not dropdown
 
   var btn = document.querySelector('.edit-save-btn');
   btn.textContent = 'Saving...'; btn.disabled = true;
@@ -2943,13 +2948,34 @@ async function saveBusinessEdits() {
     b.assigned_rep = rep; b.status = status; b.pipeline_stage = pipeline;
 
     toggleEditMode();
-    renderDetailPanel(b); // re-render with new values
-    // Re-select current tab
+    renderDetailPanel(b);
     switchTab('profile');
   } catch(e) {
     alert('Save failed: ' + e.message);
   } finally {
     btn.textContent = 'Save Changes'; btn.disabled = false;
+  }
+}
+
+// ── PIPELINE STAGE DOT CLICK (in detail hero) ──
+async function setDetailStage(stage) {
+  var b = lastSelectedBiz; if (!b) return;
+  try {
+    var r = await sb.from('businesses').update({
+      pipeline_stage: stage,
+      updated_at: new Date().toISOString()
+    }).eq('id', b.id||b._id);
+    if (r.error) throw r.error;
+    b.pipeline_stage = stage;
+    b.score = calcScore(b);
+    renderDetailPanel(b);
+    switchTab('profile');
+  } catch(e) {
+    // Update locally even if save fails — save will retry on next edit
+    b.pipeline_stage = stage;
+    b.score = calcScore(b);
+    renderDetailPanel(b);
+    switchTab('profile');
   }
 }
 
