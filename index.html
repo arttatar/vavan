@@ -1050,11 +1050,11 @@ function initMapHandlers() {
 function renderPins() {
   if (!map.isStyleLoaded()) { map.once('load', renderPins); return; }
 
-  // Show pins only when filters are applied — blank map on load
+  // Blank map unless filters are applied
   var source = filtersApplied ? filteredData : [];
   var valid = source.filter(function(b){ return b.lat && b.lon; });
 
-  // If source already exists just update data — no layer recreation, no handler re-attach
+  // If source already exists just update data
   if (map.getSource('biz')) {
     map.getSource('biz').setData({
       type:'FeatureCollection',
@@ -1915,7 +1915,9 @@ function clearFilters() {
   clearArea();
   document.getElementById('filter-badge').classList.remove('visible');
   document.getElementById('pcount').textContent = allData.length.toLocaleString();
-  // Reset to blank map — no pins until filters applied
+  // Reset to blank map
+  filtersApplied = false;
+  filteredData = [];
   if (map && map.getSource('biz')) {
     map.getSource('biz').setData({ type:'FeatureCollection', features: [] });
   }
