@@ -618,6 +618,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
     <div id="pcount-wrap"><b id="pcount">0</b> businesses</div>
     <button onclick="locateMe()" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,0.7);font-size:18px;padding:4px 8px;line-height:1;" title="Find my location">📍</button>
     <button onclick="openAddBusiness()" style="background:var(--accent);border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;color:#fff;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;">+ Add</button>
+    <button id="my-accounts-btn" onclick="filterMyAccounts()" style="display:none;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;color:rgba(255,255,255,.7);cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;">My Accounts</button>
     <button id="settings-btn" onclick="openSettings()" style="display:none;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:5px 9px;font-size:16px;cursor:pointer;color:rgba(255,255,255,.6);line-height:1;" title="Admin Settings">⚙️</button>
     <div id="uinfo">Signed in as <b id="uemail"></b></div>
     <button id="signout-btn" onclick="doSignOut()">Sign out</button>
@@ -761,6 +762,16 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
         </div>
       </div>
 
+      <!-- ASSIGNED REP -->
+      <div class="sb-sec">
+        <div class="sb-title">Assigned Rep</div>
+        <select class="sinput" id="s-rep" onchange="filters.rep=this.value">
+          <option value="all">All Reps</option>
+          <option value="unassigned">— Unassigned —</option>
+          <option disabled>──────────────</option>
+        </select>
+      </div>
+
       <!-- CONTACT INFO -->
       <div class="sb-sec">
         <div class="sb-title">Contact Info</div>
@@ -880,7 +891,7 @@ function _buildLookup() {
   _bizById = {};
   allData.forEach(function(b){ _bizById[b._id] = b; });
 }
-var filters = { opp:'all', contact:'all', industry:'all', pipeline:'all', subIndustry:'all', status:'all' };
+var filters = { opp:'all', contact:'all', industry:'all', pipeline:'all', subIndustry:'all', status:'all', rep:'all' };
 var activeTool = null, selPoly = null, radMiles = 5;
 
 // ── LOGIN ──
@@ -946,15 +957,48 @@ async function loadProfile() {
         badge.textContent = currentProfile.territory_name;
         badge.classList.add('visible');
       }
+      // Show My Accounts button for reps (not just admins)
+      var maBtn = document.getElementById('my-accounts-btn');
+      if (maBtn && currentProfile.full_name) maBtn.style.display = '';
+
       // Show settings gear for admins only
       if (currentProfile.role === 'admin') {
         var btn = document.getElementById('settings-btn');
         if (btn) btn.style.display = '';
       }
+      // Populate rep filter dropdown with territory reps
+      populateRepFilter();
     }
   } catch(e) {
     console.warn('No sales profile found — loading all data');
   }
+}
+
+function populateRepFilter() {
+  var sel = document.getElementById('s-rep');
+  if (!sel) return;
+  var reps = getTerritoryReps();
+  // Remove any previously added rep options (keep first 3: all, unassigned, divider)
+  while (sel.options.length > 3) sel.remove(3);
+  reps.forEach(function(r){
+    var opt = document.createElement('option');
+    opt.value = r;
+    opt.textContent = r;
+    sel.appendChild(opt);
+  });
+}
+
+// One-tap: filter to just the logged-in rep's assigned businesses
+function filterMyAccounts() {
+  if (!currentProfile || !currentProfile.full_name) return;
+  var repName = currentProfile.full_name;
+  clearFilters();
+  filters.rep = repName;
+  var sel = document.getElementById('s-rep');
+  if (sel) sel.value = repName;
+  applyFilters();
+  updateFilterBadge();
+  setTimeout(function(){ navTo('list'); }, 300);
 }
 
 async function startApp() {
@@ -1771,6 +1815,7 @@ function updateFilterBadge() {
   if (filters.contact !== 'all') parts.push(filters.contact);
   if (filters.pipeline !== 'all') parts.push(filters.pipeline);
   if (filters.status !== 'all') parts.push(filters.status);
+  if (filters.rep && filters.rep !== 'all') parts.push(filters.rep === 'unassigned' ? 'Unassigned' : filters.rep);
   var q = document.getElementById('s-city').value.trim() || document.getElementById('s-name').value.trim();
   if (q) parts.push('"'+q+'"');
   var badge = document.getElementById('filter-badge');
@@ -2206,6 +2251,14 @@ function applyFilters() {
   if (filters.status && filters.status !== 'all') {
     data = data.filter(function(b){
       return (b.status || 'Lead') === filters.status;
+    });
+  }
+
+  // Assigned rep filter
+  if (filters.rep && filters.rep !== 'all') {
+    data = data.filter(function(b){
+      if (filters.rep === 'unassigned') return !b.assigned_rep || b.assigned_rep === '';
+      return (b.assigned_rep || '') === filters.rep;
     });
   }
 
@@ -3135,10 +3188,12 @@ function onDraw(e) {
   applyFilters();
 }
 function clearFilters() {
-  filters = { opp:'all', contact:'all', industry:'all', pipeline:'all', subIndustry:'all', status:'all' };
+  filters = { opp:'all', contact:'all', industry:'all', pipeline:'all', subIndustry:'all', status:'all', rep:'all' };
   filtersApplied = false;
   filteredData = [];
-  setPipelineStage('all', null); // reset slider
+  setPipelineStage('all', null);
+  var repEl = document.getElementById('s-rep');
+  if (repEl) repEl.value = 'all'; // reset slider
   selectedIndustries = [];
   selectedSubIndustries = [];
   document.querySelectorAll('.ind-opt').forEach(function(o){ o.classList.remove('on'); });
