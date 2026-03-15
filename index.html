@@ -424,6 +424,57 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
 .act-time{font-size:10px;color:var(--muted);}
 .det-empty{font-size:12px;color:var(--muted);text-align:center;padding:2rem 0;}
 
+/* ADD BUSINESS MODAL */
+#add-biz-modal{
+  display:none; position:fixed; inset:0; z-index:3000;
+  background:rgba(0,0,0,0.55); align-items:flex-end; justify-content:center;
+  backdrop-filter:blur(2px);
+}
+#add-biz-modal.open{ display:flex; }
+@media(min-width:769px){
+  #add-biz-modal{ align-items:center; }
+  #add-biz-inner{ border-radius:16px !important; max-height:90vh; width:480px !important; }
+}
+#add-biz-inner{
+  background:#fff; width:100%; max-height:92vh;
+  border-radius:20px 20px 0 0;
+  overflow-y:auto; padding:0 0 env(safe-area-inset-bottom,0px);
+}
+.abiz-header{
+  padding:14px 16px 10px; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+  position:sticky; top:0; background:#fff; z-index:1;
+}
+.abiz-title{ font-size:16px; font-weight:700; color:var(--ink); }
+.abiz-body{ padding:1rem 1.25rem 1.5rem; }
+.abiz-row{ display:grid; grid-template-columns:1fr 1fr; gap:.75rem; }
+.abiz-field{ margin-bottom:.75rem; }
+.abiz-label{ display:block; font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:4px; }
+.abiz-input, .abiz-select{
+  width:100%; border:1px solid var(--border); border-radius:8px;
+  padding:9px 11px; font-size:13px; font-family:'Inter',sans-serif;
+  color:var(--ink); background:var(--paper); outline:none;
+}
+.abiz-input:focus, .abiz-select:focus{ border-color:var(--accent); }
+.abiz-status{ display:flex; align-items:center; gap:8px; padding:.5rem 0; font-size:12px; color:var(--muted); min-height:24px; }
+.abiz-footer{
+  display:flex; gap:10px; padding:1rem 1.25rem;
+  border-top:1px solid var(--border);
+  position:sticky; bottom:0; background:#fff;
+}
+.abiz-btn-save{
+  flex:1; padding:11px; background:var(--accent); color:#fff;
+  border:none; border-radius:10px; font-size:14px; font-weight:600;
+  font-family:'Inter',sans-serif; cursor:pointer;
+}
+.abiz-btn-save:disabled{ opacity:.6; cursor:not-allowed; }
+.abiz-btn-cancel{
+  padding:11px 18px; background:var(--paper2); color:var(--ink);
+  border:1px solid var(--border); border-radius:10px; font-size:13px;
+  font-family:'Inter',sans-serif; cursor:pointer;
+}
+
+
 /* LOADER */
 #loader{position:fixed;inset:0;z-index:8000;background:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;}
 #loader.hidden{display:none;}
@@ -463,6 +514,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
     <div id="filter-badge"></div>
     <div id="pcount-wrap"><b id="pcount">0</b> businesses</div>
     <button onclick="locateMe()" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,0.7);font-size:18px;padding:4px 8px;line-height:1;" title="Find my location">📍</button>
+    <button onclick="openAddBusiness()" style="background:var(--accent);border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;color:#fff;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;">+ Add</button>
     <div id="uinfo">Signed in as <b id="uemail"></b></div>
     <button id="signout-btn" onclick="doSignOut()">Sign out</button>
   </div>
@@ -1366,12 +1418,22 @@ function navTo(tab) {
   var sidebar  = document.getElementById('sidebar');
   var results  = document.getElementById('results-panel');
   var contacts = document.getElementById('contacts-panel');
+  var detail   = document.getElementById('detail');
   var overlay  = document.getElementById('overlay');
+
+  // Close all panels
   sidebar.classList.remove('open');
   results.classList.remove('open');
   contacts.classList.remove('open');
   overlay.classList.remove('show');
-  if (tab === 'filters') {
+  if (detail) detail.classList.remove('open');
+
+  if (tab === 'map') {
+    // If a business was open, stay centered on it with pin still highlighted
+    if (lastSelectedBiz && lastSelectedBiz.lat && lastSelectedBiz.lon) {
+      map.easeTo({center:[lastSelectedBiz.lon, lastSelectedBiz.lat], zoom:16, duration:300});
+    }
+  } else if (tab === 'filters') {
     sidebar.classList.add('open');
     overlay.classList.add('show');
   } else if (tab === 'list') {
@@ -1969,6 +2031,127 @@ function renderList() {
 }
 
 // ── DETAIL ──
+// ── ADD BUSINESS ──
+function openAddBusiness() {
+  // Pre-fill city from profile territory if available
+  var modal = document.getElementById('add-biz-modal');
+  modal.classList.add('open');
+  document.getElementById('ab-name').focus();
+  document.getElementById('ab-status-msg').textContent = '';
+}
+
+function closeAddBusiness() {
+  document.getElementById('add-biz-modal').classList.remove('open');
+  // Clear fields
+  ['ab-name','ab-phone','ab-website','ab-street'].forEach(function(id){
+    var el = document.getElementById(id); if(el) el.value = '';
+  });
+  document.getElementById('ab-city').value = 'Las Vegas';
+  document.getElementById('ab-state').value = 'NV';
+  document.getElementById('ab-industry').value = '';
+  document.getElementById('ab-status').value = 'Lead';
+  document.getElementById('ab-pipeline').value = 'Lead Captured';
+  document.getElementById('ab-status-msg').textContent = '';
+  var btn = document.getElementById('ab-save-btn');
+  btn.disabled = false; btn.textContent = 'Add to Map';
+}
+
+async function geocodeAddress(address) {
+  var url = 'https://api.mapbox.com/geocoding/v5/mapbox.places/' +
+    encodeURIComponent(address) + '.json?limit=1&access_token=' + MBOX;
+  var res = await fetch(url);
+  if (!res.ok) throw new Error('Geocode failed');
+  var json = await res.json();
+  if (!json.features || !json.features.length) throw new Error('Address not found');
+  return { lon: json.features[0].center[0], lat: json.features[0].center[1] };
+}
+
+async function saveNewBusiness() {
+  var name    = document.getElementById('ab-name').value.trim();
+  var phone   = document.getElementById('ab-phone').value.trim();
+  var website = document.getElementById('ab-website').value.trim();
+  var street  = document.getElementById('ab-street').value.trim();
+  var city    = document.getElementById('ab-city').value.trim();
+  var state   = document.getElementById('ab-state').value.trim();
+  var industry= document.getElementById('ab-industry').value;
+  var status  = document.getElementById('ab-status').value;
+  var pipeline= document.getElementById('ab-pipeline').value;
+  var statusEl= document.getElementById('ab-status-msg');
+  var btn     = document.getElementById('ab-save-btn');
+
+  if (!name) { statusEl.textContent = '⚠️ Business name is required.'; statusEl.style.color='var(--red)'; return; }
+  if (!street || !city) { statusEl.textContent = '⚠️ Street and city are required for the map pin.'; statusEl.style.color='var(--red)'; return; }
+
+  btn.disabled = true; btn.textContent = 'Finding address...';
+  statusEl.style.color = 'var(--muted)';
+  statusEl.textContent = '🔍 Geocoding address...';
+
+  try {
+    var fullAddress = [street, city, state, 'USA'].filter(Boolean).join(', ');
+    var coords = await geocodeAddress(fullAddress);
+
+    statusEl.textContent = '💾 Saving...';
+    btn.textContent = 'Saving...';
+
+    // Normalize website
+    if (website && !website.match(/^https?:\/\//)) website = 'https://' + website;
+
+    var payload = {
+      name: name,
+      phone: phone || null,
+      website: website || null,
+      street: street,
+      locality: city + (state ? ', ' + state : ''),
+      state: state,
+      full_address: fullAddress,
+      lat: coords.lat,
+      lon: coords.lon,
+      industry: industry || null,
+      status: status,
+      pipeline_stage: pipeline,
+      market: 'Las Vegas',
+      territory_code: currentProfile ? (currentProfile.territory_code || 'LAS-ALL') : 'LAS-ALL',
+      visited: false,
+      score: 50
+    };
+
+    var r = await sb.from('businesses').insert(payload).select().single();
+    if (r.error) throw r.error;
+
+    // Add to local data and lookup
+    var newBiz = normalizeRecord(r.data);
+    newBiz._id = newBiz._id || (_nextId++);
+    applySubIndustries([newBiz]);
+    allData.unshift(newBiz);
+    _bizById[newBiz._id] = newBiz;
+
+    // Update pin count
+    var pcount = document.getElementById('pcount');
+    if (pcount) pcount.textContent = allData.length.toLocaleString();
+    updateFabCount();
+
+    closeAddBusiness();
+
+    // Fly to new pin and open it
+    if (map && newBiz.lat && newBiz.lon) {
+      map.flyTo({center:[newBiz.lon, newBiz.lat], zoom:16, speed:1.3});
+    }
+    // Add pin to map if filters applied, otherwise prompt
+    if (filtersApplied && map.getSource('biz')) {
+      // Re-run applyFilters to include new biz if it matches
+      applyFilters();
+    }
+    // Open the business detail
+    setTimeout(function(){ selectBiz(newBiz._id); }, 600);
+
+  } catch(e) {
+    statusEl.textContent = '❌ ' + e.message;
+    statusEl.style.color = 'var(--red)';
+    btn.disabled = false;
+    btn.textContent = 'Add to Map';
+  }
+}
+
 function locateMe() {
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(function(pos) {
@@ -2471,6 +2654,86 @@ function onMapClick(e) {
   deactivate(); applyFilters();
 }
 </script>
+<!-- ADD BUSINESS MODAL -->
+<div id="add-biz-modal">
+  <div id="add-biz-inner">
+    <div class="abiz-header">
+      <div class="abiz-title">Add Business</div>
+      <button class="sheet-close" onclick="closeAddBusiness()">✕</button>
+    </div>
+    <div class="abiz-body">
+      <div class="abiz-field">
+        <label class="abiz-label">Business Name *</label>
+        <input class="abiz-input" id="ab-name" type="text" placeholder="e.g. Acme Auto Parts">
+      </div>
+      <div class="abiz-row">
+        <div class="abiz-field">
+          <label class="abiz-label">Phone</label>
+          <input class="abiz-input" id="ab-phone" type="tel" placeholder="(702) 555-0100">
+        </div>
+        <div class="abiz-field">
+          <label class="abiz-label">Website</label>
+          <input class="abiz-input" id="ab-website" type="url" placeholder="www.example.com">
+        </div>
+      </div>
+      <div class="abiz-field">
+        <label class="abiz-label">Street Address *</label>
+        <input class="abiz-input" id="ab-street" type="text" placeholder="1234 Main St">
+      </div>
+      <div class="abiz-row">
+        <div class="abiz-field">
+          <label class="abiz-label">City *</label>
+          <input class="abiz-input" id="ab-city" type="text" value="Las Vegas">
+        </div>
+        <div class="abiz-field">
+          <label class="abiz-label">State</label>
+          <input class="abiz-input" id="ab-state" type="text" value="NV" style="max-width:80px;">
+        </div>
+      </div>
+      <div class="abiz-field">
+        <label class="abiz-label">Industry</label>
+        <select class="abiz-select" id="ab-industry">
+          <option value="">Select industry</option>
+          <option value="Automotive">Automotive</option>
+          <option value="Transport">Transportation</option>
+          <option value="Construction">Infrastructure</option>
+          <option value="Industrial">Industrial</option>
+          <option value="Agribusiness">Agribusiness</option>
+          <option value="Energy">Energy</option>
+          <option value="Services">Services</option>
+          <option value="Hospitality">Hospitality</option>
+          <option value="Government">Government</option>
+          <option value="RealEstate">Real Estate</option>
+        </select>
+      </div>
+      <div class="abiz-row">
+        <div class="abiz-field">
+          <label class="abiz-label">Status</label>
+          <select class="abiz-select" id="ab-status">
+            <option value="Lead">Lead</option>
+            <option value="Customer">Customer</option>
+            <option value="Lost Customer">Lost Customer</option>
+          </select>
+        </div>
+        <div class="abiz-field">
+          <label class="abiz-label">Pipeline Stage</label>
+          <select class="abiz-select" id="ab-pipeline">
+            <option value="Lead Captured">Lead Captured</option>
+            <option value="Qualified">Qualified</option>
+            <option value="Fact-Finding">Fact-Finding</option>
+            <option value="Proposal Sent">Proposal Sent</option>
+          </select>
+        </div>
+      </div>
+      <div class="abiz-status" id="ab-status-msg"></div>
+    </div>
+    <div class="abiz-footer">
+      <button class="abiz-btn-cancel" onclick="closeAddBusiness()">Cancel</button>
+      <button class="abiz-btn-save" id="ab-save-btn" onclick="saveNewBusiness()">Add to Map</button>
+    </div>
+  </div>
+</div>
+
 <!-- DESKTOP LEFT NAV -->
 <nav id="nav-desktop">
   <button class="nav-item-desk active" id="nd-map" onclick="navTo('map')">
