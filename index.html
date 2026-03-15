@@ -816,11 +816,25 @@ async function startApp() {
 }
 
 function calcScore(b) {
-  var s = 50;
-  if (b.phone) s += 15;
-  if (b.website) s += 15;
-  if (/truck|fleet|freight|transport|haul|carrier|logistic|fuel|oil|diesel|lube|mechanic|auto|repair|equip|farm|agri|construct|industrial|mining/i.test(b.name||'')) s += 20;
-  return Math.min(s, 100);
+  // Base score from pipeline stage — reflects how far along the sales process
+  var stage = (b.pipeline_stage || '').trim();
+  var base = 15; // default / no stage
+  if      (stage === 'Lead Captured')      base = 20;
+  else if (stage === 'Qualified')           base = 40;
+  else if (stage === 'Fact-Finding')        base = 55;
+  else if (stage === 'Proposal Sent')       base = 70;
+  else if (stage === 'Credit Application')  base = 85;
+  else if (stage === 'Won Opportunity')     base = 100;
+
+  if (stage === 'Won Opportunity') return 100; // cap at 100 for won
+
+  var s = base;
+  if (b.phone)   s += 5;   // reachable
+  if (b.website) s += 3;   // established business
+  if (b.visited) s += 5;   // rep has been there
+  if (b.assigned_rep && b.assigned_rep !== 'Unassigned') s += 2; // active account
+
+  return Math.min(s, 99); // cap at 99 unless Won
 }
 
 // ── DATA NORMALIZATION ──
@@ -2265,12 +2279,21 @@ function fmtTime(ts){
 
 function renderDetailPanel(b) {
   var color = bizColor(b);
-  var s = b.score||calcScore(b);
-  var scoreLbl = s>=80?'High Opportunity':s>=65?'Medium Opportunity':'Standard Prospect';
+  var s = calcScore(b); // always recalculate from current pipeline stage
+  b.score = s; // keep in sync
   var status = b.status||'Lead';
   var stage = b.pipeline_stage||'Lead Captured';
   var addr = b.full_address || ((b.street||'') + ', ' + (b.locality||''));
   var subInd = (b.sub_industry_inferred||[]).slice(0,3).join(', ') || '—';
+
+  // Score label based on pipeline stage
+  var scoreLbl, scoreColor;
+  if      (stage === 'Won Opportunity')     { scoreLbl = 'Won'; scoreColor = '#059669'; }
+  else if (stage === 'Credit Application')  { scoreLbl = 'Credit Stage'; scoreColor = '#059669'; }
+  else if (stage === 'Proposal Sent')       { scoreLbl = 'Proposal Out'; scoreColor = '#d97706'; }
+  else if (stage === 'Fact-Finding')        { scoreLbl = 'In Progress'; scoreColor = '#d97706'; }
+  else if (stage === 'Qualified')           { scoreLbl = 'Qualified'; scoreColor = '#4a36c8'; }
+  else                                       { scoreLbl = 'New Lead'; scoreColor = '#9b93d4'; }
 
   document.getElementById('det-body').innerHTML =
     // ── HERO ──
@@ -2278,6 +2301,16 @@ function renderDetailPanel(b) {
       '<div class="det-hero-top">'+
         '<div class="det-biz-name">'+b.name+'</div>'+
         '<button class="det-edit-btn" onclick="toggleEditMode()">✏️ Edit</button>'+
+      '</div>'+
+      // Score bar directly under name
+      '<div style="margin:6px 0 8px;">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">'+
+          '<span style="font-size:11px;color:var(--muted);font-weight:500;">Opportunity Score</span>'+
+          '<span style="font-size:13px;font-weight:700;color:'+scoreColor+'">'+s+'/100 · '+scoreLbl+'</span>'+
+        '</div>'+
+        '<div style="height:5px;border-radius:3px;background:var(--paper2);overflow:hidden;">'+
+          '<div style="height:100%;width:'+s+'%;background:'+scoreColor+';border-radius:3px;transition:width .4s;"></div>'+
+        '</div>'+
       '</div>'+
       '<div class="det-badges">'+
         '<span class="status-badge '+statusClass(status)+'">'+status+'</span>'+
@@ -2319,15 +2352,8 @@ function renderDetailPanel(b) {
           '<span class="det-field-value"><span class="status-badge '+statusClass(status)+'">'+status+'</span></span></div>'+
         '<div class="det-field-row"><span class="det-field-label">Pipeline</span>'+
           '<span class="det-field-value"><span class="pipeline-badge '+pipeClass(stage)+'">'+stage+'</span></span></div>'+
-        '<div class="det-score-wrap">'+
-          '<div class="det-field-label">Opportunity Score</div>'+
-          '<div class="det-score-bar"><div class="det-score-fill" style="width:'+s+'%;background:'+color+'"></div></div>'+
-          '<div style="display:flex;justify-content:space-between;font-size:11px;">'+
-            '<span style="font-weight:600;color:'+color+'">'+s+'/100</span>'+
-            '<span style="color:var(--muted)">'+scoreLbl+'</span></div>'+
-        '</div>'+
         '<a href="https://www.google.com/maps/search/'+encodeURIComponent(b.name||'')+'/@'+b.lat+','+b.lon+',17z" '+
-          'target="_blank" style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#4285F4;text-decoration:none;margin-top:.5rem;">'+
+          'target="_blank" style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#4285F4;text-decoration:none;margin-top:.75rem;">'+
           '🔗 View on Google Maps</a>'+
       '</div>'+
       // Edit mode
