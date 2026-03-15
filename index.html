@@ -549,13 +549,11 @@ async function startApp() {
   prog(80, 'Placing pins...');
   // Wait for map to be fully loaded before adding pins
   if (map.isStyleLoaded()) {
-    filteredData = [];
     renderPins();
     prog(100, 'Ready!');
     setTimeout(function(){ document.getElementById('loader').classList.add('hidden'); }, 500);
   } else {
     map.once('load', function() {
-      filteredData = [];
       renderPins();
       prog(100, 'Ready!');
       setTimeout(function(){ document.getElementById('loader').classList.add('hidden'); }, 500);
@@ -1025,13 +1023,63 @@ function startLocationTracking() {
   }, { enableHighAccuracy:true, maximumAge:3000, timeout:10000 });
 }
 
+var _mapHandlersAttached = false;
+
+function initMapHandlers() {
+  if (_mapHandlersAttached) return;
+  _mapHandlersAttached = true;
+  map.on('click', 'biz', function(e) {
+    if (mapIsMoving) return;
+    selectBiz(e.features[0].properties._id);
+  });
+  map.on('touchend', function(e) {
+    if (mapIsMoving) return;
+    var point = e.point;
+    var bbox = [[point.x-22,point.y-22],[point.x+22,point.y+22]];
+    var features = map.queryRenderedFeatures(bbox, {layers:['biz']});
+    if (features.length > 0) selectBiz(features[0].properties._id);
+  });
+  map.on('click', 'biz-cl', function(e) {
+    var f = map.queryRenderedFeatures(e.point, {layers:['biz-cl']});
+    map.getSource('biz').getClusterExpansionZoom(f[0].properties.cluster_id, function(err,z){
+      if (!err) map.easeTo({center:f[0].geometry.coordinates, zoom:z});
+    });
+  });
+  map.on('mouseenter', 'biz',    function(){ map.getCanvas().style.cursor='pointer'; });
+  map.on('mouseleave', 'biz',    function(){ map.getCanvas().style.cursor=''; });
+  map.on('mouseenter', 'biz-cl', function(){ map.getCanvas().style.cursor='pointer'; });
+  map.on('mouseleave', 'biz-cl', function(){ map.getCanvas().style.cursor=''; });
+}
+
 function renderPins() {
   if (!map.isStyleLoaded()) { map.once('load', renderPins); return; }
-  
-  // Only show pins after filters applied — filteredData starts empty
-  var valid = filteredData.filter(function(b){ return b.lat && b.lon; });
+
+  // Show all pins by default; filtered set when filters are applied
+  var source = filtersApplied ? filteredData : allData;
+  var valid = source.filter(function(b){ return b.lat && b.lon; });
+
+  // If source already exists just update data — no layer recreation, no handler re-attach
+  if (map.getSource('biz')) {
+    map.getSource('biz').setData({
+      type:'FeatureCollection',
+      features: valid.map(function(b){
+        return {type:'Feature', geometry:{type:'Point', coordinates:[b.lon,b.lat]},
+          properties:Object.assign({}, b, {_id:b._id, score:b.score||calcScore(b)})};
+      })
+    });
+    document.getElementById('pcount').textContent = allData.length.toLocaleString();
+    updateFabCount();
+    return;
+  }
+
+  // First render only — create source and layers
   ['biz','biz-cl','biz-cn'].forEach(function(id){ if(map.getLayer(id)) map.removeLayer(id); });
-  if (map.getSource('biz')) map.removeSource('biz');
+  map.addSource('biz', { type:'geojson', cluster:true, clusterMaxZoom:13, clusterRadius:40,
+    data:{ type:'FeatureCollection', features: valid.map(function(b){
+      return {type:'Feature', geometry:{type:'Point', coordinates:[b.lon,b.lat]},
+        properties:Object.assign({}, b, {_id:b._id, score:b.score||calcScore(b)})};
+    })}
+  });
   map.addSource('biz', { type:'geojson', cluster:true, clusterMaxZoom:13, clusterRadius:40,
     data:{ type:'FeatureCollection', features: valid.map(function(b){ return {type:'Feature',geometry:{type:'Point',coordinates:[b.lon,b.lat]},properties:Object.assign({},b,{_id:b._id,score:b.score||calcScore(b)})}; }) }
   });
@@ -1096,29 +1144,10 @@ function renderPins() {
     });
   }
 
-  map.on('click','biz', function(e){
-    if (mapIsMoving) return; // ignore clicks during/just after movement
-    selectBiz(e.features[0].properties._id);
-  });
-  // Touch support for mobile — only fire if map was still
-  map.on('touchend', function(e) {
-    if (mapIsMoving) return;
-    var point = e.point;
-    var bbox = [[point.x-22,point.y-22],[point.x+22,point.y+22]];
-    var features = map.queryRenderedFeatures(bbox, {layers:['biz']});
-    if (features.length > 0) {
-      selectBiz(features[0].properties._id);
-    }
-  });
-  map.on('click','biz-cl', function(e){
-    var f = map.queryRenderedFeatures(e.point,{layers:['biz-cl']});
-    map.getSource('biz').getClusterExpansionZoom(f[0].properties.cluster_id, function(err,z){ if(!err) map.easeTo({center:f[0].geometry.coordinates,zoom:z}); });
-  });
-  map.on('mouseenter','biz', function(){ map.getCanvas().style.cursor='pointer'; });
-  map.on('mouseleave','biz', function(){ map.getCanvas().style.cursor=''; });
-  map.on('mouseenter','biz-cl', function(){ map.getCanvas().style.cursor='pointer'; });
-  map.on('mouseleave','biz-cl', function(){ map.getCanvas().style.cursor=''; });
-  document.getElementById('pcount').textContent = allData.length;
+  // Attach handlers once — guarded by _mapHandlersAttached flag
+  initMapHandlers();
+
+  document.getElementById('pcount').textContent = allData.length.toLocaleString();
   updateFabCount();
 }
 
@@ -1595,6 +1624,14 @@ function applyFilters() {
   if (filters.opp==='high') data = data.filter(function(b){ return (b.score||0)>=80; });
   else if (filters.opp==='med') data = data.filter(function(b){ return (b.score||0)>=65&&(b.score||0)<80; });
   else if (filters.opp==='low') data = data.filter(function(b){ return (b.score||0)<65; });
+
+  // Pipeline stage filter
+  if (filters.pipeline && filters.pipeline !== 'all') {
+    data = data.filter(function(b){
+      return (b.pipeline_stage || '') === filters.pipeline;
+    });
+  }
+
   if (filters.contact==='phone') data = data.filter(function(b){ return b.phone; });
   else if (filters.contact==='web') data = data.filter(function(b){ return b.website; });
   else if (filters.contact==='both') data = data.filter(function(b){ return b.phone && b.website; });
