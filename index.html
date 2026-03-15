@@ -1080,9 +1080,6 @@ function renderPins() {
         properties:Object.assign({}, b, {_id:b._id, score:b.score||calcScore(b)})};
     })}
   });
-  map.addSource('biz', { type:'geojson', cluster:true, clusterMaxZoom:13, clusterRadius:40,
-    data:{ type:'FeatureCollection', features: valid.map(function(b){ return {type:'Feature',geometry:{type:'Point',coordinates:[b.lon,b.lat]},properties:Object.assign({},b,{_id:b._id,score:b.score||calcScore(b)})}; }) }
-  });
   map.addLayer({ id:'biz-cl', type:'circle', source:'biz', filter:['has','point_count'], paint:{'circle-color':'#4a36c8','circle-radius':['step',['get','point_count'],16,10,22,50,28],'circle-opacity':.85} });
   map.addLayer({ id:'biz-cn', type:'symbol', source:'biz', filter:['has','point_count'], layout:{'text-field':'{point_count_abbreviated}','text-size':12}, paint:{'text-color':'#fff'} });
   map.addLayer({ id:'biz', type:'circle', source:'biz', filter:['!',['has','point_count']],
