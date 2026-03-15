@@ -21,95 +21,72 @@
   --safe-top: env(safe-area-inset-top, 0px);
 }
 html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:var(--ink);}
-@media(max-width:600px){
+@media (max-width: 768px) {
+  :root { --header: 48px; --sidebar: 100vw; }
 
-  /* ── HEADER ── */
-  #header{padding-left:.75rem;padding-right:.75rem;gap:.5rem;}
-  #pcount-wrap{display:none;}
-  #uinfo{display:none;}
+  /* Header */
+  #header { padding: 0 .75rem; gap: .5rem; }
+  #pcount-wrap { display: none; }
+  #uinfo { display: none; }
+  #signout-btn { padding: 3px 8px; font-size: 10px; }
 
-  /* ── ALL PANELS SLIDE UP FROM BOTTOM ── */
+  /* FAB buttons */
+  .fab { padding: 8px 14px; font-size: 12px; }
 
-  /* Filter panel */
-  #sidebar{
-    top:auto !important;
-    bottom:0 !important;
-    left:0 !important;
-    right:0 !important;
-    width:100% !important;
-    max-width:100% !important;
-    height:88vh !important;
-    border-radius:20px 20px 0 0 !important;
-    transform:translateY(110%) !important;
-    transition:transform .3s cubic-bezier(.4,0,.2,1) !important;
-    border-right:none !important;
-    border-top:1px solid var(--border) !important;
-    z-index:1800 !important;
-    box-shadow:0 -4px 32px rgba(0,0,0,0.2) !important;
+  /* Map */
+  #map { top: calc(var(--header) + 50px); }
+
+  /* All panels slide up from bottom */
+  #sidebar {
+    top: auto !important; bottom: 0 !important;
+    left: 0 !important; right: 0 !important;
+    width: 100% !important; max-width: 100% !important;
+    height: 88vh !important;
+    border-radius: 20px 20px 0 0 !important;
+    transform: translateY(110%) !important;
+    transition: transform .3s cubic-bezier(.4,0,.2,1) !important;
+    border-right: none !important;
+    border-top: 1px solid var(--border) !important;
+    z-index: 1800 !important;
+    box-shadow: 0 -4px 32px rgba(0,0,0,0.2) !important;
   }
-  #sidebar.open{transform:translateY(0) !important;}
+  #sidebar.open { transform: translateY(0) !important; }
 
-  /* Results list panel */
-  #results-panel{
-    top:auto !important;
-    bottom:0 !important;
-    left:0 !important;
-    right:0 !important;
-    width:100% !important;
-    height:70vh !important;
-    border-radius:20px 20px 0 0 !important;
-    transform:translateY(110%) !important;
-    transition:transform .3s cubic-bezier(.4,0,.2,1) !important;
-    border-right:none !important;
-    border-top:1px solid var(--border) !important;
-    z-index:1900 !important;
-    box-shadow:0 -4px 32px rgba(0,0,0,0.2) !important;
+  #results-panel {
+    top: auto !important; bottom: 0 !important;
+    left: 0 !important; right: 0 !important;
+    width: 100% !important; height: 70vh !important;
+    border-radius: 20px 20px 0 0 !important;
+    transform: translateY(110%) !important;
+    transition: transform .3s cubic-bezier(.4,0,.2,1) !important;
+    border-right: none !important;
+    border-top: 1px solid var(--border) !important;
+    z-index: 1900 !important;
+    box-shadow: 0 -4px 32px rgba(0,0,0,0.2) !important;
   }
-  #results-panel.open{transform:translateY(0) !important;}
+  #results-panel.open { transform: translateY(0) !important; }
 
-  /* Business detail panel */
-  #detail{
-    top:auto !important;
-    bottom:0 !important;
-    right:0 !important;
-    left:0 !important;
-    width:100% !important;
-    height:80vh !important;
-    border-radius:20px 20px 0 0 !important;
-    transform:translateY(110%) !important;
-    transition:transform .3s cubic-bezier(.4,0,.2,1) !important;
-    border-left:none !important;
-    border-top:1px solid var(--border) !important;
-    z-index:2000 !important;
-    box-shadow:0 -4px 32px rgba(0,0,0,0.2) !important;
+  #detail {
+    top: auto !important; bottom: 0 !important;
+    left: 0 !important; right: 0 !important;
+    width: 100% !important; height: 80vh !important;
+    border-radius: 20px 20px 0 0 !important;
+    transform: translateY(110%) !important;
+    transition: transform .3s cubic-bezier(.4,0,.2,1) !important;
+    border-left: none !important;
+    border-top: 1px solid var(--border) !important;
+    z-index: 2000 !important;
+    box-shadow: 0 -4px 32px rgba(0,0,0,0.2) !important;
   }
-  #detail.open{transform:translateY(0) !important;}
+  #detail.open { transform: translateY(0) !important; }
 
+  #det-x { min-height: auto !important; padding: 0 !important; flex-direction: column !important; }
+  #overlay { z-index: 1700; }
 
-
-  #det-x{min-height:auto !important;padding:0 !important;flex-direction:column !important;}
-
-  /* Overlay behind panels */
-  #overlay{z-index:1700;}
-
-  /* Hide desktop-only elements */
-  .rp-hdr .rp-close{display:flex !important;align-items:center;justify-content:center;width:36px;height:36px;background:#f5f5f5;border-radius:50%;font-size:14px;cursor:pointer;}
-  /* Results header on mobile */
-  .rp-hdr{padding:.5rem 1rem .75rem;flex-direction:column;gap:0;}
-/* ── SHEET COMPONENTS ── */
-.sheet-handle{width:40px;height:4px;background:#ddd;border-radius:2px;margin:10px auto 0;flex-shrink:0;display:block;}
-.sheet-topbar{display:flex;align-items:center;gap:10px;padding:8px 12px 10px;border-bottom:1px solid var(--border);}
-.sheet-title{font-size:15px;font-weight:600;color:var(--ink);flex:1;text-align:center;padding-right:32px;}
-.sheet-close{width:32px;height:32px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:#f0f0f0;border:none;border-radius:50%;cursor:pointer;font-size:13px;color:var(--ink);}
-.sheet-close:active{background:#e0e0e0;}
-
-
-  .rp-title{font-size:15px;}
-  /* Row with title + close */  
-  .rp-hdr-row{display:flex;align-items:center;justify-content:space-between;width:100%;}
+  /* Touch targets */
+  .pill { padding: 6px 12px; font-size: 12px; }
+  .tbtn { padding: 7px 12px; font-size: 12px; }
 }
-
-/* LOGIN */
 #login-screen{position:fixed;inset:0;z-index:9999;background:var(--ink);display:flex;align-items:center;justify-content:center;}
 #login-screen.hidden{display:none;}
 .lcard{background:#fff;border-radius:16px;padding:2.5rem 2rem;width:100%;max-width:380px;}
@@ -140,6 +117,13 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
 #uinfo{font-size:12px;color:rgba(255,255,255,.4);}
 #uinfo b{color:rgba(255,255,255,.7);font-weight:500;}
 #signout-btn{background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:4px 10px;font-size:11px;color:rgba(255,255,255,.5);cursor:pointer;font-family:'Inter',sans-serif;}
+
+/* ── SHEET COMPONENTS ── */
+.sheet-handle{width:40px;height:4px;background:#ddd;border-radius:2px;margin:10px auto 0;flex-shrink:0;display:block;}
+.sheet-topbar{display:flex;align-items:center;gap:10px;padding:8px 12px 10px;border-bottom:1px solid var(--border);}
+.sheet-title{font-size:15px;font-weight:600;color:var(--ink);flex:1;text-align:center;padding-right:32px;}
+.sheet-close{width:32px;height:32px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:#f0f0f0;border:none;border-radius:50%;cursor:pointer;font-size:13px;color:var(--ink);}
+.sheet-close:active{background:#e0e0e0;}
 /* ── FLOATING ACTION BUTTONS ── */
 #fab-wrap{
   position:fixed;
@@ -279,46 +263,6 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
 #ldlbl{font-size:12px;color:rgba(255,255,255,.35);}
 
 /* ── MOBILE ── */
-@media (max-width: 768px) {
-  :root { --header: 48px; --sidebar: 100vw; }
-
-  #header {
-    padding: 0 .75rem;
-    gap: .5rem;
-  }
-
-  /* Hide less important header items on mobile */
-  #uinfo { display: none; }
-  #pcount-wrap { font-size: 11px; }
-  #signout-btn { padding: 3px 8px; font-size: 10px; }
-
-  /* Toggle button: stays fixed top-left below header */
-  #toggle-btn { display: none; } /* legacy — replaced by fab buttons */
-
-  /* Map starts below header + fab buttons */
-  #map {
-    top: calc(var(--header) + 50px);
-  }
-
-  /* Sidebar full width on mobile */
-  #sidebar {
-    width: 100vw;
-    top: calc(var(--header) + 50px);
-  }
-
-  /* Detail panel full width on mobile */
-  #detail {
-    width: 100vw;
-    top: var(--header);
-  }
-
-  /* FAB buttons on mobile — slightly smaller */
-  .fab { padding:8px 14px; font-size:12px; }
-
-  /* Bigger touch targets for pills */
-  .pill { padding: 6px 12px; font-size: 12px; }
-  .tbtn { padding: 7px 12px; font-size: 12px; }
-}
 </style>
 </head>
 <body>
@@ -534,6 +478,12 @@ var sb = window.supabase.createClient(SURL, SKEY);
 mapboxgl.accessToken = MBOX;
 
 var allData = [], filteredData = [], filtersApplied = false, map, draw;
+var _bizById = {}; // fast lookup by _id
+
+function _buildLookup() {
+  _bizById = {};
+  allData.forEach(function(b){ _bizById[b._id] = b; });
+}
 var filters = { opp:'all', contact:'all', industry:'all', pipeline:'all', subIndustry:'all' };
   var pipeEl = document.getElementById('s-pipeline');
   if (pipeEl) pipeEl.value = 'all';
@@ -621,7 +571,56 @@ function calcScore(b) {
   return Math.min(s, 100);
 }
 
-// ── SUB-INDUSTRY INFERENCE ──
+// ── DATA NORMALIZATION ──
+// Standardizes field names, types, and handles nulls after fetch
+var _nextId = 1;
+function normalizeRecord(b) {
+  // Assign stable numeric ID
+  if (!b._id) b._id = _nextId++;
+
+  // Coordinates — ensure numbers
+  b.lat = parseFloat(b.lat) || null;
+  b.lon = parseFloat(b.lon || b.lng || b.longitude) || null;
+
+  // Strings — trim and default to ''
+  b.name        = (b.name        || '').trim();
+  b.street      = (b.street      || b.address || '').trim();
+  b.locality    = (b.locality    || b.city    || '').trim();
+  b.state       = (b.state       || '').trim();
+  b.full_address= (b.full_address|| '').trim() || [b.street, b.locality].filter(Boolean).join(', ');
+  b.phone       = (b.phone       || '').trim();
+  b.website     = (b.website     || '').trim();
+  b.categories  = (b.categories  || '').trim();
+  b.market      = (b.market      || 'Las Vegas').trim();
+  b.pipeline_stage = (b.pipeline_stage || '').trim();
+
+  // Industry — normalize casing to match IND_COLORS keys
+  var rawInd = (b.industry || '').trim();
+  var IND_NORMALIZE = {
+    'automotive':'Automotive','agribusiness':'Agribusiness',
+    'transport':'Transport','transportation':'Transport',
+    'construction':'Construction','infrastructure':'Construction',
+    'industrial':'Industrial','services':'Services',
+    'hospitality':'Hospitality','government':'Government',
+    'energy':'Energy','realestate':'RealEstate','real estate':'RealEstate',
+    'competitors':'Competitors','competitor':'Competitors'
+  };
+  b.industry = IND_NORMALIZE[rawInd.toLowerCase()] || rawInd;
+
+  // Booleans
+  b.is_competitor = !!(b.is_competitor || b.industry === 'Competitors');
+
+  // Score
+  b.score = parseInt(b.score) || calcScore(b);
+
+  return b;
+}
+
+function normalizeAll(rows) {
+  return rows.map(normalizeRecord);
+}
+
+
 // Auto-assigns sub_industry val to each business based on name + industry keywords
 var SUB_RULES = [
   // AUTOMOTIVE
@@ -819,7 +818,12 @@ async function loadData() {
       if (r.data.length < pageSize) break;
       from += pageSize;
     }
-    if (allRows.length > 0) { allData = applySubIndustries(allRows); prog(60, 'Loaded ' + allRows.length + ' businesses'); return; }
+    if (allRows.length > 0) {
+      allData = applySubIndustries(normalizeAll(allRows));
+      _buildLookup();
+      prog(60, 'Loaded ' + allData.length + ' businesses');
+      return;
+    }
   } catch(e) {}
   allData = [
     {name:'YRC Freight',street:'5049 W Post Rd',locality:'Las Vegas, NV 89118',phone:'(800) 610-6500',website:'',industry:'Transportation',market:'Las Vegas',lat:36.1025,lon:-115.2144},
@@ -833,8 +837,10 @@ async function loadData() {
     {name:'MGM Grand Hotel',street:'3799 S Las Vegas Blvd',locality:'Las Vegas, NV 89109',phone:'(702) 891-1111',website:'http://mgmgrand.com/',industry:'Hospitality',market:'Las Vegas',lat:36.1024,lon:-115.1701},
     {name:'Clark County Public Works',street:'500 S Grand Central Pkwy',locality:'Las Vegas, NV 89155',phone:'(702) 455-6000',website:'',industry:'Government',market:'Las Vegas',lat:36.1762,lon:-115.1398}
   ];
+  allData = normalizeAll(allData);
   allData.forEach(function(b){ b.score = calcScore(b); });
   applySubIndustries(allData);
+  _buildLookup();
   prog(60, 'Using sample data');
 }
 
@@ -1027,7 +1033,7 @@ function renderPins() {
   ['biz','biz-cl','biz-cn'].forEach(function(id){ if(map.getLayer(id)) map.removeLayer(id); });
   if (map.getSource('biz')) map.removeSource('biz');
   map.addSource('biz', { type:'geojson', cluster:true, clusterMaxZoom:13, clusterRadius:40,
-    data:{ type:'FeatureCollection', features: valid.map(function(b,i){ return {type:'Feature',geometry:{type:'Point',coordinates:[b.lon,b.lat]},properties:{...b,idx:i,score:b.score||calcScore(b)}}; }) }
+    data:{ type:'FeatureCollection', features: valid.map(function(b){ return {type:'Feature',geometry:{type:'Point',coordinates:[b.lon,b.lat]},properties:Object.assign({},b,{_id:b._id,score:b.score||calcScore(b)})}; }) }
   });
   map.addLayer({ id:'biz-cl', type:'circle', source:'biz', filter:['has','point_count'], paint:{'circle-color':'#4a36c8','circle-radius':['step',['get','point_count'],16,10,22,50,28],'circle-opacity':.85} });
   map.addLayer({ id:'biz-cn', type:'symbol', source:'biz', filter:['has','point_count'], layout:{'text-field':'{point_count_abbreviated}','text-size':12}, paint:{'text-color':'#fff'} });
@@ -1092,7 +1098,7 @@ function renderPins() {
 
   map.on('click','biz', function(e){
     if (mapIsMoving) return; // ignore clicks during/just after movement
-    selectBiz(e.features[0].properties.idx);
+    selectBiz(e.features[0].properties._id);
   });
   // Touch support for mobile — only fire if map was still
   map.on('touchend', function(e) {
@@ -1101,7 +1107,7 @@ function renderPins() {
     var bbox = [[point.x-22,point.y-22],[point.x+22,point.y+22]];
     var features = map.queryRenderedFeatures(bbox, {layers:['biz']});
     if (features.length > 0) {
-      selectBiz(features[0].properties.idx);
+      selectBiz(features[0].properties._id);
     }
   });
   map.on('click','biz-cl', function(e){
@@ -1610,7 +1616,7 @@ function applyFilters() {
   // Update map pins to show only filtered results
   if (map && map.getSource('biz')) {
     map.getSource('biz').setData({ type:'FeatureCollection', features: data.map(function(b){
-      return {type:'Feature',geometry:{type:'Point',coordinates:[b.lon,b.lat]},properties:Object.assign({},b,{idx:allData.indexOf(b),score:b.score||calcScore(b)})};
+      return {type:'Feature',geometry:{type:'Point',coordinates:[b.lon,b.lat]},properties:Object.assign({},b,{_id:b._id,score:b.score||calcScore(b)})};
     }) });
   }
   document.getElementById('pcount').textContent = data.length.toLocaleString() + ' matched';
@@ -1638,7 +1644,7 @@ function renderList() {
   var label = filtersApplied ? ' filtered' : '';
   document.getElementById('rcount').textContent = data.length.toLocaleString() + ' in view · ' + total.toLocaleString() + ' total' + label;
   document.getElementById('biz-list').innerHTML = data.slice(0,150).map(function(b){
-    var idx = allData.indexOf(b);
+    var idx = b._id;
     var s = b.score || calcScore(b);
     var color = bizColor(b);
     return '<div class="bitem" onclick="selectBiz('+idx+')"><div class="bname"><span class="sdot" style="background:'+color+'"></span>'+b.name+'</div><div class="baddr">'+b.street+(b.industry?' · <em style=color:var(--muted)>'+b.industry+'</em>':'')+'</div>'+(b.phone?'<div class="bphone"><a href="tel:'+b.phone.replace(/\D/g,'')+'" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none;">'+b.phone+'</a></div>':'')+'</div>';
@@ -1699,8 +1705,8 @@ function bizColor(b) {
   return IND_COLORS[ind] || IND_DEFAULT;
 }
 
-function selectBiz(idx) {
-  var b = allData[idx]; if (!b) return;
+function selectBiz(id) {
+  var b = _bizById[id]; if (!b) return;
   lastSelectedBiz = b;
   if (b.lat&&b.lon) {
     map.flyTo({center:[b.lon,b.lat],zoom:16,speed:1.4});
@@ -1797,7 +1803,7 @@ function showRelated(idx) {
   if (map.getSource('biz')) {
     map.getSource('biz').setData({ type:'FeatureCollection', features: related.map(function(r){
       return {type:'Feature',geometry:{type:'Point',coordinates:[r.lon,r.lat]},
-        properties:Object.assign({},r,{idx:allData.indexOf(r),score:r.score||calcScore(r)})};
+        properties:Object.assign({},r,{_id:r._id,score:r.score||calcScore(r)})};
     })});
   }
 
@@ -1882,7 +1888,7 @@ function clearFilters() {
   // Restore all pins on map
   if (map && map.getSource('biz')) {
     map.getSource('biz').setData({ type:'FeatureCollection', features: allData.filter(function(b){ return b.lat&&b.lon; }).map(function(b){
-      return {type:'Feature',geometry:{type:'Point',coordinates:[b.lon,b.lat]},properties:Object.assign({},b,{idx:allData.indexOf(b),score:b.score||calcScore(b)})};
+      return {type:'Feature',geometry:{type:'Point',coordinates:[b.lon,b.lat]},properties:Object.assign({},b,{_id:b._id,score:b.score||calcScore(b)})};
     }) });
   }
   updateFabCount();
