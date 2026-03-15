@@ -1054,8 +1054,8 @@ function initMapHandlers() {
 function renderPins() {
   if (!map.isStyleLoaded()) { map.once('load', renderPins); return; }
 
-  // Show all pins by default; filtered set when filters are applied
-  var source = filtersApplied ? filteredData : allData;
+  // Show pins only when filters are applied — blank map on load
+  var source = filtersApplied ? filteredData : [];
   var valid = source.filter(function(b){ return b.lat && b.lon; });
 
   // If source already exists just update data — no layer recreation, no handler re-attach
@@ -1919,11 +1919,9 @@ function clearFilters() {
   clearArea();
   document.getElementById('filter-badge').classList.remove('visible');
   document.getElementById('pcount').textContent = allData.length.toLocaleString();
-  // Restore all pins on map
+  // Reset to blank map — no pins until filters applied
   if (map && map.getSource('biz')) {
-    map.getSource('biz').setData({ type:'FeatureCollection', features: allData.filter(function(b){ return b.lat&&b.lon; }).map(function(b){
-      return {type:'Feature',geometry:{type:'Point',coordinates:[b.lon,b.lat]},properties:Object.assign({},b,{_id:b._id,score:b.score||calcScore(b)})};
-    }) });
+    map.getSource('biz').setData({ type:'FeatureCollection', features: [] });
   }
   updateFabCount();
 }
