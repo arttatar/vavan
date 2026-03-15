@@ -228,12 +228,27 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
 .sdot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
 
 /* DETAIL PANEL */
-#detail{position:fixed;top:var(--header);right:0;bottom:0;width:320px;z-index:960;background:#fff;border-left:1px solid var(--border);transform:translateX(100%);transition:transform .25s ease;display:flex;flex-direction:column;}
+#detail{position:fixed;top:var(--header);right:0;bottom:0;width:360px;z-index:960;background:#fff;border-left:1px solid var(--border);transform:translateX(100%);transition:transform .25s ease;display:flex;flex-direction:column;}
 #detail.open{transform:translateX(0);}
 #det-x{position:sticky;top:0;z-index:10;width:100%;padding:0;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;min-height:48px;}
-#det-body{padding:1.25rem;overflow-y:auto;flex:1;}
-.dname{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--ink);line-height:1.2;margin-bottom:.2rem;}
-.pipeline-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:100px;margin-bottom:.5rem;}
+#det-body{overflow-y:auto;flex:1;display:flex;flex-direction:column;}
+
+/* Detail hero */
+.det-hero{padding:1rem 1.25rem .75rem;border-bottom:1px solid var(--border);background:#fff;}
+.det-hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:.5rem;}
+.det-biz-name{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;color:var(--ink);line-height:1.2;flex:1;}
+.det-edit-btn{flex-shrink:0;background:var(--paper2);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:12px;color:var(--muted);cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:4px;}
+.det-edit-btn:hover{background:var(--accent-light);color:var(--accent);border-color:var(--accent);}
+.det-badges{display:flex;flex-wrap:wrap;gap:5px;margin-top:.4rem;}
+
+/* Status badges */
+.status-badge{display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:3px 10px;border-radius:100px;}
+.status-lead{background:#f0f4ff;color:#4a36c8;}
+.status-customer{background:#f0fdf4;color:#059669;}
+.status-lost{background:#fef2f2;color:#dc2626;}
+
+/* Pipeline badges */
+.pipeline-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:100px;}
 .pipe-lead{background:#f0f4ff;color:#4a36c8;}
 .pipe-qualified{background:#fff7e6;color:#d97706;}
 .pipe-factfinding{background:#fef2f2;color:#dc2626;}
@@ -241,17 +256,74 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
 .pipe-credit{background:#fdf4ff;color:#9333ea;}
 .pipe-won{background:#ecfdf5;color:#059669;}
 
-.daddr{font-size:13px;color:var(--muted);margin-bottom:.875rem;line-height:1.5;}
-.ddiv{height:1px;background:var(--border);margin:.75rem 0;}
-.drow{display:flex;justify-content:space-between;margin-bottom:.4rem;}
-.dlbl{font-size:12px;color:var(--muted);}
-.dval{font-size:12px;color:var(--ink);font-weight:500;}
-.dlink{font-size:12px;color:var(--accent);text-decoration:none;}
-.sbar{height:5px;border-radius:3px;background:var(--paper2);margin-top:.75rem;overflow:hidden;}
-.sfill{height:100%;border-radius:3px;}
-.obox{margin-top:1rem;padding:.875rem;background:var(--accent-light);border-radius:8px;}
-.otitle{font-size:12px;font-weight:600;color:var(--accent);margin-bottom:.3rem;}
-.odesc{font-size:12px;color:var(--accent);line-height:1.5;opacity:.85;}
+/* Section tabs */
+.det-tabs{display:flex;border-bottom:2px solid var(--border);background:#fff;position:sticky;top:48px;z-index:9;}
+.det-tab{flex:1;padding:.6rem .5rem;font-size:12px;font-weight:600;color:var(--muted);text-align:center;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;}
+.det-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.det-section{display:none;padding:1rem 1.25rem;flex:1;}
+.det-section.active{display:block;}
+
+/* Profile section */
+.det-field-row{display:flex;justify-content:space-between;align-items:flex-start;padding:.4rem 0;border-bottom:1px solid var(--border);}
+.det-field-row:last-child{border-bottom:none;}
+.det-field-label{font-size:11px;color:var(--muted);font-weight:500;flex-shrink:0;padding-top:1px;}
+.det-field-value{font-size:12px;color:var(--ink);font-weight:500;text-align:right;max-width:200px;word-break:break-word;}
+.det-field-value a{color:var(--accent);text-decoration:none;}
+
+/* Score bar */
+.det-score-wrap{padding:.75rem 0;}
+.det-score-bar{height:5px;border-radius:3px;background:var(--paper2);overflow:hidden;margin:.4rem 0 .2rem;}
+.det-score-fill{height:100%;border-radius:3px;transition:width .4s;}
+
+/* Edit mode */
+.det-edit-form{display:none;}
+.det-edit-form.active{display:block;}
+.det-view-mode{display:block;}
+.det-view-mode.hidden{display:none;}
+.edit-field-group{margin-bottom:.875rem;}
+.edit-field-label{font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px;display:block;text-transform:uppercase;letter-spacing:.04em;}
+.edit-input{width:100%;border:1px solid var(--border);border-radius:7px;padding:8px 10px;font-size:13px;font-family:'Inter',sans-serif;color:var(--ink);background:var(--paper);outline:none;}
+.edit-input:focus{border-color:var(--accent);}
+.edit-actions{display:flex;gap:8px;margin-top:1rem;}
+.edit-save-btn{flex:1;padding:9px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;}
+.edit-cancel-btn{padding:9px 16px;background:var(--paper2);color:var(--ink);border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:'Inter',sans-serif;cursor:pointer;}
+
+/* Contacts section */
+.contact-card{border:1px solid var(--border);border-radius:10px;padding:.75rem;margin-bottom:.6rem;background:var(--paper);}
+.contact-card-name{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:2px;}
+.contact-card-title{font-size:11px;color:var(--accent);font-weight:500;margin-bottom:.4rem;}
+.contact-card-row{font-size:12px;color:var(--muted);margin-bottom:1px;}
+.contact-card-row a{color:var(--accent);text-decoration:none;}
+.add-contact-btn{width:100%;padding:9px;background:var(--paper2);border:1px dashed var(--border);border-radius:8px;font-size:13px;color:var(--muted);cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:.75rem;}
+.add-contact-btn:hover{background:var(--accent-light);color:var(--accent);border-color:var(--accent);}
+.contact-form{background:var(--paper);border:1px solid var(--border);border-radius:10px;padding:.875rem;margin-bottom:.75rem;display:none;}
+.contact-form.active{display:block;}
+.contact-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.5rem;}
+.contact-form-actions{display:flex;gap:6px;margin-top:.5rem;}
+
+/* Activity section */
+.activity-actions{display:flex;gap:8px;margin-bottom:.875rem;}
+.act-btn{flex:1;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:12px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;background:#fff;color:var(--ink);transition:all .15s;}
+.act-btn:hover{background:var(--accent-light);color:var(--accent);border-color:var(--accent);}
+.act-btn.contacted{border-color:#059669;color:#059669;}
+.act-btn.contacted:hover{background:#f0fdf4;}
+.act-btn.visited{border-color:#d97706;color:#d97706;}
+.act-btn.visited:hover{background:#fff7e6;}
+.note-input-wrap{display:flex;gap:6px;margin-bottom:1rem;}
+.note-input{flex:1;border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;font-family:'Inter',sans-serif;color:var(--ink);background:var(--paper);outline:none;resize:none;min-height:64px;}
+.note-input:focus{border-color:var(--accent);}
+.note-submit-btn{align-self:flex-end;padding:8px 14px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;}
+.activity-feed{display:flex;flex-direction:column;gap:0;}
+.activity-item{padding:.6rem 0;border-bottom:1px solid var(--border);display:flex;gap:.6rem;}
+.activity-item:last-child{border-bottom:none;}
+.act-icon{width:28px;height:28px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;margin-top:1px;}
+.act-icon.note{background:#f0f4ff;color:#4a36c8;}
+.act-icon.contacted{background:#f0fdf4;color:#059669;}
+.act-icon.visited{background:#fff7e6;color:#d97706;}
+.act-content{flex:1;}
+.act-text{font-size:12px;color:var(--ink);line-height:1.4;margin-bottom:2px;}
+.act-time{font-size:10px;color:var(--muted);}
+.det-empty{font-size:12px;color:var(--muted);text-align:center;padding:2rem 0;}
 
 /* LOADER */
 #loader{position:fixed;inset:0;z-index:8000;background:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;}
@@ -389,6 +461,17 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
         </select>
       </div>
 
+      <!-- STATUS -->
+      <div class="sb-sec">
+        <div class="sb-title">Status</div>
+        <div class="pills">
+          <span class="pill on" data-f="status" data-v="all">All</span>
+          <span class="pill" data-f="status" data-v="Lead" style="--pill-color:#4a36c8">Lead</span>
+          <span class="pill green" data-f="status" data-v="Customer">Customer</span>
+          <span class="pill" data-f="status" data-v="Lost Customer" style="color:#dc2626;border-color:#dc2626">Lost Customer</span>
+        </div>
+      </div>
+
       <!-- OPPORTUNITY SCORE -->
       <div class="sb-sec">
         <div class="sb-title">Opportunity Score</div>
@@ -484,7 +567,7 @@ function _buildLookup() {
   _bizById = {};
   allData.forEach(function(b){ _bizById[b._id] = b; });
 }
-var filters = { opp:'all', contact:'all', industry:'all', pipeline:'all', subIndustry:'all' };
+var filters = { opp:'all', contact:'all', industry:'all', pipeline:'all', subIndustry:'all', status:'all' };
   var pipeEl = document.getElementById('s-pipeline');
   if (pipeEl) pipeEl.value = 'all';
 var activeTool = null, selPoly = null, radMiles = 5;
@@ -1618,6 +1701,13 @@ function applyFilters() {
   else if (filters.opp==='med') data = data.filter(function(b){ return (b.score||0)>=65&&(b.score||0)<80; });
   else if (filters.opp==='low') data = data.filter(function(b){ return (b.score||0)<65; });
 
+  // Status filter
+  if (filters.status && filters.status !== 'all') {
+    data = data.filter(function(b){
+      return (b.status || 'Lead') === filters.status;
+    });
+  }
+
   // Pipeline stage filter
   if (filters.pipeline && filters.pipeline !== 'all') {
     data = data.filter(function(b){
@@ -1740,123 +1830,359 @@ function selectBiz(id) {
   lastSelectedBiz = b;
   if (b.lat&&b.lon) {
     map.flyTo({center:[b.lon,b.lat],zoom:16,speed:1.4});
-    // Swap highlight to new dot — clears previous automatically
     if (map.getSource('biz-selected')) {
       map.getSource('biz-selected').setData({
         type:'FeatureCollection',
-        features:[{type:'Feature',geometry:{type:'Point',coordinates:[b.lon,b.lat]},properties:{industry:b.industry||'',is_competitor:b.is_competitor||false}}]
+        features:[{type:'Feature',geometry:{type:'Point',coordinates:[b.lon,b.lat]},
+          properties:{industry:b.industry||'',is_competitor:b.is_competitor||false}}]
       });
     }
   }
-  // Hide fab buttons when detail card is open on mobile
   if (window.innerWidth <= 768) document.getElementById('fab-wrap').style.display = 'none';
-  var titleEl = document.getElementById('det-x-title'); if (titleEl) titleEl.textContent = b.name||'';
-  var s = b.score||calcScore(b);
-  var color = bizColor(b);
-  var lbl = s>=80?'High Opportunity':s>=65?'Medium Opportunity':'Standard Prospect';
-  document.getElementById('det-body').innerHTML =
-    '<div style="font-size:11px;font-weight:600;color:#fff;background:'+color+';padding:3px 10px;border-radius:100px;display:inline-block;margin-bottom:.75rem">'+(b.industry||'Business')+' · '+(b.market||'Las Vegas')+'</div>'+
-    '<div class="dname">'+b.name+'</div>'+
-    (function(){
-      var stage = b.pipeline_stage||'';
-      if (!stage) return '<div class="pipeline-badge pipe-lead">● Lead Captured</div>';
-      var cls = stage==='Lead Captured'?'pipe-lead':stage==='Qualified'?'pipe-qualified':stage==='Fact-Finding'?'pipe-factfinding':stage==='Proposal Sent'?'pipe-proposal':stage==='Credit Application'?'pipe-credit':stage==='Won Opportunity'?'pipe-won':'pipe-lead';
-      return '<div class="pipeline-badge '+cls+'">● '+stage+'</div>';
-    })()+
-    '<div class="daddr" onclick="openNav('+JSON.stringify(b.full_address||((b.street||'')+', '+(b.locality||'')))+')" style="cursor:pointer;" title="Tap to navigate">📍 '+(b.street||'')+'<br>'+(b.locality||'')+'</div>'+'<a href="https://www.google.com/maps/search/'+encodeURIComponent(b.name||'')+'/@'+b.lat+','+b.lon+',17z" target="_blank" style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#4285F4;text-decoration:none;margin-top:4px;margin-bottom:4px;">🔗 View on Google Maps</a>'+
-    '<div class="ddiv"></div>'+
-    '<div class="drow"><span class="dlbl">Phone</span>'+(b.phone?'<a href="tel:'+b.phone.replace(/\D/g,'')+'" class="dlink" style="font-weight:500">'+b.phone+'</a>':'<span class="dval">—</span>')+'</div>'+
-    '<div class="drow"><span class="dlbl">Website</span>'+(b.website?'<a href="'+b.website+'" target="_blank" class="dlink">Visit ↗</a>':'<span class="dval">—</span>')+'</div>'+
-    '<div class="ddiv"></div>'+
-    '<div class="dlbl" style="margin-bottom:6px">Opportunity Score</div>'+
-    '<div class="sbar"><div class="sfill" style="width:'+s+'%;background:'+color+'"></div></div>'+
-    '<div class="drow" style="margin-top:.3rem"><span style="font-size:13px;font-weight:600;color:'+color+'">'+s+'/100</span><span style="font-size:11px;color:var(--muted)">'+lbl+'</span></div>'+
-    '<div class="obox"><div class="otitle">Interstate Oil — Sales Intel</div><div class="odesc">'+(s>=80?'Priority prospect. High fuel & lubricant consumption potential. Recommend immediate outreach.':'Assess fleet/equipment size to determine fuel & lubricant opportunity.')+'</div></div>';
+  var titleEl = document.getElementById('det-x-title');
+  if (titleEl) titleEl.textContent = b.name||'';
+  renderDetailPanel(b);
   document.getElementById('detail').classList.add('open');
   closeSidebar();
   closeResults();
 }
+
 function closeDetail() {
   document.getElementById('detail').classList.remove('open');
   document.getElementById('fab-wrap').style.display = '';
-  // Keep map centered on the business — dot stays highlighted until user picks another
   if (lastSelectedBiz && lastSelectedBiz.lat && lastSelectedBiz.lon) {
     map.easeTo({center:[lastSelectedBiz.lon, lastSelectedBiz.lat], zoom:16, duration:300});
   }
 }
 
-// ── RELATED BUSINESSES ──
-// Extract core brand name by stripping location/number suffixes
-function getCoreBrand(name) {
-  return name
-    .replace(/#\d+/g, '')                          // strip store numbers: #247
-    .replace(/\b\d+\b/g, '')                       // strip standalone numbers
-    .replace(/-\s*[\w\s,]+$/,'')                   // strip "- Spring Valley" suffix
-    .replace(/[\(\[].*?[\)\]]/g,'')                // strip parentheses content
-    .replace(/\b(las vegas|henderson|north las vegas|summerlin|boulder city|mesquite|nv|nevada)\b/gi,'')
-    .replace(/\b(store|location|branch|suite|ste|unit|bldg|building|plaza|center|centre)\b/gi,'')
-    .replace(/[,\.#]/g,' ')
-    .replace(/\s+/g,' ')
-    .trim()
-    .toLowerCase();
+// ── DETAIL PANEL RENDERER ──
+function statusClass(s){ return s==='Customer'?'status-customer':s==='Lost Customer'?'status-lost':'status-lead'; }
+function pipeClass(s){
+  return s==='Qualified'?'pipe-qualified':s==='Fact-Finding'?'pipe-factfinding':
+    s==='Proposal Sent'?'pipe-proposal':s==='Credit Application'?'pipe-credit':
+    s==='Won Opportunity'?'pipe-won':'pipe-lead';
+}
+function fmtTime(ts){
+  var d = new Date(ts);
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' '+
+    d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
 }
 
-function showRelated(idx) {
-  var b = allData[idx]; if (!b) return;
-  var brand = getCoreBrand(b.name||'');
-  if (!brand || brand.length < 3) {
-    alert('Could not determine brand name for "' + b.name + '"');
-    return;
-  }
+function renderDetailPanel(b) {
+  var color = bizColor(b);
+  var s = b.score||calcScore(b);
+  var scoreLbl = s>=80?'High Opportunity':s>=65?'Medium Opportunity':'Standard Prospect';
+  var status = b.status||'Lead';
+  var stage = b.pipeline_stage||'Lead Captured';
+  var addr = b.full_address || ((b.street||'') + ', ' + (b.locality||''));
+  var subInd = (b.sub_industry_inferred||[]).slice(0,3).join(', ') || '—';
 
-  // Match businesses whose core brand starts with or equals this brand
-  // Use first 1-3 significant words for matching
-  var brandWords = brand.split(' ').filter(function(w){ return w.length > 1; }).slice(0,3);
-  var brandKey = brandWords.join(' ');
+  document.getElementById('det-body').innerHTML =
+    // ── HERO ──
+    '<div class="det-hero">'+
+      '<div class="det-hero-top">'+
+        '<div class="det-biz-name">'+b.name+'</div>'+
+        '<button class="det-edit-btn" onclick="toggleEditMode()">✏️ Edit</button>'+
+      '</div>'+
+      '<div class="det-badges">'+
+        '<span class="status-badge '+statusClass(status)+'">'+status+'</span>'+
+        '<span class="pipeline-badge '+pipeClass(stage)+'">● '+stage+'</span>'+
+        '<span style="font-size:11px;font-weight:600;color:#fff;background:'+color+';padding:3px 10px;border-radius:100px;">'+
+          (b.industry||'Business')+'</span>'+
+      '</div>'+
+    '</div>'+
 
-  var related = allData.filter(function(r){
-    if (r === b) return false;
-    if (!r.lat || !r.lon) return false;
-    var rBrand = getCoreBrand(r.name||'');
-    var rWords = rBrand.split(' ').filter(function(w){ return w.length > 1; }).slice(0,3);
-    var rKey = rWords.join(' ');
-    // Match if brand keys are identical, or one starts with the other
-    return rKey === brandKey || rKey.indexOf(brandKey) === 0 || brandKey.indexOf(rKey) === 0;
+    // ── TABS ──
+    '<div class="det-tabs">'+
+      '<div class="det-tab active" onclick="switchTab(\'profile\')">Profile</div>'+
+      '<div class="det-tab" onclick="switchTab(\'contacts\')">Contacts</div>'+
+      '<div class="det-tab" onclick="switchTab(\'activity\')">Activity</div>'+
+    '</div>'+
+
+    // ── SECTION 1: PROFILE ──
+    '<div id="det-profile" class="det-section active">'+
+      // View mode
+      '<div id="det-view" class="det-view-mode">'+
+        '<div class="det-field-row"><span class="det-field-label">Address</span>'+
+          '<span class="det-field-value" style="cursor:pointer" onclick="openNav('+JSON.stringify(addr)+')">'+
+            '📍 '+(b.street||'—')+'<br>'+(b.locality||'')+'</span></div>'+
+        '<div class="det-field-row"><span class="det-field-label">Phone</span>'+
+          '<span class="det-field-value">'+(b.phone?'<a href="tel:'+b.phone.replace(/\D/g,'')+'">'+b.phone+'</a>':'—')+'</span></div>'+
+        '<div class="det-field-row"><span class="det-field-label">Website</span>'+
+          '<span class="det-field-value">'+(b.website?'<a href="'+b.website+'" target="_blank">Visit ↗</a>':'—')+'</span></div>'+
+        '<div class="det-field-row"><span class="det-field-label">Industry</span>'+
+          '<span class="det-field-value">'+( b.industry||'—')+'</span></div>'+
+        '<div class="det-field-row"><span class="det-field-label">Sub-Industry</span>'+
+          '<span class="det-field-value">'+subInd+'</span></div>'+
+        '<div class="det-field-row"><span class="det-field-label">Assigned Rep</span>'+
+          '<span class="det-field-value">'+(b.assigned_rep||'Unassigned')+'</span></div>'+
+        '<div class="det-field-row"><span class="det-field-label">Status</span>'+
+          '<span class="det-field-value"><span class="status-badge '+statusClass(status)+'">'+status+'</span></span></div>'+
+        '<div class="det-field-row"><span class="det-field-label">Pipeline</span>'+
+          '<span class="det-field-value"><span class="pipeline-badge '+pipeClass(stage)+'">'+stage+'</span></span></div>'+
+        '<div class="det-score-wrap">'+
+          '<div class="det-field-label">Opportunity Score</div>'+
+          '<div class="det-score-bar"><div class="det-score-fill" style="width:'+s+'%;background:'+color+'"></div></div>'+
+          '<div style="display:flex;justify-content:space-between;font-size:11px;">'+
+            '<span style="font-weight:600;color:'+color+'">'+s+'/100</span>'+
+            '<span style="color:var(--muted)">'+scoreLbl+'</span></div>'+
+        '</div>'+
+        '<a href="https://www.google.com/maps/search/'+encodeURIComponent(b.name||'')+'/@'+b.lat+','+b.lon+',17z" '+
+          'target="_blank" style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#4285F4;text-decoration:none;margin-top:.5rem;">'+
+          '🔗 View on Google Maps</a>'+
+      '</div>'+
+      // Edit mode
+      '<div id="det-edit" class="det-edit-form">'+
+        '<div class="edit-field-group"><label class="edit-field-label">Phone</label>'+
+          '<input class="edit-input" id="edit-phone" type="tel" value="'+(b.phone||'')+'"></div>'+
+        '<div class="edit-field-group"><label class="edit-field-label">Website</label>'+
+          '<input class="edit-input" id="edit-website" type="url" value="'+(b.website||'')+'"></div>'+
+        '<div class="edit-field-group"><label class="edit-field-label">Assigned Rep</label>'+
+          '<input class="edit-input" id="edit-rep" type="text" value="'+(b.assigned_rep||'')+'"></div>'+
+        '<div class="edit-field-group"><label class="edit-field-label">Status</label>'+
+          '<select class="edit-input" id="edit-status">'+
+            '<option value="Lead"'+(status==='Lead'?' selected':'')+'>Lead</option>'+
+            '<option value="Customer"'+(status==='Customer'?' selected':'')+'>Customer</option>'+
+            '<option value="Lost Customer"'+(status==='Lost Customer'?' selected':'')+'>Lost Customer</option>'+
+          '</select></div>'+
+        '<div class="edit-field-group"><label class="edit-field-label">Pipeline Stage</label>'+
+          '<select class="edit-input" id="edit-pipeline">'+
+            ['Lead Captured','Qualified','Fact-Finding','Proposal Sent','Credit Application','Won Opportunity'].map(function(ps){
+              return '<option value="'+ps+'"'+(stage===ps?' selected':'')+'>'+ps+'</option>';
+            }).join('')+
+          '</select></div>'+
+        '<div class="edit-actions">'+
+          '<button class="edit-save-btn" onclick="saveBusinessEdits()">Save Changes</button>'+
+          '<button class="edit-cancel-btn" onclick="toggleEditMode()">Cancel</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+
+    // ── SECTION 2: CONTACTS ──
+    '<div id="det-contacts" class="det-section">'+
+      '<button class="add-contact-btn" onclick="toggleContactForm()">+ Add Contact</button>'+
+      '<div id="contact-form" class="contact-form">'+
+        '<div class="contact-form-grid">'+
+          '<input class="edit-input" id="cf-first" placeholder="First name">'+
+          '<input class="edit-input" id="cf-last" placeholder="Last name">'+
+        '</div>'+
+        '<div class="contact-form-grid">'+
+          '<input class="edit-input" id="cf-phone" type="tel" placeholder="Phone">'+
+          '<input class="edit-input" id="cf-email" type="email" placeholder="Email">'+
+        '</div>'+
+        '<select class="edit-input" id="cf-title" style="margin-bottom:.5rem;width:100%">'+
+          '<option value="">Job Title</option>'+
+          ['Owner','General Manager','Manager','Service Manager','Parts Manager',
+           'Operations Manager','Purchasing','Technician','Dispatcher','Office Admin','Other']
+          .map(function(t){ return '<option>'+t+'</option>'; }).join('')+
+        '</select>'+
+        '<div class="contact-form-actions">'+
+          '<button class="edit-save-btn" onclick="saveContact()">Save Contact</button>'+
+          '<button class="edit-cancel-btn" onclick="toggleContactForm()">Cancel</button>'+
+        '</div>'+
+      '</div>'+
+      '<div id="contacts-list"><div class="det-empty">Loading contacts...</div></div>'+
+    '</div>'+
+
+    // ── SECTION 3: ACTIVITY ──
+    '<div id="det-activity" class="det-section">'+
+      '<div class="activity-actions">'+
+        '<button class="act-btn contacted" onclick="logActivity(\'contacted\')">📞 Contacted</button>'+
+        '<button class="act-btn visited" onclick="logActivity(\'visited\')">📍 Visited</button>'+
+      '</div>'+
+      '<div class="note-input-wrap">'+
+        '<textarea class="note-input" id="note-input" placeholder="Add a note..."></textarea>'+
+        '<button class="note-submit-btn" onclick="saveNote()">Add</button>'+
+      '</div>'+
+      '<div id="activity-feed"><div class="det-empty">Loading activity...</div></div>'+
+    '</div>';
+
+  // Load contacts and activity async
+  loadContacts(b);
+  loadActivity(b);
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.det-tab').forEach(function(t,i){
+    var tabs = ['profile','contacts','activity'];
+    t.classList.toggle('active', tabs[i]===tab);
   });
+  document.querySelectorAll('.det-section').forEach(function(s){
+    s.classList.remove('active');
+  });
+  var el = document.getElementById('det-'+tab);
+  if (el) el.classList.add('active');
+}
 
-  if (!related.length) {
-    alert('No other "' + b.name.split(/[\s#\-]/)[0] + '" locations found in this market.');
-    return;
+function toggleEditMode() {
+  var view = document.getElementById('det-view');
+  var edit = document.getElementById('det-edit');
+  var isEditing = edit.classList.contains('active');
+  if (isEditing) {
+    edit.classList.remove('active');
+    view.classList.remove('hidden');
+  } else {
+    edit.classList.add('active');
+    view.classList.add('hidden');
   }
+}
 
-  // Show only related on map
-  if (map.getSource('biz')) {
-    map.getSource('biz').setData({ type:'FeatureCollection', features: related.map(function(r){
-      return {type:'Feature',geometry:{type:'Point',coordinates:[r.lon,r.lat]},
-        properties:Object.assign({},r,{_id:r._id,score:r.score||calcScore(r)})};
-    })});
+async function saveBusinessEdits() {
+  var b = lastSelectedBiz; if (!b) return;
+  var phone    = document.getElementById('edit-phone').value.trim();
+  var website  = document.getElementById('edit-website').value.trim();
+  var rep      = document.getElementById('edit-rep').value.trim();
+  var status   = document.getElementById('edit-status').value;
+  var pipeline = document.getElementById('edit-pipeline').value;
+
+  var btn = document.querySelector('.edit-save-btn');
+  btn.textContent = 'Saving...'; btn.disabled = true;
+
+  try {
+    var r = await sb.from('businesses').update({
+      phone: phone, website: website,
+      assigned_rep: rep, status: status, pipeline_stage: pipeline
+    }).eq('id', b.id||b._id);
+
+    if (r.error) throw r.error;
+
+    // Update local data
+    b.phone = phone; b.website = website;
+    b.assigned_rep = rep; b.status = status; b.pipeline_stage = pipeline;
+
+    toggleEditMode();
+    renderDetailPanel(b); // re-render with new values
+    // Re-select current tab
+    switchTab('profile');
+  } catch(e) {
+    alert('Save failed: ' + e.message);
+  } finally {
+    btn.textContent = 'Save Changes'; btn.disabled = false;
   }
+}
 
-  filteredData = related;
-  filtersApplied = true;
-  updateFabCount();
-
-  closeDetail();
-  setTimeout(function(){
-    if (related.length === 1) {
-      map.flyTo({center:[related[0].lon,related[0].lat],zoom:15,speed:1.2});
-    } else {
-      var lngs = related.map(function(r){ return r.lon; });
-      var lats = related.map(function(r){ return r.lat; });
-      map.fitBounds([
-        [Math.min.apply(null,lngs)-0.02, Math.min.apply(null,lats)-0.02],
-        [Math.max.apply(null,lngs)+0.02, Math.max.apply(null,lats)+0.02]
-      ], {padding:60, maxZoom:14});
+// ── CONTACTS ──
+async function loadContacts(b) {
+  var el = document.getElementById('contacts-list');
+  if (!el) return;
+  try {
+    var r = await sb.from('contacts').select('*').eq('business_id', String(b.id||b._id)).order('created_at', {ascending:false});
+    if (r.error) throw r.error;
+    if (!r.data || !r.data.length) {
+      el.innerHTML = '<div class="det-empty">No contacts yet. Add one above.</div>';
+      return;
     }
-    openResults();
-    var titleEl = document.querySelector('#results-panel .sheet-title');
-    if (titleEl) titleEl.textContent = related.length + ' ' + (brandWords[0]||b.name) + ' locations';
-  }, 300);
+    el.innerHTML = r.data.map(function(c){
+      return '<div class="contact-card">'+
+        '<div class="contact-card-name">'+(c.first_name||'')+' '+(c.last_name||'')+'</div>'+
+        '<div class="contact-card-title">'+(c.job_title||'')+'</div>'+
+        (c.phone?'<div class="contact-card-row">📞 <a href="tel:'+c.phone.replace(/\D/g,'')+'">'+c.phone+'</a></div>':'')+
+        (c.email?'<div class="contact-card-row">✉️ <a href="mailto:'+c.email+'">'+c.email+'</a></div>':'')+
+      '</div>';
+    }).join('');
+  } catch(e) {
+    el.innerHTML = '<div class="det-empty">Could not load contacts.</div>';
+  }
+}
+
+function toggleContactForm() {
+  var f = document.getElementById('contact-form');
+  f.classList.toggle('active');
+  if (f.classList.contains('active')) {
+    ['cf-first','cf-last','cf-phone','cf-email'].forEach(function(id){
+      var el = document.getElementById(id); if (el) el.value = '';
+    });
+    var t = document.getElementById('cf-title'); if (t) t.value = '';
+  }
+}
+
+async function saveContact() {
+  var b = lastSelectedBiz; if (!b) return;
+  var first = document.getElementById('cf-first').value.trim();
+  var last  = document.getElementById('cf-last').value.trim();
+  var phone = document.getElementById('cf-phone').value.trim();
+  var email = document.getElementById('cf-email').value.trim();
+  var title = document.getElementById('cf-title').value;
+
+  if (!first && !last) { alert('Enter at least a first or last name.'); return; }
+
+  var btn = document.querySelector('#contact-form .edit-save-btn');
+  btn.textContent = 'Saving...'; btn.disabled = true;
+
+  try {
+    var r = await sb.from('contacts').insert({
+      business_id: String(b.id||b._id),
+      first_name: first, last_name: last,
+      phone: phone, email: email, job_title: title
+    });
+    if (r.error) throw r.error;
+    toggleContactForm();
+    loadContacts(b);
+  } catch(e) {
+    alert('Save failed: ' + e.message);
+  } finally {
+    btn.textContent = 'Save Contact'; btn.disabled = false;
+  }
+}
+
+// ── ACTIVITY / NOTES ──
+async function loadActivity(b) {
+  var el = document.getElementById('activity-feed');
+  if (!el) return;
+  try {
+    var r = await sb.from('activity').select('*').eq('business_id', String(b.id||b._id)).order('created_at', {ascending:false}).limit(50);
+    if (r.error) throw r.error;
+    if (!r.data || !r.data.length) {
+      el.innerHTML = '<div class="det-empty">No activity yet.</div>';
+      return;
+    }
+    el.innerHTML = '<div class="activity-feed">'+r.data.map(function(a){
+      var icon = a.type==='contacted'?'📞':a.type==='visited'?'📍':'💬';
+      var iconCls = a.type==='contacted'?'contacted':a.type==='visited'?'visited':'note';
+      var text = a.type==='note' ? a.note : (a.type.charAt(0).toUpperCase()+a.type.slice(1));
+      return '<div class="activity-item">'+
+        '<div class="act-icon '+iconCls+'">'+icon+'</div>'+
+        '<div class="act-content">'+
+          '<div class="act-text">'+text+'</div>'+
+          '<div class="act-time">'+fmtTime(a.created_at)+'</div>'+
+        '</div></div>';
+    }).join('')+'</div>';
+  } catch(e) {
+    el.innerHTML = '<div class="det-empty">Could not load activity.</div>';
+  }
+}
+
+async function logActivity(type) {
+  var b = lastSelectedBiz; if (!b) return;
+  try {
+    var r = await sb.from('activity').insert({
+      business_id: String(b.id||b._id),
+      type: type, note: ''
+    });
+    if (r.error) throw r.error;
+    loadActivity(b);
+  } catch(e) { alert('Could not save: ' + e.message); }
+}
+
+async function saveNote() {
+  var b = lastSelectedBiz; if (!b) return;
+  var noteEl = document.getElementById('note-input');
+  var note = noteEl ? noteEl.value.trim() : '';
+  if (!note) return;
+
+  var btn = document.querySelector('.note-submit-btn');
+  btn.textContent = '...'; btn.disabled = true;
+
+  try {
+    var r = await sb.from('activity').insert({
+      business_id: String(b.id||b._id),
+      type: 'note', note: note
+    });
+    if (r.error) throw r.error;
+    noteEl.value = '';
+    loadActivity(b);
+  } catch(e) { alert('Could not save note: ' + e.message); }
+  finally { btn.textContent = 'Add'; btn.disabled = false; }
 }
 
 // Reset results title when closing list
@@ -1897,7 +2223,7 @@ function onDraw(e) {
   applyFilters();
 }
 function clearFilters() {
-  filters = { opp:'all', contact:'all', industry:'all', pipeline:'all', subIndustry:'all' };
+  filters = { opp:'all', contact:'all', industry:'all', pipeline:'all', subIndustry:'all', status:'all' };
   filtersApplied = false;
   filteredData = [];
   var pipeEl = document.getElementById('s-pipeline');
