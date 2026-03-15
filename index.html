@@ -559,23 +559,24 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
 
 
 /* Pipeline stage slider */
-.pipe-dot{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;position:relative;}
+.pipe-dot{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;position:relative;z-index:1;}
 .pipe-dot-circle{
   width:16px;height:16px;border-radius:50%;
   border:2px solid var(--border);background:#fff;
   transition:all .15s;flex-shrink:0;
+  box-shadow:0 0 0 2px #fff;
 }
 .pipe-dot-circle.active{background:var(--accent);border-color:var(--accent);}
-.pipe-dot-circle.won{border-color:#059669;}
-.pipe-dot-circle.won.active{background:#059669;border-color:#059669;}
-.pipe-dot:hover .pipe-dot-circle{border-color:var(--accent);}
+.pipe-dot-circle.past{background:var(--accent);border-color:var(--accent);opacity:.55;}
+.pipe-dot-circle.won-active{background:#059669 !important;border-color:#059669 !important;opacity:1 !important;}
+.pipe-dot:hover .pipe-dot-circle:not(.active):not(.past){border-color:var(--accent);}
 .pipe-dot-label{
   font-size:9px;font-weight:600;color:var(--muted);
-  white-space:nowrap;text-align:center;
-  max-width:42px;line-height:1.2;
+  white-space:nowrap;text-align:center;line-height:1.2;
 }
 .pipe-dot.active .pipe-dot-label{color:var(--accent);}
-.pipe-dot.active.won-stage .pipe-dot-label{color:#059669;}
+.pipe-dot.past .pipe-dot-label{color:var(--accent);opacity:.7;}
+.pipe-dot.won-stage.active .pipe-dot-label{color:#059669;}
 
 /* LOADER */
 #loader{position:fixed;inset:0;z-index:8000;background:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;}
@@ -1720,47 +1721,44 @@ var PIPE_LABELS = {
 function setPipelineStage(stage, el) {
   filters.pipeline = stage;
 
-  // Update all dot states
+  var allStages = ['all','Lead Captured','Qualified','Fact-Finding','Proposal Sent','Credit Application','Won Opportunity'];
+  var selectedIdx = allStages.indexOf(stage);
+
+  // Update all dot states — fill dots up to and including selected
   document.querySelectorAll('.pipe-dot').forEach(function(dot){
     var s = dot.dataset.stage;
+    var dotIdx = allStages.indexOf(s);
     var circle = dot.querySelector('.pipe-dot-circle');
     var isActive = (s === stage);
+    var isPast = selectedIdx > 0 && dotIdx >= 0 && dotIdx < selectedIdx;
+    var isWon = (s === 'Won Opportunity') && isActive;
+
     dot.classList.toggle('active', isActive);
-    if (isActive) {
-      circle.classList.add('active');
-      if (s === 'Won Opportunity') { circle.classList.add('won'); dot.classList.add('won-stage'); }
-    } else {
-      circle.classList.remove('active');
-    }
+    dot.classList.toggle('past', isPast);
+    dot.classList.toggle('won-stage', isWon);
+
+    circle.classList.remove('active','past','won-active');
+    if (isActive && isWon) circle.classList.add('won-active');
+    else if (isActive)     circle.classList.add('active');
+    else if (isPast)       circle.classList.add('past');
   });
 
   // Update label
   var labelEl = document.getElementById('pipe-stage-label');
-  if (labelEl) labelEl.textContent = PIPE_LABELS[stage] || stage;
+  if (labelEl) {
+    labelEl.textContent = PIPE_LABELS[stage] || stage;
+    labelEl.style.color = stage === 'Won Opportunity' ? '#059669' : stage === 'all' ? 'var(--muted)' : 'var(--accent)';
+  }
 
-  // Update track fill
-  var idx = PIPE_STAGES.indexOf(stage);
-  var pct = idx <= 0 ? 0 : ((idx) / (PIPE_STAGES.length - 1)) * 100;
+  // Update track fill — always accent, green only for Won
+  var pct = selectedIdx <= 0 ? 0 : (selectedIdx / (allStages.length - 1)) * 100;
+  var trackColor = stage === 'Won Opportunity' ? '#059669' : 'var(--accent)';
   var fill = document.getElementById('pipe-track-fill');
-  if (fill) fill.style.width = pct + '%';
+  if (fill) { fill.style.width = pct + '%'; fill.style.background = trackColor; }
 
   // Show/hide clear button
   var clearBtn = document.getElementById('pipe-clear-btn');
   if (clearBtn) clearBtn.style.display = stage === 'all' ? 'none' : '';
-
-  // Color label based on stage
-  if (labelEl) {
-    var colors = {
-      'all':'var(--muted)',
-      'Lead Captured':'#4a36c8',
-      'Qualified':'#d97706',
-      'Fact-Finding':'#dc2626',
-      'Proposal Sent':'#16a34a',
-      'Credit Application':'#9333ea',
-      'Won Opportunity':'#059669'
-    };
-    labelEl.style.color = colors[stage] || 'var(--accent)';
-  }
 }
 
 function clearPipelineFilter() {
@@ -2717,24 +2715,22 @@ function renderDetailPanel(b) {
   var subInd = (b.sub_industry_inferred||[]).slice(0,3).join(', ') || '—';
 
   var STAGES = ['Lead Captured','Qualified','Fact-Finding','Proposal Sent','Credit Application','Won Opportunity'];
-  var STAGE_COLORS = {
-    'Lead Captured':'#9b93d4','Qualified':'#4a36c8','Fact-Finding':'#d97706',
-    'Proposal Sent':'#16a34a','Credit Application':'#9333ea','Won Opportunity':'#059669'
-  };
   var stageIdx = STAGES.indexOf(stage);
   var stagePct = stageIdx < 0 ? 0 : Math.round((stageIdx / (STAGES.length-1)) * 100);
-  var stageColor = STAGE_COLORS[stage] || '#9b93d4';
+  var trackColor = stage === 'Won Opportunity' ? '#059669' : 'var(--accent)';
+  var labelColor = stage === 'Won Opportunity' ? '#059669' : 'var(--accent)';
 
-  // Build pipeline dots for hero
+  // Build pipeline dots — same CSS classes as filter slider, fills all past dots
   var pipeDotsHtml = STAGES.map(function(s, i){
-    var active = s === stage;
-    var isWon = s === 'Won Opportunity';
-    var dotColor = active ? (isWon ? '#059669' : stageColor) : 'var(--border)';
-    var bgColor  = active ? dotColor : '#fff';
-    var label    = s === 'Lead Captured'?'Lead':s==='Qualified'?'Qualified':s==='Fact-Finding'?'Fact-Find':s==='Proposal Sent'?'Proposal':s==='Credit Application'?'Credit':'Won ✓';
-    return '<div style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;position:relative;z-index:1;" onclick="setDetailStage(\''+s.replace(/'/g,"\\'")+'\')" title="'+s+'">'+
-      '<div style="width:16px;height:16px;border-radius:50%;border:2px solid '+dotColor+';background:'+bgColor+';transition:all .2s;flex-shrink:0;box-shadow:0 0 0 2px #fff;"></div>'+
-      '<div style="font-size:9px;font-weight:600;color:'+(active?stageColor:'var(--muted)')+';white-space:nowrap;text-align:center;line-height:1.2;">'+label+'</div>'+
+    var isActive = s === stage;
+    var isPast   = stageIdx > 0 && i < stageIdx;
+    var isWon    = s === 'Won Opportunity' && isActive;
+    var circleClass = isWon ? 'pipe-dot-circle won-active' : isActive ? 'pipe-dot-circle active' : isPast ? 'pipe-dot-circle past' : 'pipe-dot-circle';
+    var dotClass = 'pipe-dot' + (isActive ? ' active' : '') + (isPast ? ' past' : '') + (isWon ? ' won-stage' : '');
+    var label = s==='Lead Captured'?'Lead':s==='Qualified'?'Qualified':s==='Fact-Finding'?'Fact-Find':s==='Proposal Sent'?'Proposal':s==='Credit Application'?'Credit':'Won ✓';
+    return '<div class="'+dotClass+'" onclick="setDetailStage(\''+s+'\')" title="'+s+'">'+
+      '<div class="'+circleClass+'"></div>'+
+      '<div class="pipe-dot-label">'+label+'</div>'+
     '</div>';
   }).join('');
 
@@ -2749,12 +2745,12 @@ function renderDetailPanel(b) {
       '<div style="margin:8px 0 10px;">'+
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'+
           '<span style="font-size:11px;color:var(--muted);font-weight:500;">Pipeline Stage</span>'+
-          '<span style="font-size:12px;font-weight:700;color:'+stageColor+'">'+stage+'</span>'+
+          '<span style="font-size:12px;font-weight:700;color:'+labelColor+'">'+stage+'</span>'+
         '</div>'+
         '<div style="position:relative;padding-bottom:22px;">'+
           // Track behind dots
           '<div style="position:absolute;left:0;right:0;top:8px;height:4px;background:var(--paper2);border-radius:2px;">'+
-            '<div style="position:absolute;left:0;top:0;height:100%;width:'+stagePct+'%;background:'+stageColor+';border-radius:2px;transition:width .3s;"></div>'+
+            '<div style="position:absolute;left:0;top:0;height:100%;width:'+stagePct+'%;background:'+trackColor+';border-radius:2px;transition:width .3s;"></div>'+
           '</div>'+
           // Dots on top of track
           '<div style="position:relative;display:flex;justify-content:space-between;">'+
