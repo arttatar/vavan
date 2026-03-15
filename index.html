@@ -853,38 +853,35 @@ var allData = [], filteredData = [], filtersApplied = false, map, draw;
 var _bizById = {}; // fast lookup by _id
 var currentProfile = null; // loaded sales profile for logged-in user
 
-// ── TERRITORY REP ROSTER ──
-// Add reps here as territories expand. territory_code must match sales_profiles.territory_code
-var TERRITORY_REPS = {
-  'LAS-ALL': [
-    'Brian Knoll','DJ DeMille','Brent Andrews','Chris Anderson','Kylie Andrews',
-    'Logan Shepard','Steve Cox','Todd Glades','Adan Gutierrez','Art Tatar',
-    'Dina Nigro','Geary Galusha','Ralph Torres','Roland Kelly','Ben Drysdale',
-    'Hunter Hartwell','Spencer Barone','Jesse Watson','John Bryant','Tyler Stewart'
-  ],
-  'LAS-NORTH': [
-    'Brian Knoll','DJ DeMille','Brent Andrews','Chris Anderson','Kylie Andrews','Logan Shepard'
-  ],
-  'LAS-SOUTH': [
-    'Steve Cox','Todd Glades','Adan Gutierrez','Art Tatar','Dina Nigro','Geary Galusha'
-  ],
-  'LAS-EAST': [
-    'Ralph Torres','Roland Kelly','Ben Drysdale','Hunter Hartwell'
-  ],
-  'LAS-WEST': [
-    'Spencer Barone','Jesse Watson','John Bryant','Tyler Stewart'
-  ],
-  'SAC-ALL': [
-    'Brian Knoll','DJ DeMille','Brent Andrews','Chris Anderson'
-    // Add Sacramento reps here
-  ]
-};
+// ── MARKETS ──
+// Add new markets here as Vavan expands. state = display only.
+var VAVAN_MARKETS = [
+  { name:'Las Vegas', state:'NV' },
+  { name:'North Las Vegas', state:'NV' },
+  { name:'Henderson', state:'NV' },
+  { name:'Summerlin', state:'NV' },
+  { name:'Sacramento', state:'CA' },
+  { name:'Reno', state:'NV' },
+  { name:'Phoenix', state:'AZ' },
+  { name:'Los Angeles', state:'CA' },
+  { name:'San Diego', state:'CA' }
+];
 
-// Returns the rep list for the current user's territory, fallback to all LV reps
+// ── REP ROSTER ──
+// All reps available for assignment. Markets are stored per-rep in sales_profiles.territory_name
+var ALL_REPS = [
+  'Brian Knoll','DJ DeMille','Brent Andrews','Chris Anderson','Kylie Andrews',
+  'Logan Shepard','Steve Cox','Todd Glades','Adan Gutierrez','Art Tatar',
+  'Dina Nigro','Geary Galusha','Ralph Torres','Roland Kelly','Ben Drysdale',
+  'Hunter Hartwell','Spencer Barone','Jesse Watson','John Bryant','Tyler Stewart'
+];
+
+// Returns reps for the current user's market context
+// For now returns all reps — will filter by market when multi-market goes live
 function getTerritoryReps() {
-  if (!currentProfile) return TERRITORY_REPS['LAS-ALL'];
-  var code = currentProfile.territory_code || 'LAS-ALL';
-  return TERRITORY_REPS[code] || TERRITORY_REPS['LAS-ALL'];
+  if (!currentProfile) return ALL_REPS;
+  // If rep has markets set, filter to reps in same markets (future)
+  return ALL_REPS;
 }
 
 function _buildLookup() {
@@ -2346,7 +2343,7 @@ function closeSettings() {
 function switchSettingsTab(tab) {
   _settingsTab = tab;
   document.querySelectorAll('.settings-tab').forEach(function(t, i){
-    var tabs = ['reps','invite','territories'];
+    var tabs = ['reps','invite','markets'];
     t.classList.toggle('active', tabs[i] === tab);
   });
   renderSettingsTab(tab);
@@ -2357,7 +2354,7 @@ async function renderSettingsTab(tab) {
   body.innerHTML = '<div class="det-empty">Loading...</div>';
   if (tab === 'reps') await renderRepsTab(body);
   else if (tab === 'invite') renderInviteTab(body);
-  else if (tab === 'territories') renderTerritoriesTab(body);
+  else if (tab === 'markets') renderMarketsTab(body);
 }
 
 // ── REPS TAB ──
@@ -2397,15 +2394,19 @@ async function renderRepsTab(body) {
                   '<option value="admin"'+(p.role==='admin'?' selected':'')+'>Admin</option>'+
                 '</select></div>'+
             '</div>'+
-            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.5rem;">'+
-              '<div><label class="abiz-label">Territory Name</label>'+
-                '<input class="settings-input" id="re-tname-'+p.id+'" value="'+(p.territory_name||'')+'" style="margin:0" placeholder="e.g. Las Vegas - North"></div>'+
-              '<div><label class="abiz-label">Territory Code</label>'+
-                '<select class="settings-select" id="re-tcode-'+p.id+'">'+
-                  Object.keys(TERRITORY_REPS).map(function(code){
-                    return '<option value="'+code+'"'+(p.territory_code===code?' selected':'')+'>'+code+'</option>';
-                  }).join('')+
-                '</select></div>'+
+            '<div style="margin-bottom:.5rem;">'+
+              '<label class="abiz-label">Markets Serviced</label>'+
+              '<div style="display:flex;flex-wrap:wrap;gap:6px;padding:.5rem;background:#fff;border:1px solid var(--border);border-radius:8px;" id="re-markets-'+p.id+'">'+
+                (function(){
+                  var repMarkets = (p.territory_name||'').split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+                  return VAVAN_MARKETS.map(function(m){
+                    var checked = repMarkets.indexOf(m.name) > -1;
+                    return '<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;white-space:nowrap;">'+
+                      '<input type="checkbox" value="'+m.name+'" '+(checked?'checked':'')+' style="accent-color:var(--accent);">'+
+                      m.name+'</label>';
+                  }).join('');
+                })()+
+              '</div>'+
             '</div>'+
             '<div class="settings-btn-row">'+
               '<button class="settings-save-btn" onclick="saveRepEdit(\''+p.id+'\')">Save</button>'+
@@ -2430,14 +2431,19 @@ function cancelRepEdit(id) {
 async function saveRepEdit(id) {
   var name  = document.getElementById('re-name-'+id).value.trim();
   var role  = document.getElementById('re-role-'+id).value;
-  var tname = document.getElementById('re-tname-'+id).value.trim();
-  var tcode = document.getElementById('re-tcode-'+id).value;
-  var btn   = document.querySelector('#rep-edit-'+id+' .settings-save-btn');
+  // Collect checked markets
+  var marketsWrap = document.getElementById('re-markets-'+id);
+  var checked = marketsWrap ? Array.from(marketsWrap.querySelectorAll('input[type=checkbox]:checked')).map(function(cb){ return cb.value; }) : [];
+  var tname = checked.join(', ');
+  var tcode = checked.length ? checked[0].toUpperCase().replace(/ /g,'-').replace('LAS-VEGAS','LAS').replace('NORTH-LAS-VEGAS','NLV').replace('HENDERSON','HEN').replace('SUMMERLIN','SUM').replace('SACRAMENTO','SAC').replace('RENO','REN').replace('PHOENIX','PHX').replace('LOS-ANGELES','LAX').replace('SAN-DIEGO','SAN') + '-ALL' : 'LAS-ALL';
+
+  var btn = document.querySelector('#rep-edit-'+id+' .settings-save-btn');
   btn.textContent = 'Saving...'; btn.disabled = true;
   try {
     var r = await sb.from('sales_profiles').update({
       full_name: name, role: role,
-      territory_name: tname, territory_code: tcode
+      territory_name: tname,
+      territory_code: tcode
     }).eq('id', id);
     if (r.error) throw r.error;
     await renderRepsTab(document.getElementById('settings-body'));
@@ -2457,12 +2463,14 @@ function renderInviteTab(body) {
         '<input class="settings-input" id="inv-name" placeholder="First Last">'+
         '<label class="abiz-label">Email Address</label>'+
         '<input class="settings-input" id="inv-email" type="email" placeholder="rep@company.com">'+
-        '<label class="abiz-label">Territory</label>'+
-        '<select class="settings-select" id="inv-territory" style="margin-bottom:.5rem">'+
-          Object.keys(TERRITORY_REPS).map(function(code){
-            return '<option value="'+code+'">'+code+'</option>';
+        '<label class="abiz-label">Markets Serviced</label>'+
+        '<div style="display:flex;flex-wrap:wrap;gap:6px;padding:.5rem;background:#fff;border:1px solid var(--border);border-radius:8px;margin-bottom:.5rem;" id="inv-markets">'+
+          VAVAN_MARKETS.map(function(m){
+            return '<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;white-space:nowrap;">'+
+              '<input type="checkbox" value="'+m.name+'" style="accent-color:var(--accent);">'+
+              m.name+'</label>';
           }).join('')+
-        '</select>'+
+        '</div>'+
         '<div id="inv-status" style="font-size:12px;color:var(--muted);min-height:20px;margin:.5rem 0;"></div>'+
         '<button class="settings-save-btn" onclick="sendInvite()" style="width:100%;">Send Invite Link</button>'+
       '</div>'+
@@ -2481,9 +2489,11 @@ function renderInviteTab(body) {
 async function sendInvite() {
   var name      = document.getElementById('inv-name').value.trim();
   var email     = document.getElementById('inv-email').value.trim();
-  var territory = document.getElementById('inv-territory').value;
+  var marketsWrap = document.getElementById('inv-markets');
+  var markets   = marketsWrap ? Array.from(marketsWrap.querySelectorAll('input:checked')).map(function(cb){ return cb.value; }) : [];
   var statusEl  = document.getElementById('inv-status');
   if (!name || !email) { statusEl.textContent = '⚠️ Name and email required.'; return; }
+  if (!markets.length) { statusEl.textContent = '⚠️ Select at least one market.'; return; }
 
   statusEl.textContent = 'Sending invite...';
   try {
@@ -2514,24 +2524,33 @@ async function sendInvite() {
 }
 
 // ── TERRITORIES TAB ──
-function renderTerritoriesTab(body) {
-  var codes = Object.keys(TERRITORY_REPS);
+function renderMarketsTab(body) {
+  // Markets are defined in VAVAN_MARKETS — show which reps service each
   body.innerHTML =
     '<div class="settings-section">'+
-      '<div class="settings-section-title">Territory Definitions</div>'+
-      codes.map(function(code){
-        var reps = TERRITORY_REPS[code];
+      '<div class="settings-section-title">Markets & Assigned Reps</div>'+
+      VAVAN_MARKETS.map(function(m){
+        // Find reps assigned to this market from loaded profiles
+        var assignedReps = _allProfiles.filter(function(p){
+          var markets = (p.territory_name||'').split(',').map(function(s){ return s.trim(); });
+          return markets.indexOf(m.name) > -1;
+        });
+        var repNames = assignedReps.map(function(p){ return p.full_name||''; }).filter(Boolean);
         return '<div class="territory-card">'+
           '<div class="territory-card-header">'+
-            '<div class="territory-card-name">'+code.replace('LAS-','Las Vegas — ').replace('SAC-','Sacramento — ').replace('-ALL',' (All)')+'</div>'+
-            '<div class="territory-card-code">'+code+'</div>'+
+            '<div class="territory-card-name">'+m.name+'</div>'+
+            '<div class="territory-card-code" style="font-size:11px;color:var(--muted);">'+m.state+'</div>'+
           '</div>'+
-          '<div class="territory-card-reps">'+reps.length+' reps · '+reps.slice(0,4).join(', ')+(reps.length>4?' +more':'')+'</div>'+
+          '<div class="territory-card-reps">'+
+            (repNames.length ?
+              repNames.length+' rep'+(repNames.length>1?'s':'')+' · '+repNames.join(', ') :
+              '<span style="color:var(--muted);font-style:italic;">No reps assigned</span>')+
+          '</div>'+
         '</div>';
       }).join('')+
-      '<div style="margin-top:.75rem;padding:.875rem;background:#fff3cd;border-radius:10px;border:1px solid #ffc107;">'+
-        '<div style="font-size:12px;color:#856404;line-height:1.6;">'+
-          '<b>To add a new territory:</b> Edit the TERRITORY_REPS object in the app code and add the territory_code to Supabase sales_profiles for each rep.'+
+      '<div style="margin-top:1rem;padding:.875rem;background:var(--accent-light);border-radius:10px;border:1px solid rgba(108,92,231,.2);">'+
+        '<div style="font-size:12px;color:var(--accent);line-height:1.6;">'+
+          '<b>To assign a rep to a market:</b> Go to Reps & Markets tab → Edit the rep → set their Markets field.'+
         '</div>'+
       '</div>'+
     '</div>';
@@ -3237,9 +3256,9 @@ function onMapClick(e) {
       <button class="sheet-close" onclick="closeSettings()">✕</button>
     </div>
     <div class="settings-tabs">
-      <button class="settings-tab active" onclick="switchSettingsTab('reps')">Reps & Territories</button>
+      <button class="settings-tab active" onclick="switchSettingsTab('reps')">Reps & Markets</button>
       <button class="settings-tab" onclick="switchSettingsTab('invite')">Invite Rep</button>
-      <button class="settings-tab" onclick="switchSettingsTab('territories')">Territories</button>
+      <button class="settings-tab" onclick="switchSettingsTab('markets')">Markets</button>
     </div>
     <div class="settings-body" id="settings-body">
       <div class="det-empty">Loading...</div>
