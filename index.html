@@ -1449,17 +1449,26 @@ function toggleSidebar()  { navTo(currentNav === 'filters' ? 'map' : 'filters');
 function toggleList()     { navTo(currentNav === 'list'    ? 'map' : 'list'); }
 function openResults()    { navTo('list'); }
 function closeResults()   {
+  // Just close the results panel — don't affect detail or nav state
+  document.getElementById('results-panel').classList.remove('open');
   var titleEl = document.querySelector('#results-panel .sheet-title');
   if (titleEl) titleEl.textContent = 'Results';
-  navTo('map');
+  if (currentNav === 'list') currentNav = 'map';
+  var m = document.getElementById('nm-list'); if(m) m.classList.remove('active');
+  var d = document.getElementById('nd-list'); if(d) d.classList.remove('active');
+  var m2 = document.getElementById('nm-map'); if(m2) m2.classList.add('active');
+  var d2 = document.getElementById('nd-map'); if(d2) d2.classList.add('active');
 }
 function openSidebar()    { navTo('filters'); }
 function closeSidebar()   {
-  currentNav = 'map';
-  ['nm-map','nd-map'].forEach(function(id){ var el=document.getElementById(id); if(el) el.classList.add('active'); });
-  ['nm-filters','nd-filters'].forEach(function(id){ var el=document.getElementById(id); if(el) el.classList.remove('active'); });
+  // Just close the filter panel — don't affect detail or nav state
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('overlay').classList.remove('show');
+  if (currentNav === 'filters') currentNav = 'map';
+  var m = document.getElementById('nm-filters'); if(m) m.classList.remove('active');
+  var d = document.getElementById('nd-filters'); if(d) d.classList.remove('active');
+  var m2 = document.getElementById('nm-map'); if(m2) m2.classList.add('active');
+  var d2 = document.getElementById('nd-map'); if(d2) d2.classList.add('active');
 }
 function applyAndClose() {
   applyFilters();
@@ -2206,7 +2215,13 @@ function bizColor(b) {
 }
 
 function selectBiz(id) {
-  var b = _bizById[id]; if (!b) return;
+  // Try direct lookup first, then string/number coercion
+  var b = _bizById[id] || _bizById[String(id)] || _bizById[Number(id)];
+  if (!b) {
+    // Last resort: scan allData
+    b = allData.find(function(x){ return x._id == id; });
+  }
+  if (!b) return;
   lastSelectedBiz = b;
   if (b.lat&&b.lon) {
     map.flyTo({center:[b.lon,b.lat],zoom:16,speed:1.4});
