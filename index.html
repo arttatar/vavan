@@ -209,10 +209,34 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
   #nav{ display:none; }
   #nav-desktop{ display:flex; }
   #map{ left:64px; }
-  #sidebar{ left:64px; }
-  #results-panel{ left:64px; }
-  #contacts-panel{ left:64px; }
-  #fab-wrap{ display:none; }
+  /* Panels start at 64px left edge, slide in from there */
+  #sidebar{
+    left:64px !important;
+    top:var(--header) !important;
+    bottom:0 !important;
+    transform:translateX(-100%) !important;
+  }
+  #sidebar.open{ transform:translateX(0) !important; }
+  #results-panel{
+    left:64px !important;
+    top:var(--header) !important;
+    bottom:0 !important;
+    transform:translateX(-100%) !important;
+  }
+  #results-panel.open{ transform:translateX(0) !important; }
+  #contacts-panel{
+    left:64px !important;
+    top:var(--header) !important;
+    bottom:0 !important;
+    transform:translateX(-100%) !important;
+    border-radius:0 !important;
+    height:auto !important;
+    width:var(--sidebar) !important;
+  }
+  #contacts-panel.open{ transform:translateX(0) !important; }
+  #detail{
+    /* detail slides from right — no change needed */
+  }
 }
 @media (max-width:768px){
   #nav-desktop{ display:none; }
@@ -1912,30 +1936,36 @@ function applyFilters() {
 
 // ── LIST ──
 function getVisibleData() {
-  var source = (filtersApplied && filteredData.length > 0) ? filteredData : (filtersApplied ? filteredData : allData);
-  if (!map || !source.length) return source;
+  // If filters applied — show all matching results (not just map viewport)
+  if (filtersApplied) return filteredData;
+  // No filters — show what's in current map viewport from allData
+  if (!map) return [];
   try {
     var bounds = map.getBounds();
-    return source.filter(function(b){
+    return allData.filter(function(b){
       return b.lat && b.lon &&
         b.lon >= bounds.getWest() && b.lon <= bounds.getEast() &&
         b.lat >= bounds.getSouth() && b.lat <= bounds.getNorth();
     });
-  } catch(e) { return source; }
+  } catch(e) { return []; }
 }
 
 function renderList() {
-  var visible = getVisibleData();
-  var data = visible.filter(function(b){ return b.lat&&b.lon; });
+  var data = getVisibleData().filter(function(b){ return b.lat&&b.lon; });
   var total = filtersApplied ? filteredData.length : allData.length;
-  var label = filtersApplied ? ' filtered' : '';
-  document.getElementById('rcount').textContent = data.length.toLocaleString() + ' in view · ' + total.toLocaleString() + ' total' + label;
-  document.getElementById('biz-list').innerHTML = data.slice(0,150).map(function(b){
+  var label = filtersApplied ? ' filtered' : ' · zoom into Las Vegas to see businesses';
+  if (!data.length && !filtersApplied) {
+    document.getElementById('rcount').textContent = 'Apply filters or zoom into Las Vegas';
+    document.getElementById('biz-list').innerHTML = '<div style="padding:1.5rem;font-size:12px;color:var(--muted);text-align:center;">Use Filters to find businesses,<br>or zoom the map into Las Vegas.</div>';
+    return;
+  }
+  document.getElementById('rcount').textContent = data.length.toLocaleString() + ' businesses' + (filtersApplied ? ' · '+total.toLocaleString()+' total filtered' : '');
+  document.getElementById('biz-list').innerHTML = data.slice(0,200).map(function(b){
     var idx = b._id;
     var s = b.score || calcScore(b);
     var color = bizColor(b);
     return '<div class="bitem" onclick="selectBiz('+idx+')"><div class="bname"><span class="sdot" style="background:'+color+'"></span>'+b.name+'</div><div class="baddr">'+b.street+(b.industry?' · <em style=color:var(--muted)>'+b.industry+'</em>':'')+'</div>'+(b.phone?'<div class="bphone"><a href="tel:'+b.phone.replace(/\D/g,'')+'" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none;">'+b.phone+'</a></div>':'')+'</div>';
-  }).join('') + (data.length>150?'<div style="padding:.75rem;font-size:12px;color:var(--muted);text-align:center">Showing 150 of '+data.length.toLocaleString()+' — zoom in or filter to narrow</div>':'');
+  }).join('') + (data.length>200?'<div style="padding:.75rem;font-size:12px;color:var(--muted);text-align:center">Showing 200 of '+data.length.toLocaleString()+' — zoom in or filter to narrow</div>':'');
 }
 
 // ── DETAIL ──
