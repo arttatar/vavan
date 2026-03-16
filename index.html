@@ -4470,39 +4470,64 @@ var VISITED_OPTIONS = [
   'Requested quote'
 ];
 
+function _activitySheetStyles() {
+  var isDesktop = window.innerWidth > 768;
+  if (isDesktop) {
+    // On desktop — get detail panel position and anchor popup inside it
+    var det = document.getElementById('detail');
+    var rect = det ? det.getBoundingClientRect() : {left:0,top:0,width:360,bottom:window.innerHeight};
+    return {
+      overlay: 'position:fixed;top:'+rect.top+'px;left:'+rect.left+'px;width:'+rect.width+'px;height:'+(rect.bottom-rect.top)+'px;background:rgba(13,13,20,.4);z-index:9800;display:flex;align-items:flex-end;justify-content:stretch;font-family:Inter,sans-serif;border-radius:0 0 16px 16px;overflow:hidden;',
+      sheet: 'background:#fff;width:100%;border-radius:12px 12px 0 0;overflow:hidden;box-shadow:0 -4px 24px rgba(0,0,0,.15);max-height:90%;overflow-y:auto;',
+      animate: false
+    };
+  }
+  return {
+    overlay: 'position:fixed;inset:0;bottom:60px;background:rgba(0,0,0,.45);z-index:8000;display:flex;align-items:flex-end;justify-content:center;font-family:Inter,sans-serif;',
+    sheet: 'background:#fff;width:100%;max-width:480px;border-radius:16px 16px 0 0;overflow:hidden;box-shadow:0 -4px 32px rgba(0,0,0,.18);',
+    animate: true
+  };
+}
+
 function _openActivitySheet(type) {
   _removeActivitySheet();
   var biz = lastSelectedBiz; if (!biz) return;
   var opts = type === 'contacted' ? CONTACTED_OPTIONS : VISITED_OPTIONS;
   var color = type === 'contacted' ? '#059669' : '#d97706';
   var title = type === 'contacted' ? 'Contacted' : 'Visited';
+  var styles = _activitySheetStyles();
 
   var overlay = document.createElement('div');
   overlay.id = 'activity-sheet-overlay';
-  overlay.style.cssText = 'position:fixed;inset:0;bottom:60px;background:rgba(0,0,0,.45);z-index:8000;display:flex;align-items:flex-end;justify-content:center;font-family:Inter,sans-serif;';
+  overlay.style.cssText = styles.overlay;
   overlay.addEventListener('click', function(e){ if(e.target===overlay) _removeActivitySheet(); });
 
   var sheet = document.createElement('div');
-  sheet.style.cssText = 'background:#fff;width:100%;max-width:480px;border-radius:16px 16px 0 0;overflow:hidden;box-shadow:0 -4px 32px rgba(0,0,0,.18);';
+  sheet.style.cssText = styles.sheet;
 
   var optsHtml = opts.map(function(o){
     return '<button onclick="_selectActivityOption(\''+type+'\',\''+o.replace(/'/g,"\\'")+'\')" style="width:100%;text-align:left;padding:13px 20px;background:none;border:none;border-bottom:1px solid #f5f5f5;font-size:14px;font-weight:500;color:#0d0d14;cursor:pointer;font-family:Inter,sans-serif;">'+o+'</button>';
   }).join('');
 
   sheet.innerHTML =
-    '<div style="padding:12px 20px 10px;border-bottom:1px solid #f0f0f0;">'+
-      '<div style="width:36px;height:4px;background:#ddd;border-radius:2px;margin:0 auto 12px;"></div>'+
-      '<div style="font-size:16px;font-weight:700;color:'+color+';">'+title+'</div>'+
-      '<div style="font-size:12px;color:#999;margin-top:2px;">Select outcome or tap Skip to just log the '+type+'</div>'+
+    '<div style="padding:12px 20px 10px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;">'+
+      '<div>'+
+        '<div style="font-size:16px;font-weight:700;color:'+color+';">'+title+'</div>'+
+        '<div style="font-size:12px;color:#999;margin-top:2px;">Select outcome · or skip to just log</div>'+
+      '</div>'+
+      '<button onclick="_removeActivitySheet()" style="background:#f3f4f6;border:none;border-radius:50%;width:28px;height:28px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#666;flex-shrink:0;">×</button>'+
     '</div>'+
     optsHtml+
     '<button onclick="_selectActivityOption(\''+type+'\',\'\')" style="width:100%;padding:14px 20px;background:none;border:none;font-size:14px;font-weight:600;color:#999;cursor:pointer;font-family:Inter,sans-serif;border-top:6px solid #f5f5f5;">Skip — just log '+title+'</button>';
 
   overlay.appendChild(sheet);
   document.body.appendChild(overlay);
-  sheet.style.transform = 'translateY(100%)';
-  sheet.style.transition = 'transform .28s cubic-bezier(.4,0,.2,1)';
-  requestAnimationFrame(function(){ requestAnimationFrame(function(){ sheet.style.transform='translateY(0)'; }); });
+
+  if (styles.animate) {
+    sheet.style.transform = 'translateY(100%)';
+    sheet.style.transition = 'transform .28s cubic-bezier(.4,0,.2,1)';
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){ sheet.style.transform='translateY(0)'; }); });
+  }
 }
 
 function _removeActivitySheet() {
@@ -4512,7 +4537,6 @@ function _removeActivitySheet() {
 
 function _selectActivityOption(type, outcome) {
   _removeActivitySheet();
-  // If outcome selected, open note prompt; if skip, log immediately
   if (outcome) {
     _openActivityNote(type, outcome);
   } else {
@@ -4524,19 +4548,22 @@ function _openActivityNote(type, outcome) {
   _removeActivitySheet();
   var biz = lastSelectedBiz; if (!biz) return;
   var color = type === 'contacted' ? '#059669' : '#d97706';
+  var styles = _activitySheetStyles();
 
   var overlay = document.createElement('div');
   overlay.id = 'activity-sheet-overlay';
-  overlay.style.cssText = 'position:fixed;inset:0;bottom:60px;background:rgba(0,0,0,.45);z-index:8000;display:flex;align-items:flex-end;justify-content:center;font-family:Inter,sans-serif;';
+  overlay.style.cssText = styles.overlay;
   overlay.addEventListener('click', function(e){ if(e.target===overlay) _removeActivitySheet(); });
 
   var sheet = document.createElement('div');
-  sheet.style.cssText = 'background:#fff;width:100%;max-width:480px;border-radius:16px 16px 0 0;overflow:hidden;box-shadow:0 -4px 32px rgba(0,0,0,.18);padding-bottom:env(safe-area-inset-bottom,16px);';
+  sheet.style.cssText = styles.sheet + (styles.animate ? '' : 'padding-bottom:env(safe-area-inset-bottom,16px);');
   sheet.innerHTML =
-    '<div style="padding:12px 20px 10px;border-bottom:1px solid #f0f0f0;">'+
-      '<div style="width:36px;height:4px;background:#ddd;border-radius:2px;margin:0 auto 12px;"></div>'+
-      '<div style="font-size:15px;font-weight:700;color:'+color+';">'+outcome+'</div>'+
-      '<div style="font-size:12px;color:#999;margin-top:2px;">Add a note (optional)</div>'+
+    '<div style="padding:12px 20px 10px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;">'+
+      '<div>'+
+        '<div style="font-size:15px;font-weight:700;color:'+color+';">'+outcome+'</div>'+
+        '<div style="font-size:12px;color:#999;margin-top:2px;">Add a note (optional)</div>'+
+      '</div>'+
+      '<button onclick="_removeActivitySheet()" style="background:#f3f4f6;border:none;border-radius:50%;width:28px;height:28px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#666;flex-shrink:0;">×</button>'+
     '</div>'+
     '<div style="padding:16px 20px;">'+
       '<textarea id="activity-note-input" placeholder="Add details..." style="width:100%;border:1px solid #e5e7eb;border-radius:10px;padding:10px 12px;font-size:14px;font-family:Inter,sans-serif;color:#0d0d14;resize:none;min-height:80px;outline:none;box-sizing:border-box;"></textarea>'+
@@ -4548,12 +4575,17 @@ function _openActivityNote(type, outcome) {
 
   overlay.appendChild(sheet);
   document.body.appendChild(overlay);
-  sheet.style.transform = 'translateY(100%)';
-  sheet.style.transition = 'transform .28s cubic-bezier(.4,0,.2,1)';
-  requestAnimationFrame(function(){ requestAnimationFrame(function(){
-    sheet.style.transform='translateY(0)';
-    setTimeout(function(){ var ta=document.getElementById('activity-note-input'); if(ta) ta.focus(); }, 300);
-  }); });
+
+  if (styles.animate) {
+    sheet.style.transform = 'translateY(100%)';
+    sheet.style.transition = 'transform .28s cubic-bezier(.4,0,.2,1)';
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){
+      sheet.style.transform='translateY(0)';
+      setTimeout(function(){ var ta=document.getElementById('activity-note-input'); if(ta) ta.focus(); }, 300);
+    }); });
+  } else {
+    setTimeout(function(){ var ta=document.getElementById('activity-note-input'); if(ta) ta.focus(); }, 100);
+  }
 }
 
 async function _doLogActivity(type, outcome) {
