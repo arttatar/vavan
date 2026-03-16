@@ -761,7 +761,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
 .route-start-title{font-size:16px;font-weight:700;color:var(--ink);margin-bottom:1rem;}
 .route-start-opt{display:flex;align-items:center;gap:12px;padding:.75rem;border:2px solid var(--border);border-radius:10px;cursor:pointer;margin-bottom:.75rem;transition:.15s;}
 .route-start-opt:hover,.route-start-opt.selected{border-color:var(--accent);background:var(--accent-light);}
-.route-start-opt-icon{font-size:24px;flex-shrink:0;}
+.route-start-opt-icon{width:40px;height:40px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--accent-light);border-radius:10px;}
 .route-start-opt-text{font-size:13px;font-weight:600;color:var(--ink);}
 .route-start-opt-sub{font-size:11px;color:var(--muted);}
 #route-custom-addr{width:100%;border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;font-family:'Inter',sans-serif;margin-top:.5rem;display:none;outline:none;}
@@ -807,8 +807,10 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
     <div id="pcount-wrap"><b id="pcount">0</b> businesses</div>
     <button onclick="openAddBusiness()" style="background:var(--accent);border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;color:#fff;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;">+ Add</button>
     <button id="my-accounts-btn" onclick="filterMyAccounts()" style="display:none;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;color:rgba(255,255,255,.7);cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;">My Accounts</button>
-    <button id="route-btn" onclick="toggleRouteMode()">🗺 Route</button>
-    <button id="settings-btn" onclick="openSettings()" style="display:none;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:5px 9px;font-size:16px;cursor:pointer;color:rgba(255,255,255,.6);line-height:1;" title="Admin Settings">⚙️</button>
+    <button id="route-btn" onclick="toggleRouteMode()">Route</button>
+    <button id="settings-btn" onclick="openSettings()" style="display:none;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:5px 9px;cursor:pointer;color:rgba(255,255,255,.6);line-height:1;display:flex;align-items:center;justify-content:center;" title="Admin Settings">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
     <div id="uinfo">Signed in as <b id="uemail"></b></div>
     <button id="signout-btn" onclick="doSignOut()">Sign out</button>
   </div>
@@ -921,7 +923,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
       <!-- LUBE PIPELINE -->
       <div class="sb-sec" style="padding-top:0;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-          <div style="font-size:12px;font-weight:700;color:var(--ink);">🛢 Lubricants</div>
+          <div style="font-size:12px;font-weight:700;color:var(--ink);">Lubricants</div>
           <div style="display:flex;align-items:center;gap:8px;">
             <span id="f-lube-lbl" style="font-size:11px;font-weight:700;color:var(--muted);display:none;">All Stages</span>
             <label class="opp-toggle"><input type="checkbox" id="f-lube-on" onchange="toggleOppFilter('lube','lubricants')"><span class="opp-toggle-slider"></span></label>
@@ -940,7 +942,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
       <!-- FUEL PIPELINE -->
       <div class="sb-sec" style="padding-top:0;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-          <div style="font-size:12px;font-weight:700;color:var(--ink);">⛽ Fuel Delivery</div>
+          <div style="font-size:12px;font-weight:700;color:var(--ink);">Fuel Delivery</div>
           <div style="display:flex;align-items:center;gap:8px;">
             <span id="f-fuel-lbl" style="font-size:11px;font-weight:700;color:var(--muted);display:none;">All Stages</span>
             <label class="opp-toggle"><input type="checkbox" id="f-fuel-on" onchange="toggleOppFilter('fuel','fuel_delivery')"><span class="opp-toggle-slider"></span></label>
@@ -959,7 +961,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
       <!-- CARDLOCK PIPELINE -->
       <div class="sb-sec" style="padding-top:0;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-          <div style="font-size:12px;font-weight:700;color:var(--ink);">💳 Cardlock</div>
+          <div style="font-size:12px;font-weight:700;color:var(--ink);">Cardlock</div>
           <div style="display:flex;align-items:center;gap:8px;">
             <span id="f-cardlock-lbl" style="font-size:11px;font-weight:700;color:var(--muted);display:none;">All Stages</span>
             <label class="opp-toggle"><input type="checkbox" id="f-cardlock-on" onchange="toggleOppFilter('cardlock','cardlock')"><span class="opp-toggle-slider"></span></label>
@@ -978,7 +980,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
       <!-- PROPANE PIPELINE -->
       <div class="sb-sec" style="padding-top:0;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-          <div style="font-size:12px;font-weight:700;color:var(--ink);">🔥 Propane</div>
+          <div style="font-size:12px;font-weight:700;color:var(--ink);">Propane</div>
           <div style="display:flex;align-items:center;gap:8px;">
             <span id="f-propane-lbl" style="font-size:11px;font-weight:700;color:var(--muted);display:none;">All Stages</span>
             <label class="opp-toggle"><input type="checkbox" id="f-propane-on" onchange="toggleOppFilter('propane','propane')"><span class="opp-toggle-slider"></span></label>
@@ -997,7 +999,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
       <!-- UCO PIPELINE -->
       <div class="sb-sec" style="padding-top:0;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-          <div style="font-size:12px;font-weight:700;color:var(--ink);">🍳 Used Cooking Oil</div>
+          <div style="font-size:12px;font-weight:700;color:var(--ink);">Used Cooking Oil</div>
           <div style="display:flex;align-items:center;gap:8px;">
             <span id="f-uco-lbl" style="font-size:11px;font-weight:700;color:var(--muted);display:none;">All Stages</span>
             <label class="opp-toggle"><input type="checkbox" id="f-uco-on" onchange="toggleOppFilter('uco','uco')"><span class="opp-toggle-slider"></span></label>
@@ -1017,9 +1019,11 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
       <div class="sb-sec">
         <div class="sb-title">Area Selection</div>
         <div class="tool-row">
-          <button class="tbtn" id="tbtn-poly" onclick="activateTool('poly')">✏️ Draw area</button>
-          <button class="tbtn" id="tbtn-radius" onclick="activateTool('radius')">⭕ Radius</button>
-          <button class="tbtn" id="tbtn-clear" onclick="clearArea()" style="display:none">✕ Clear area</button>
+          <button class="tbtn" id="tbtn-poly" onclick="activateTool('poly')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:-2px;margin-right:4px;"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/></svg>Draw Area</button>
+          <button class="tbtn" id="tbtn-radius" onclick="activateTool('radius')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:-2px;margin-right:4px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="12" x2="19" y2="12"/></svg>Radius</button>
+          <button class="tbtn" id="tbtn-clear" onclick="clearArea()" style="display:none">Clear Area</button>
         </div>
         <div id="radius-wrap" style="display:none;margin-top:.6rem">
           <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Click anywhere on map to place circle</div>
@@ -1747,7 +1751,7 @@ function addHQMarker() {
       .setLngLat([-115.124750, 36.229203])
       .setHTML([
         '<div style="font-family:Inter,sans-serif;padding:4px 2px;">',
-          '<div style="font-size:11px;font-weight:700;color:#FFD700;margin-bottom:2px;letter-spacing:.05em">★ HQ</div>',
+          '<div style="font-size:11px;font-weight:700;color:#FFD700;margin-bottom:2px;letter-spacing:.05em">HQ</div>',
           '<div style="font-size:13px;font-weight:700;color:#0d0d14;line-height:1.3;">InterState Oil Company</div>',
           '<div style="font-size:11px;color:#888;margin-top:2px;">Las Vegas</div>',
           '<div style="font-size:11px;color:#6b6880;margin-top:4px;">3840 N Bruce St<br>North Las Vegas, NV 89030</div>',
@@ -2077,8 +2081,8 @@ var PIPE_LABELS = {
   'Fact-Finding':'Fact-Finding',
   'Proposal Sent':'Proposal Sent',
   'Credit Application':'Credit Application',
-  'Won Opportunity':'Won Opportunity ✓',
-  'Lost':'Lost ✗'
+  'Won Opportunity':'Won',
+  'Lost':'Lost'
 };
 
 function setPipelineStage(stage, el) {
@@ -2496,10 +2500,10 @@ function renderSubDropdown() {
   });
 
   var industryLabels = {
-    Automotive:'🚗 Automotive', Transport:'🚚 Transportation', Construction:'🏗 Infrastructure',
-    Industrial:'🏭 Industrial', Agribusiness:'🌾 Agribusiness', Energy:'⚡ Energy & Utilities',
-    Services:'🧰 Services', Hospitality:'🏨 Hospitality', Government:'🏛 Government',
-    RealEstate:'🏢 Real Estate', Competitors:'🔴 Competitors'
+    Automotive:'Automotive', Transport:'Transportation', Construction:'Infrastructure',
+    Industrial:'Industrial', Agribusiness:'Agribusiness', Energy:'Energy & Utilities',
+    Services:'Services', Hospitality:'Hospitality', Government:'Government',
+    RealEstate:'Real Estate', Competitors:'Competitors'
   };
 
   dd.innerHTML = '';
@@ -2741,7 +2745,7 @@ function renderList() {
     document.getElementById('rcount').textContent = total.toLocaleString()+' filtered · none in view';
     document.getElementById('biz-list').innerHTML =
       '<div style="padding:1.5rem;font-size:12px;color:var(--muted);text-align:center;">'+
-      '<div style="font-size:20px;margin-bottom:.5rem;">🔍</div>'+
+      ''+
       total.toLocaleString()+' businesses match your filters<br>'+
       '<strong>Zoom or pan the map</strong> to see them here.</div>';
     return;
@@ -2942,8 +2946,8 @@ async function sendInvite() {
   var marketsWrap = document.getElementById('inv-markets');
   var markets   = marketsWrap ? Array.from(marketsWrap.querySelectorAll('input:checked')).map(function(cb){ return cb.value; }) : [];
   var statusEl  = document.getElementById('inv-status');
-  if (!name || !email) { statusEl.textContent = '⚠️ Name and email required.'; return; }
-  if (!markets.length) { statusEl.textContent = '⚠️ Select at least one market.'; return; }
+  if (!name || !email) { statusEl.textContent = 'Name and email required.'; return; }
+  if (!markets.length) { statusEl.textContent = 'Select at least one market.'; return; }
 
   statusEl.textContent = 'Sending invite...';
   try {
@@ -2960,7 +2964,7 @@ async function sendInvite() {
     var existing = await sb.from('sales_profiles').select('id').eq('user_id', '00000000-0000-0000-0000-000000000000').maybeSingle();
 
     statusEl.style.color = '#059669';
-    statusEl.textContent = '✓ Invite sent to '+email+'. They will receive a login link.';
+    statusEl.textContent = 'Invite sent to '+email+'. They will receive a login link.';
 
     // Note: profile will be created when they first log in via onAuthStateChange
     // Store pending invite in a simple way
@@ -2969,7 +2973,7 @@ async function sendInvite() {
 
   } catch(e) {
     statusEl.style.color = '#ef4444';
-    statusEl.textContent = '❌ '+e.message;
+    statusEl.textContent = e.message;
   }
 }
 
@@ -3043,8 +3047,7 @@ function openAddBusiness() {
 
 function closeAddBusiness() {
   document.getElementById('add-biz-modal').classList.remove('open');
-  // Clear fields
-  ['ab-name','ab-phone','ab-website','ab-street'].forEach(function(id){
+  ['ab-name','ab-phone','ab-website','ab-street','ab-zip'].forEach(function(id){
     var el = document.getElementById(id); if(el) el.value = '';
   });
   document.getElementById('ab-city').value = 'Las Vegas';
@@ -3052,9 +3055,30 @@ function closeAddBusiness() {
   document.getElementById('ab-industry').value = '';
   document.getElementById('ab-status').value = 'Lead';
   document.getElementById('ab-pipeline').value = 'Lead Captured';
+  document.getElementById('ab-location-type').value = '';
   document.getElementById('ab-status-msg').textContent = '';
+  // Reset product checkboxes
+  ['lubricants','fuel_delivery','cardlock','propane','uco'].forEach(function(k){
+    var cb = document.getElementById('ab-prod-'+k);
+    if (cb) { cb.checked = false; abToggleProd(k); }
+  });
   var btn = document.getElementById('ab-save-btn');
   btn.disabled = false; btn.textContent = 'Add to Map';
+}
+
+function abToggleProd(key) {
+  var cb  = document.getElementById('ab-prod-'+key);
+  var lbl = document.getElementById('ab-prod-lbl-'+key);
+  if (!cb || !lbl) return;
+  if (cb.checked) {
+    lbl.style.borderColor = 'var(--accent)';
+    lbl.style.background  = 'var(--accent-light)';
+    lbl.style.color       = 'var(--accent)';
+  } else {
+    lbl.style.borderColor = 'var(--border)';
+    lbl.style.background  = 'var(--paper)';
+    lbl.style.color       = 'var(--ink)';
+  }
 }
 
 async function geocodeAddress(address) {
@@ -3068,106 +3092,135 @@ async function geocodeAddress(address) {
 }
 
 async function saveNewBusiness() {
-  var name    = document.getElementById('ab-name').value.trim();
-  var phone   = document.getElementById('ab-phone').value.trim();
-  var website = document.getElementById('ab-website').value.trim();
-  var street  = document.getElementById('ab-street').value.trim();
-  var city    = document.getElementById('ab-city').value.trim();
-  var state   = document.getElementById('ab-state').value.trim();
-  var industry= document.getElementById('ab-industry').value;
-  var status  = document.getElementById('ab-status').value;
-  var pipeline= document.getElementById('ab-pipeline').value;
-  var locType = document.getElementById('ab-location-type') ? document.getElementById('ab-location-type').value : '';
-  var statusEl= document.getElementById('ab-status-msg');
-  var btn     = document.getElementById('ab-save-btn');
+  var name     = document.getElementById('ab-name').value.trim();
+  var phone    = document.getElementById('ab-phone').value.trim();
+  var website  = document.getElementById('ab-website').value.trim();
+  var street   = document.getElementById('ab-street').value.trim();
+  var city     = document.getElementById('ab-city').value.trim();
+  var state    = document.getElementById('ab-state').value.trim();
+  var zip      = document.getElementById('ab-zip').value.trim();
+  var industry = document.getElementById('ab-industry').value;
+  var status   = document.getElementById('ab-status').value;
+  var pipeline = document.getElementById('ab-pipeline').value;
+  var locType  = document.getElementById('ab-location-type').value;
+  var statusEl = document.getElementById('ab-status-msg');
+  var btn      = document.getElementById('ab-save-btn');
 
-  if (!name) { statusEl.textContent = '⚠️ Business name is required.'; statusEl.style.color='var(--red)'; return; }
-  if (!street || !city) { statusEl.textContent = '⚠️ Street and city are required for the map pin.'; statusEl.style.color='var(--red)'; return; }
+  if (!name)          { statusEl.textContent = 'Business name is required.'; statusEl.style.color='var(--red)'; return; }
+  if (!street||!city) { statusEl.textContent = 'Street and city are required.'; statusEl.style.color='var(--red)'; return; }
 
-  btn.disabled = true; btn.textContent = 'Finding address...';
+  btn.disabled = true; btn.textContent = 'Locating address...';
   statusEl.style.color = 'var(--muted)';
-  statusEl.textContent = '🔍 Geocoding address...';
+  statusEl.textContent = 'Locating address...';
 
   try {
-    var fullAddress = [street, city, state, 'USA'].filter(Boolean).join(', ');
+    var addrParts = [street, city, state];
+    if (zip) addrParts.push(zip);
+    addrParts.push('USA');
+    var fullAddress = addrParts.filter(Boolean).join(', ');
     var coords = await geocodeAddress(fullAddress);
 
-    statusEl.textContent = '💾 Saving...';
+    statusEl.textContent = 'Saving...';
     btn.textContent = 'Saving...';
 
-    // Normalize website
     if (website && !website.match(/^https?:\/\//)) website = 'https://' + website;
 
+    // Auto-assign to current rep
+    var assignedRep = currentProfile ? (currentProfile.full_name || '') : '';
+
     var payload = {
-      name: name,
-      phone: phone || null,
-      website: website || null,
-      street: street,
-      locality: city + (state ? ', ' + state : ''),
-      state: state,
-      full_address: fullAddress,
-      lat: coords.lat,
-      lon: coords.lon,
-      industry: industry || null,
-      status: status,
+      name:           name,
+      phone:          phone || null,
+      website:        website || null,
+      street:         street,
+      locality:       city + (state ? ', ' + state : ''),
+      state:          state,
+      zip:            zip || null,
+      full_address:   fullAddress,
+      lat:            coords.lat,
+      lon:            coords.lon,
+      industry:       industry || null,
+      status:         status,
       pipeline_stage: pipeline,
-      location_type: locType || null,
-      market: 'Las Vegas',
+      location_type:  locType || null,
+      assigned_rep:   assignedRep || null,
+      market:         'Las Vegas',
       territory_code: currentProfile ? (currentProfile.territory_code || 'LAS-ALL') : 'LAS-ALL',
-      visited: false,
-      score: 50
+      visited:        false,
+      score:          50
     };
 
     var r = await sb.from('businesses').insert(payload).select().single();
     if (r.error) throw r.error;
 
-    // Add to local data and lookup
+    // Collect checked product lines
+    var prodKeys = ['lubricants','fuel_delivery','cardlock','propane','uco'];
+    var checkedProds = prodKeys.filter(function(k){
+      var cb = document.getElementById('ab-prod-'+k);
+      return cb && cb.checked;
+    });
+
+    // Save initial opportunity record if any products were selected
+    if (checkedProds.length && currentProfile && currentProfile.client_id) {
+      var oppPayload = {
+        business_id: String(r.data.id),
+        client_id:   currentProfile.client_id,
+        updated_by:  assignedRep || ''
+      };
+      checkedProds.forEach(function(k){
+        var p = OPP_PRODUCTS.find(function(x){ return x.key === k; });
+        if (p) {
+          oppPayload['uses_'+k]           = true;
+          oppPayload[p.field+'_stage']     = 'Lead Captured';
+          oppPayload[p.field+'_gallons']   = 0;
+          oppPayload[p.field+'_supplier']  = '';
+        }
+      });
+      await sb.from('business_opportunities').upsert(oppPayload, {onConflict:'business_id,client_id'});
+      // Cache it
+      _oppCache[String(r.data.id)] = oppPayload;
+    }
+
+    // Add to local data
     var newBiz = normalizeRecord(r.data);
     newBiz._id = newBiz._id || (_nextId++);
     applySubIndustries([newBiz]);
     allData.unshift(newBiz);
     _bizById[newBiz._id] = newBiz;
 
-    // Update pin count
     var pcount = document.getElementById('pcount');
     if (pcount) pcount.textContent = allData.length.toLocaleString();
     updateFabCount();
 
     closeAddBusiness();
 
-    // Always show the new pin on the map immediately
+    // Show pin on map immediately
     if (map && map.getSource('biz') && newBiz.lat && newBiz.lon) {
       if (filtersApplied) {
-        // Re-run filters — new biz will appear if it matches, or force-add it anyway
         applyFilters();
-        // If it still didn't make it into filteredData (different industry etc), add it directly
         var inFiltered = filteredData.some(function(x){ return x._id === newBiz._id; });
         if (!inFiltered) {
           filteredData.unshift(newBiz);
-          // Refresh map source with updated filteredData
           map.getSource('biz').setData({ type:'FeatureCollection', features: filteredData.filter(function(b){ return b.lat&&b.lon; }).map(function(b){
             return {type:'Feature',geometry:{type:'Point',coordinates:[b.lon,b.lat]},
               properties:{_id:b._id,industry:b.industry||'',is_competitor:b.is_competitor||false,score:b.score||calcScore(b)}};
           })});
         }
       } else {
-        // No filters — map is blank by default, but show just this new pin so rep can see it
-        // Switch to a "just added" single-pin view
         map.getSource('biz').setData({ type:'FeatureCollection', features: [{
-          type:'Feature', geometry:{type:'Point',coordinates:[newBiz.lon, newBiz.lat]},
-          properties:{_id:newBiz._id, industry:newBiz.industry||'', is_competitor:newBiz.is_competitor||false, score:newBiz.score||calcScore(newBiz)}
+          type:'Feature', geometry:{type:'Point',coordinates:[newBiz.lon,newBiz.lat]},
+          properties:{_id:newBiz._id,industry:newBiz.industry||'',is_competitor:newBiz.is_competitor||false,score:newBiz.score||calcScore(newBiz)}
         }]});
       }
     }
 
-    // Fly to new pin and open detail
     if (map && newBiz.lat && newBiz.lon) {
       map.flyTo({center:[newBiz.lon, newBiz.lat], zoom:16, speed:1.3});
     }
     setTimeout(function(){ selectBiz(newBiz._id); }, 600);
 
   } catch(e) {
-    statusEl.textContent = '❌ ' + e.message;
+    statusEl.textContent = e.message;
     statusEl.style.color = 'var(--red)';
     btn.disabled = false;
     btn.textContent = 'Add to Map';
@@ -3303,7 +3356,7 @@ function renderDetailPanel(b) {
     var isLost   = s === 'Lost' && isActive;
     var circleClass = isLost ? 'pipe-dot-circle lost-active' : isWon ? 'pipe-dot-circle won-active' : isActive ? 'pipe-dot-circle active' : isPast ? 'pipe-dot-circle past' : 'pipe-dot-circle';
     var dotClass = 'pipe-dot' + (isActive ? ' active' : '') + (isPast ? ' past' : '') + (isWon ? ' won-stage' : '');
-    var label = s==='Lead Captured'?'Lead':s==='Qualified'?'Qualified':s==='Fact-Finding'?'Fact-Find':s==='Proposal Sent'?'Proposal':s==='Credit Application'?'Credit':'Won ✓';
+    var label = s==='Lead Captured'?'Lead':s==='Qualified'?'Qualified':s==='Fact-Finding'?'Fact-Find':s==='Proposal Sent'?'Proposal':s==='Credit Application'?'Credit':'Won';
     return '<div class="'+dotClass+'" onclick="setDetailStage(\''+s+'\')" title="'+s+'">'+
       '<div class="'+circleClass+'"></div>'+
       '<div class="pipe-dot-label">'+label+'</div>'+
@@ -3315,7 +3368,7 @@ function renderDetailPanel(b) {
     '<div class="det-hero">'+
       '<div class="det-hero-top">'+
         '<div class="det-biz-name">'+b.name+'</div>'+
-        '<button class="det-edit-btn" onclick="toggleEditMode()">✏️ Edit</button>'+
+        '<button class="det-edit-btn" onclick="toggleEditMode()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:-1px;margin-right:4px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Edit</button>'+
       '</div>'+
       '<div class="det-badges">'+
         '<span class="status-badge '+statusClass(status)+'">'+status+'</span>'+
@@ -3343,7 +3396,7 @@ function renderDetailPanel(b) {
         if (!opp) return '';
         var OPP_SC = {'Lead Captured':'#9b93d4','Qualified':'#4a36c8','Fact-Finding':'#d97706','Proposal Sent':'#16a34a','Credit Application':'#9333ea','Won Opportunity':'#059669','Lost':'#dc2626'};
         var STAGES = ['Lead Captured','Qualified','Fact-Finding','Proposal Sent','Credit Application','Won Opportunity','Lost'];
-        var SHORT  = {'Lead Captured':'Lead','Qualified':'Qualified','Fact-Finding':'Fact-Find','Proposal Sent':'Proposal','Credit Application':'Credit','Won Opportunity':'Won ✓','Lost':'Lost ✗'};
+        var SHORT  = {'Lead Captured':'Lead','Qualified':'Qualified','Fact-Finding':'Fact-Find','Proposal Sent':'Proposal','Credit Application':'Credit','Won Opportunity':'Won','Lost':'Lost'};
         var active = OPP_PRODUCTS.filter(function(p){ return opp['uses_'+p.key]; });
         if (!active.length) return '';
         var rows = active.map(function(p){
@@ -3375,7 +3428,7 @@ function renderDetailPanel(b) {
           '</div>';
         }).join('');
         return '<div style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px;">'+
-          '<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">💡 Active Opportunities</div>'+
+          '<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Active Opportunities</div>'+
           rows+
         '</div>';
       })()+
@@ -3384,7 +3437,7 @@ function renderDetailPanel(b) {
     // ── TABS ──
     '<div class="det-tabs">'+
       '<div class="det-tab active" onclick="switchTab(\'profile\')">Profile</div>'+
-      '<div class="det-tab" onclick="switchTab(\'opportunities\')">💡 Opps</div>'+
+      '<div class="det-tab" onclick="switchTab(\'opportunities\')">Opps</div>'+
       '<div class="det-tab" onclick="switchTab(\'contacts\')">Contacts</div>'+
       '<div class="det-tab" onclick="switchTab(\'activity\')">Activity</div>'+
     '</div>'+
@@ -3395,19 +3448,19 @@ function renderDetailPanel(b) {
       '<div id="det-view" class="det-view-mode">'+
         '<div class="det-field-row"><span class="det-field-label">Address</span>'+
           '<span class="det-field-value" style="cursor:pointer" onclick="openNav('+JSON.stringify(addr)+')">'+
-            '📍 '+(b.street||'—')+'<br>'+(b.locality||'')+'</span></div>'+
+            (b.street||'—')+'<br>'+(b.locality||'')+'</span></div>'+
         '<div class="det-field-row"><span class="det-field-label">Location Type</span>'+
           '<span class="det-field-value">'+
             (function(){
               var lt = b.location_type || '';
-              var icons = {'Business Office':'🏢','Yard':'🏗','Job Site':'⛏','Warehouse':'📦','Shop / Garage':'🔧','Truck Stop':'🚛','Farm':'🌾','Plant / Facility':'🏭','Other':'📍'};
-              return lt ? (icons[lt]||'📍')+' '+lt : '<span style="color:var(--muted);">Not set</span>';
+              var icons = {};
+              return lt ? lt : '<span style="color:var(--muted);">Not set</span>';
             })()+
           '</span></div>'+
         '<div class="det-field-row"><span class="det-field-label">Phone</span>'+
           '<span class="det-field-value">'+(b.phone?'<a href="tel:'+b.phone.replace(/\D/g,'')+'">'+b.phone+'</a>':'—')+'</span></div>'+
         '<div class="det-field-row"><span class="det-field-label">Website</span>'+
-          '<span class="det-field-value">'+(b.website?'<a href="'+b.website+'" target="_blank">Visit ↗</a>':'—')+'</span></div>'+
+          '<span class="det-field-value">'+(b.website?'<a href="'+b.website+'" target="_blank">Visit &rarr;</a>':'—')+'</span></div>'+
         '<div class="det-field-row"><span class="det-field-label">Industry</span>'+
           '<span class="det-field-value">'+( b.industry||'—')+'</span></div>'+
         '<div class="det-field-row"><span class="det-field-label">Sub-Industry</span>'+
@@ -3429,7 +3482,7 @@ function renderDetailPanel(b) {
           '<span class="det-field-value"><span class="pipeline-badge '+pipeClass(stage)+'">'+stage+'</span></span></div>'+
         '<a href="https://www.google.com/maps/search/'+encodeURIComponent(b.name||'')+'/@'+b.lat+','+b.lon+',17z" '+
           'target="_blank" style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#4285F4;text-decoration:none;margin-top:.75rem;">'+
-          '🔗 View on Google Maps</a>'+
+          'View on Google Maps &rarr;</a>'+
       '</div>'+
       // Edit mode
       '<div id="det-edit" class="det-edit-form">'+
@@ -3465,7 +3518,7 @@ function renderDetailPanel(b) {
         '</div>'+
         '<div style="margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--border);">'+
           '<button onclick="abandonBusiness()" style="width:100%;padding:9px;background:none;border:1px solid #dc2626;border-radius:8px;color:#dc2626;font-size:12px;font-weight:600;font-family:Inter,sans-serif;cursor:pointer;">'+
-            '🚫 Mark as Abandoned — Not a Prospect'+
+            'Mark as Abandoned'+
           '</button>'+
           '<div style="font-size:10px;color:var(--muted);text-align:center;margin-top:4px;line-height:1.4;">Removes from map and all counts. Use only if this business will never use our products.</div>'+
         '</div>'+
@@ -3501,8 +3554,8 @@ function renderDetailPanel(b) {
     // ── SECTION 3: ACTIVITY ──
     '<div id="det-activity" class="det-section">'+
       '<div class="activity-actions">'+
-        '<button class="act-btn contacted" onclick="logActivity(\'contacted\')">📞 Contacted</button>'+
-        '<button class="act-btn visited" onclick="logActivity(\'visited\')">📍 Visited</button>'+
+        '<button class="act-btn contacted" onclick="logActivity(\'contacted\')">Contacted</button>'+
+        '<button class="act-btn visited" onclick="logActivity(\'visited\')">Visited</button>'+
       '</div>'+
       '<div class="note-input-wrap">'+
         '<textarea class="note-input" id="note-input" placeholder="Add a note..."></textarea>'+
@@ -3756,17 +3809,17 @@ async function loadContacts(b) {
         '<div style="display:flex;justify-content:space-between;align-items:flex-start;">'+
           '<div>'+
             '<div class="contact-card-name">'+
-              (isPrimary?'<span style="color:var(--accent);font-size:13px;margin-right:4px;">★</span>':'')+
+              (isPrimary?'<span style="color:var(--accent);font-size:11px;font-weight:700;background:var(--accent-light);padding:1px 6px;border-radius:4px;margin-right:4px;">Primary</span>':'')+
               (c.first_name||'')+' '+(c.last_name||'')+
             '</div>'+
             '<div class="contact-card-title">'+(c.job_title||'')+'</div>'+
           '</div>'+
           '<button onclick="setPrimaryContact(\''+c.id+'\',\''+String(b.id||b._id)+'\')" '+
             'style="background:'+(isPrimary?'var(--accent)':'none')+';color:'+(isPrimary?'#fff':'#bbb')+';border:'+(isPrimary?'none':'1px solid #ddd')+';border-radius:100px;padding:3px 8px;font-size:11px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;">'+
-            (isPrimary?'★ Primary':'☆ Set Primary')+
+            (isPrimary?'Primary':'Set Primary')+ 
           '</button>'+
         '</div>'+
-        (c.phone?'<div class="contact-card-row">📞 <a href="tel:'+c.phone.replace(/\D/g,'')+'">'+c.phone+'</a></div>':'')+
+        (c.phone?'<div class="contact-card-row"><a href="tel:'+c.phone.replace(/\D/g,'')+'">'+c.phone+'</a></div>':'')+
         (c.email?'<div class="contact-card-row">✉️ <a href="mailto:'+c.email+'">'+c.email+'</a></div>':'')+
       '</div>';
     }).join('');
@@ -3851,7 +3904,7 @@ async function loadActivity(b) {
       return;
     }
     el.innerHTML = '<div class="activity-feed">'+r.data.map(function(a){
-      var icon    = a.type==='contacted'?'📞':a.type==='visited'?'📍':a.type==='pipeline'?'🔄':a.type==='contact'?'👤':a.type==='opportunities'?'💡':a.type==='claimed'?'🏷':a.type==='abandoned'?'🚫':'💬';
+      var icon    = a.type==='contacted'?'C':a.type==='visited'?'V':a.type==='pipeline'?'P':a.type==='contact'?'CT':a.type==='opportunities'?'OPP':a.type==='claimed'?'CL':a.type==='abandoned'?'X':'N';
       var iconCls = a.type==='contacted'?'contacted':a.type==='visited'?'visited':a.type==='pipeline'||a.type==='opportunities'||a.type==='claimed'||a.type==='abandoned'?'pipeline':a.type==='contact'?'pipeline':'note';
       var text    = (a.type==='note'||a.type==='pipeline'||a.type==='contact') ? a.note : (a.type.charAt(0).toUpperCase()+a.type.slice(1));
       var byLine  = a.created_by ? '<span style="color:var(--accent);font-weight:600;">'+a.created_by+'</span> · ' : '';
@@ -3908,11 +3961,11 @@ async function saveNote() {
 
 // ── OPPORTUNITIES ──
 var OPP_PRODUCTS = [
-  { key:'lubricants',     label:'🛢 Lubricants',       field:'lube',       unit:'gal/mo',  max:1000,  maxLabel:'1,000+' },
-  { key:'fuel_delivery',  label:'⛽ Fuel Delivery',    field:'fuel',       unit:'gal/mo',  max:50000, maxLabel:'50,000+' },
-  { key:'cardlock',       label:'💳 Cardlock',         field:'cardlock',   unit:'gal/mo',  max:50000, maxLabel:'50,000+' },
-  { key:'propane',        label:'🔥 Propane',          field:'propane',    unit:'gal/mo',  max:5000,  maxLabel:'5,000+' },
-  { key:'uco',            label:'🍳 Used Cooking Oil', field:'uco',        unit:'gal/mo',  max:500,   maxLabel:'500+' }
+  { key:'lubricants',     label:'Lubricants',       field:'lube',       unit:'gal/mo',  max:1000,  maxLabel:'1,000+' },
+  { key:'fuel_delivery',  label:'Fuel Delivery',    field:'fuel',       unit:'gal/mo',  max:50000, maxLabel:'50,000+' },
+  { key:'cardlock',       label:'Cardlock',         field:'cardlock',   unit:'gal/mo',  max:50000, maxLabel:'50,000+' },
+  { key:'propane',        label:'Propane',          field:'propane',    unit:'gal/mo',  max:5000,  maxLabel:'5,000+' },
+  { key:'uco',            label:'Used Cooking Oil', field:'uco',        unit:'gal/mo',  max:500,   maxLabel:'500+' }
 ];
 
 function fmtGallons(n, maxVal) {
@@ -3943,7 +3996,7 @@ function renderOpportunities(b, opp) {
   if (!el) return;
 
   var STAGES = ['Lead Captured','Qualified','Fact-Finding','Proposal Sent','Credit Application','Won Opportunity'];
-  var STAGE_SHORT = ['Lead','Qualified','Fact-Find','Proposal','Credit','Won ✓'];
+  var STAGE_SHORT = ['Lead','Qualified','Fact-Find','Proposal','Credit','Won'];
   var STAGE_COLORS = {
     'Lead Captured':'#9b93d4','Qualified':'#4a36c8','Fact-Finding':'#d97706',
     'Proposal Sent':'#16a34a','Credit Application':'#9333ea','Won Opportunity':'#059669',
@@ -4196,7 +4249,7 @@ async function saveOpportunities() {
 }
 // ── OPP FILTER SLIDERS ──
 var OPP_FILTER_STAGES = ['all','Lead Captured','Qualified','Fact-Finding','Proposal Sent','Credit Application','Won Opportunity','Lost'];
-var OPP_FILTER_LABELS = ['All','Lead','Qualified','Fact-Find','Proposal','Credit','Won ✓','Lost ✗'];
+var OPP_FILTER_LABELS = ['All','Lead','Qualified','Fact-Find','Proposal','Credit','Won','Lost'];
 var OPP_FILTER_PRODUCTS = [
   {key:'lubricants',   id:'lube'},
   {key:'fuel_delivery',id:'fuel'},
@@ -4382,7 +4435,7 @@ function toggleRouteMode() {
   var btn = document.getElementById('route-btn');
   var bar = document.getElementById('route-select-bar');
   btn.classList.toggle('active', _routeMode);
-  btn.textContent = _routeMode ? '✕ Cancel' : '🗺 Route';
+  btn.textContent = _routeMode ? 'Cancel' : 'Route';
   if (bar) bar.classList.toggle('active', _routeMode);
   ['nd-route','nm-route'].forEach(function(id){
     var el = document.getElementById(id);
@@ -4430,13 +4483,17 @@ function buildRouteFromSelection() {
 }
 
 // ── START POINT MODAL ──
+// Branch address — hardcoded per market (Las Vegas HQ)
+var BRANCH_ADDRESS = {
+  label: 'Branch — 3840 N Bruce St, North Las Vegas',
+  lat: 36.229203,
+  lon: -115.124750
+};
+
 function selectRouteStart(type) {
   _routeStartType = type;
   document.getElementById('rso-gps').classList.toggle('selected', type==='gps');
-  document.getElementById('rso-custom').classList.toggle('selected', type==='custom');
-  var inp = document.getElementById('route-custom-addr');
-  inp.style.display = type==='custom' ? 'block' : 'none';
-  if (type==='custom') inp.focus();
+  document.getElementById('rso-branch').classList.toggle('selected', type==='branch');
 }
 
 function closeRouteStartModal() {
@@ -4445,26 +4502,25 @@ function closeRouteStartModal() {
 
 async function confirmRouteStart() {
   closeRouteStartModal();
-  if (_routeStartType === 'gps') {
-    if (!navigator.geolocation) { alert('GPS not available. Use a custom address.'); return; }
+  if (_routeStartType === 'branch') {
+    _routeStartPoint = BRANCH_ADDRESS;
+    _buildRoute();
+  } else {
+    // GPS (default)
+    if (!navigator.geolocation) {
+      // Fall back to branch if no GPS
+      _routeStartPoint = BRANCH_ADDRESS;
+      _buildRoute();
+      return;
+    }
     navigator.geolocation.getCurrentPosition(function(p){
       _routeStartPoint = {lat:p.coords.latitude, lon:p.coords.longitude, label:'My Location'};
       _buildRoute();
     }, function(){
-      alert('Could not get GPS location.');
+      // GPS denied — silently fall back to branch
+      _routeStartPoint = BRANCH_ADDRESS;
+      _buildRoute();
     }, {enableHighAccuracy:true, timeout:8000});
-  } else {
-    var addr = document.getElementById('route-custom-addr').value.trim();
-    if (!addr) { alert('Enter a starting address.'); return; }
-    try {
-      var r = await fetch('https://api.mapbox.com/geocoding/v5/mapbox.places/'+
-        encodeURIComponent(addr)+'.json?access_token='+MBOX+'&limit=1');
-      var d = await r.json();
-      if (d.features && d.features[0]) {
-        _routeStartPoint = {lat:d.features[0].center[1], lon:d.features[0].center[0], label:addr};
-        _buildRoute();
-      } else { alert('Address not found.'); }
-    } catch(e) { alert('Geocoding failed: '+e.message); }
   }
 }
 
@@ -4479,7 +4535,7 @@ async function _buildRoute() {
   _routeMode = false;
   _routeSelected = {};
   var btn = document.getElementById('route-btn');
-  if (btn) { btn.classList.remove('active'); btn.textContent = '🗺 Route'; }
+  if (btn) { btn.classList.remove('active'); btn.textContent = 'Route'; }
   var bar = document.getElementById('route-select-bar');
   if (bar) bar.classList.remove('active');
   renderList();
@@ -4491,7 +4547,7 @@ async function _buildRoute() {
   _setRPSubtitle('Optimizing route…');
   document.getElementById('rp-stops-list').innerHTML =
     '<div style="padding:2rem;text-align:center;">'+
-    '<div style="font-size:28px;margin-bottom:.75rem;">🗺</div>'+
+    ''+
     '<div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:4px;">Building route…</div>'+
     '<div style="font-size:11px;color:var(--muted);">Checking real roads &amp; traffic</div></div>';
 
@@ -4716,7 +4772,7 @@ function _rpDone(idx) {
   }).then(function(){});
   _saveRoute(); _drawRouteOnMap(); _renderRPStops();
   var allDone=_routeStops.every(function(s){ return s.done; });
-  if (allDone) setTimeout(function(){ alert('🎉 Route complete! All stops visited.'); },300);
+  if (allDone) setTimeout(function(){ alert('Route complete. All stops visited.'); },300);
 }
 
 function _rpUndone(idx) {
@@ -4775,7 +4831,7 @@ function clearRoute() {
   _routeLine=null;
   localStorage.removeItem('vavan_route');
   closeRoutePanel();
-  var btn=document.getElementById('route-btn'); if(btn) btn.textContent='🗺 Route';
+  var btn=document.getElementById('route-btn'); if(btn) btn.textContent='Route';
 }
 
 function changeRouteStart() {
@@ -4889,7 +4945,7 @@ function onMapClick(e) {
 <div id="settings-modal">
   <div id="settings-inner">
     <div class="settings-header">
-      <div class="settings-title">⚙️ Admin Settings</div>
+      <div class="settings-title">Admin Settings</div>
       <button class="sheet-close" onclick="closeSettings()">✕</button>
     </div>
     <div class="settings-tabs">
@@ -4913,7 +4969,7 @@ function onMapClick(e) {
     <div class="abiz-body">
       <div class="abiz-field">
         <label class="abiz-label">Business Name *</label>
-        <input class="abiz-input" id="ab-name" type="text" placeholder="e.g. Acme Auto Parts">
+        <input class="abiz-input" id="ab-name" type="text" placeholder="Business name">
       </div>
       <div class="abiz-row">
         <div class="abiz-field">
@@ -4929,31 +4985,52 @@ function onMapClick(e) {
         <label class="abiz-label">Street Address *</label>
         <input class="abiz-input" id="ab-street" type="text" placeholder="1234 Main St">
       </div>
-      <div class="abiz-row">
-        <div class="abiz-field">
+      <div style="display:grid;grid-template-columns:1fr 80px 90px;gap:.6rem;margin-bottom:.75rem;">
+        <div class="abiz-field" style="margin-bottom:0;">
           <label class="abiz-label">City *</label>
           <input class="abiz-input" id="ab-city" type="text" value="Las Vegas">
         </div>
-        <div class="abiz-field">
+        <div class="abiz-field" style="margin-bottom:0;">
           <label class="abiz-label">State</label>
-          <input class="abiz-input" id="ab-state" type="text" value="NV" style="max-width:80px;">
+          <input class="abiz-input" id="ab-state" type="text" value="NV">
+        </div>
+        <div class="abiz-field" style="margin-bottom:0;">
+          <label class="abiz-label">Zip</label>
+          <input class="abiz-input" id="ab-zip" type="text" placeholder="89030">
         </div>
       </div>
-      <div class="abiz-field">
-        <label class="abiz-label">Industry</label>
-        <select class="abiz-select" id="ab-industry">
-          <option value="">Select industry</option>
-          <option value="Automotive">Automotive</option>
-          <option value="Transport">Transportation</option>
-          <option value="Construction">Infrastructure</option>
-          <option value="Industrial">Industrial</option>
-          <option value="Agribusiness">Agribusiness</option>
-          <option value="Energy">Energy</option>
-          <option value="Services">Services</option>
-          <option value="Hospitality">Hospitality</option>
-          <option value="Government">Government</option>
-          <option value="RealEstate">Real Estate</option>
-        </select>
+      <div class="abiz-row">
+        <div class="abiz-field">
+          <label class="abiz-label">Industry</label>
+          <select class="abiz-select" id="ab-industry">
+            <option value="">Select industry</option>
+            <option value="Automotive">Automotive</option>
+            <option value="Transport">Transportation</option>
+            <option value="Construction">Infrastructure</option>
+            <option value="Industrial">Industrial</option>
+            <option value="Agribusiness">Agribusiness</option>
+            <option value="Energy">Energy</option>
+            <option value="Services">Services</option>
+            <option value="Hospitality">Hospitality</option>
+            <option value="Government">Government</option>
+            <option value="RealEstate">Real Estate</option>
+          </select>
+        </div>
+        <div class="abiz-field">
+          <label class="abiz-label">Location Type</label>
+          <select class="abiz-select" id="ab-location-type">
+            <option value="">Select type</option>
+            <option value="Business Office">Business Office</option>
+            <option value="Yard">Yard</option>
+            <option value="Job Site">Job Site</option>
+            <option value="Warehouse">Warehouse</option>
+            <option value="Shop / Garage">Shop / Garage</option>
+            <option value="Truck Stop">Truck Stop</option>
+            <option value="Farm">Farm</option>
+            <option value="Plant / Facility">Plant / Facility</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
       </div>
       <div class="abiz-row">
         <div class="abiz-field">
@@ -4974,21 +5051,29 @@ function onMapClick(e) {
           </select>
         </div>
       </div>
-      <div class="abiz-field">
-        <label class="abiz-label">Location Type</label>
-        <select class="abiz-select" id="ab-location-type">
-          <option value="">— Select type —</option>
-          <option value="Business Office">🏢 Business Office</option>
-          <option value="Yard">🏗 Yard</option>
-          <option value="Job Site">⛏ Job Site</option>
-          <option value="Warehouse">📦 Warehouse</option>
-          <option value="Shop / Garage">🔧 Shop / Garage</option>
-          <option value="Truck Stop">🚛 Truck Stop</option>
-          <option value="Farm">🌾 Farm</option>
-          <option value="Plant / Facility">🏭 Plant / Facility</option>
-          <option value="Other">📍 Other</option>
-        </select>
+
+      <!-- Product Lines — optional, toggle which products this business uses -->
+      <div style="border-top:1px solid var(--border);padding-top:.875rem;margin-top:.25rem;">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.6rem;">Product Lines Used <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;">(optional)</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem;" id="ab-products">
+          <label style="display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;font-weight:500;color:var(--ink);background:var(--paper);transition:.15s;" id="ab-prod-lbl-lubricants">
+            <input type="checkbox" id="ab-prod-lubricants" style="accent-color:var(--accent);" onchange="abToggleProd('lubricants')"> Lubricants
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;font-weight:500;color:var(--ink);background:var(--paper);transition:.15s;" id="ab-prod-lbl-fuel_delivery">
+            <input type="checkbox" id="ab-prod-fuel_delivery" style="accent-color:var(--accent);" onchange="abToggleProd('fuel_delivery')"> Fuel Delivery
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;font-weight:500;color:var(--ink);background:var(--paper);transition:.15s;" id="ab-prod-lbl-cardlock">
+            <input type="checkbox" id="ab-prod-cardlock" style="accent-color:var(--accent);" onchange="abToggleProd('cardlock')"> Cardlock
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;font-weight:500;color:var(--ink);background:var(--paper);transition:.15s;" id="ab-prod-lbl-propane">
+            <input type="checkbox" id="ab-prod-propane" style="accent-color:var(--accent);" onchange="abToggleProd('propane')"> Propane
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;font-weight:500;color:var(--ink);background:var(--paper);transition:.15s;grid-column:1/-1;" id="ab-prod-lbl-uco">
+            <input type="checkbox" id="ab-prod-uco" style="accent-color:var(--accent);" onchange="abToggleProd('uco')"> Used Cooking Oil
+          </label>
+        </div>
       </div>
+
       <div class="abiz-status" id="ab-status-msg"></div>
     </div>
     <div class="abiz-footer">
@@ -5001,19 +5086,39 @@ function onMapClick(e) {
 <!-- ROUTE START MODAL -->
 <div id="route-start-modal">
   <div class="route-start-box">
-    <div class="route-start-title">📍 Starting Point</div>
+    <div class="route-start-title">Starting Point</div>
+
+    <!-- Option 1: GPS -->
     <div class="route-start-opt selected" id="rso-gps" onclick="selectRouteStart('gps')">
-      <div class="route-start-opt-icon">📡</div>
-      <div><div class="route-start-opt-text">My Current Location</div><div class="route-start-opt-sub">Uses your GPS</div></div>
+      <div class="route-start-opt-icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:#4a36c8;">
+          <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+          <circle cx="12" cy="12" r="8" stroke-dasharray="2 2" opacity=".35"/>
+        </svg>
+      </div>
+      <div>
+        <div class="route-start-opt-text">My Current Location</div>
+        <div class="route-start-opt-sub">Uses your device GPS</div>
+      </div>
     </div>
-    <div class="route-start-opt" id="rso-custom" onclick="selectRouteStart('custom')">
-      <div class="route-start-opt-icon">🏠</div>
-      <div><div class="route-start-opt-text">Custom Address</div><div class="route-start-opt-sub">Office, hotel, or any address</div></div>
+
+    <!-- Option 2: Branch office -->
+    <div class="route-start-opt" id="rso-branch" onclick="selectRouteStart('branch')">
+      <div class="route-start-opt-icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:#4a36c8;">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+      </div>
+      <div>
+        <div class="route-start-opt-text">Branch Office</div>
+        <div class="route-start-opt-sub">3840 N Bruce St, North Las Vegas</div>
+      </div>
     </div>
-    <input id="route-custom-addr" placeholder="Enter starting address…">
-    <div style="display:flex;gap:8px;margin-top:1rem;">
-      <button onclick="closeRouteStartModal()" style="flex:1;padding:10px;background:#f3f4f6;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;">Cancel</button>
-      <button onclick="confirmRouteStart()" style="flex:1;padding:10px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;">Build Route</button>
+
+    <div style="display:flex;gap:8px;margin-top:1.25rem;">
+      <button onclick="closeRouteStartModal()" style="flex:1;padding:11px;background:#f3f4f6;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;color:var(--ink);">Cancel</button>
+      <button onclick="confirmRouteStart()" style="flex:1;padding:11px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;">Build Route</button>
     </div>
   </div>
 </div>
@@ -5024,15 +5129,15 @@ function onMapClick(e) {
     <div class="sheet-handle" style="background:rgba(255,255,255,.3);"></div>
     <div class="rp-title-row" style="margin-top:6px;">
       <div>
-        <div class="rp-title">🗺 Route</div>
+        <div class="rp-title">Route</div>
         <div class="rp-subtitle" id="rp-subtitle">Select businesses from the list to build a route</div>
       </div>
       <button class="rp-close" onclick="closeRoutePanel()">✕</button>
     </div>
     <div class="rp-actions">
-      <button class="rp-action-btn blue" onclick="reoptimizeRoute()">⟳ Re-Optimize</button>
-      <button class="rp-action-btn blue" onclick="changeRouteStart()">📍 Start Point</button>
-      <button class="rp-action-btn red" onclick="clearRoute()">✕ Clear</button>
+      <button class="rp-action-btn blue" onclick="reoptimizeRoute()">Re-Optimize</button>
+      <button class="rp-action-btn blue" onclick="changeRouteStart()">Start Point</button>
+      <button class="rp-action-btn red" onclick="clearRoute()">Clear</button>
     </div>
   </div>
   <div class="rp-stops" id="rp-stops-list">
