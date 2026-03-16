@@ -1008,7 +1008,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
           <span class="pill on" id="status-pill-all"          onclick="_setStatusFilter('all')"          style="font-size:11px;">All</span>
           <span class="pill"    id="status-pill-Lead"         onclick="_setStatusFilter('Lead')"         style="font-size:11px;">Lead</span>
           <span class="pill"    id="status-pill-Customer"     onclick="_setStatusFilter('Customer')"     style="font-size:11px;color:#059669;border-color:#059669;">Customer</span>
-          <span class="pill"    id="status-pill-Lost Customer" onclick="_setStatusFilter('Lost Customer')" style="font-size:11px;color:#dc2626;border-color:#dc2626;">Lost</span>
+          <span class="pill"    id="status-pill-Lost Customer" onclick="_setStatusFilter('Lost Customer')" style="font-size:11px;color:#dc2626;border-color:#dc2626;">Lost Customer</span>
           <span class="pill"    id="status-pill-Competitor"   onclick="_setStatusFilter('Competitor')"   style="font-size:11px;color:#EF4444;border-color:#EF4444;">Competitor</span>
           <span class="pill"    id="status-pill-Abandoned"    onclick="_setStatusFilter('Abandoned')"    style="font-size:11px;color:#6B7280;border-color:#6B7280;">Abandoned</span>
         </div>
@@ -2634,6 +2634,11 @@ var SUB_MAP = {
     {val:'waste-management',    label:'Waste Management / Landfills / Recycling'},
     {val:'environmental-services', label:'Environmental Cleanup / Compliance'},
     {val:'tank-services',       label:'Tank Cleaning / Septic / Sanitation'},
+    {val:'competitor-fuel',     label:'Competitor — Fuel Distributor'},
+    {val:'competitor-lube',     label:'Competitor — Lubricant Supplier'},
+    {val:'competitor-cardlock', label:'Competitor — Cardlock Provider'},
+    {val:'competitor-propane',  label:'Competitor — Propane Supplier'},
+    {val:'competitor-uco',      label:'Competitor — UCO Collector'},
   ],
   Services: [
     {val:'hvac-plumbing',       label:'HVAC / Plumbing / Electrical'},
@@ -3348,7 +3353,6 @@ function closeAddBusiness() {
   document.getElementById('ab-state').value = 'NV';
   document.getElementById('ab-industry').value = '';
   document.getElementById('ab-status').value = 'Lead';
-  document.getElementById('ab-pipeline').value = 'Lead Captured';
   document.getElementById('ab-location-type').value = '';
   document.getElementById('ab-status-msg').textContent = '';
   // Reset product checkboxes
@@ -3452,7 +3456,6 @@ async function saveNewBusiness() {
   var zip      = document.getElementById('ab-zip').value.trim();
   var industry = document.getElementById('ab-industry').value;
   var status   = document.getElementById('ab-status').value;
-  var pipeline = document.getElementById('ab-pipeline').value;
   var locType  = document.getElementById('ab-location-type').value;
   var statusEl = document.getElementById('ab-status-msg');
   var btn      = document.getElementById('ab-save-btn');
@@ -3520,9 +3523,9 @@ async function saveNewBusiness() {
       full_address:   fullAddress,
       lat:            coords.lat,
       lon:            coords.lon,
-      industry:       industry || null,
+      industry:       (status === 'Competitor' && !industry) ? 'Energy' : (industry || null),
       status:         status,
-      pipeline_stage: pipeline,
+      pipeline_stage: 'Lead Captured',
       location_type:  locType || null,
       assigned_rep:   assignedRep || null,
       market:         'Las Vegas',
@@ -3929,7 +3932,7 @@ function renderDetailPanel(b) {
       '<div class="det-badges">'+
         '<span class="status-badge '+statusClass(status)+'">'+status+'</span>'+
         '<span style="font-size:11px;font-weight:600;color:#fff;background:'+color+';padding:3px 10px;border-radius:100px;">'+
-          (b.industry||'Business')+'</span>'+
+          (b.industry ? '<span style="font-size:11px;font-weight:600;color:#fff;background:'+color+';padding:3px 10px;border-radius:100px;">'+b.industry+'</span>' : '')+
       '</div>'+
       // Quick action buttons — Navigate + Call
       '<div style="display:flex;gap:8px;margin-top:10px;">'+
@@ -6461,7 +6464,7 @@ function onMapClick(e) {
       <div class="abiz-row">
         <div class="abiz-field">
           <label class="abiz-label">Industry</label>
-          <select class="abiz-select" id="ab-industry">
+          <select class="abiz-select" id="ab-industry" onchange="_abUpdateSubIndustry(this.value);if(document.getElementById('ab-status').value==='Competitor'&&this.value==='')this.value='Energy';">
             <option value="">Select industry</option>
             <option value="Automotive">Automotive</option>
             <option value="Transport">Transportation</option>
@@ -6487,24 +6490,24 @@ function onMapClick(e) {
           </select>
         </div>
       </div>
+
+      <!-- Sub-Industry — populated dynamically based on industry -->
+      <div id="ab-sub-industry-row" style="display:none;margin-bottom:.75rem;">
+        <label class="abiz-label">Sub-Industry</label>
+        <div id="ab-sub-chips" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;min-height:0;"></div>
+        <select class="abiz-select" id="ab-sub-industry" onchange="_abAddSubChip(this)">
+          <option value="">+ Add sub-industry</option>
+        </select>
+      </div>
       <div class="abiz-row">
         <div class="abiz-field">
           <label class="abiz-label">Status</label>
-          <select class="abiz-select" id="ab-status">
+          <select class="abiz-select" id="ab-status" onchange="if(this.value==='Competitor'){var ind=document.getElementById('ab-industry');if(ind&&!ind.value)ind.value='Energy';}">
             <option value="Lead">Lead</option>
             <option value="Customer">Customer</option>
             <option value="Lost Customer">Lost Customer</option>
             <option value="Competitor">Competitor</option>
             <option value="Abandoned">Abandoned</option>
-          </select>
-        </div>
-        <div class="abiz-field">
-          <label class="abiz-label">Pipeline Stage</label>
-          <select class="abiz-select" id="ab-pipeline">
-            <option value="Lead Captured">Lead Captured</option>
-            <option value="Qualified">Qualified</option>
-            <option value="Fact-Finding">Fact-Finding</option>
-            <option value="Proposal Sent">Proposal Sent</option>
           </select>
         </div>
       </div>
