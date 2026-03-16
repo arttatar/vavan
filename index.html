@@ -578,6 +578,35 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
 .pipe-dot.past .pipe-dot-label{color:var(--accent);opacity:.7;}
 .pipe-dot.won-stage.active .pipe-dot-label{color:#059669;}
 
+/* LOCATE BUTTON */
+#locate-btn{
+  position:fixed;
+  right:10px;
+  bottom:calc(env(safe-area-inset-bottom,0px) + 120px);
+  width:36px; height:36px;
+  background:#fff;
+  border:none;
+  border-radius:6px;
+  box-shadow:0 1px 4px rgba(0,0,0,0.3);
+  cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  z-index:800;
+  padding:0;
+  transition:background .15s;
+}
+#locate-btn svg{
+  width:20px; height:20px;
+  stroke:#333;
+}
+#locate-btn:hover{ background:#f0f0f0; }
+#locate-btn.locating svg{ stroke:var(--accent); }
+@media(max-width:768px){
+  #locate-btn{ bottom:calc(env(safe-area-inset-bottom,0px) + 75px); }
+}
+@media(min-width:769px){
+  #locate-btn{ right:10px; bottom:100px; }
+}
+
 /* LOADER */
 #loader{position:fixed;inset:0;z-index:8000;background:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;}
 #loader.hidden{display:none;}
@@ -616,7 +645,6 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
     <div class="spacer"></div>
     <div id="filter-badge"></div>
     <div id="pcount-wrap"><b id="pcount">0</b> businesses</div>
-    <button onclick="locateMe()" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,0.7);font-size:18px;padding:4px 8px;line-height:1;" title="Find my location">📍</button>
     <button onclick="openAddBusiness()" style="background:var(--accent);border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;color:#fff;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;">+ Add</button>
     <button id="my-accounts-btn" onclick="filterMyAccounts()" style="display:none;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;color:rgba(255,255,255,.7);cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;">My Accounts</button>
     <button id="settings-btn" onclick="openSettings()" style="display:none;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:5px 9px;font-size:16px;cursor:pointer;color:rgba(255,255,255,.6);line-height:1;" title="Admin Settings">⚙️</button>
@@ -625,6 +653,13 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
   </div>
 
   <div id="map"></div>
+  <button id="locate-btn" onclick="locateMe()" title="Go to my location">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+      <circle cx="12" cy="12" r="8" stroke-dasharray="2 2" opacity=".3"/>
+    </svg>
+  </button>
   <div id="overlay" onclick="closeSidebar();closeResults();"></div>
 
   <div id="sidebar">
@@ -2705,13 +2740,19 @@ async function saveNewBusiness() {
 }
 
 function locateMe() {
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(function(pos) {
-      map.flyTo({ center:[pos.coords.longitude, pos.coords.latitude], zoom:14, speed:1.5 });
-    }, function() {
-      alert('Location access denied. Please enable location in your browser settings.');
-    }, { enableHighAccuracy:true, timeout:8000 });
-  }
+  if (!navigator.geolocation) return;
+  var btn = document.getElementById('locate-btn');
+  if (btn) btn.classList.add('locating');
+  navigator.geolocation.getCurrentPosition(function(pos) {
+    if (btn) btn.classList.remove('locating');
+    map.flyTo({
+      center: [pos.coords.longitude, pos.coords.latitude],
+      zoom: 14, speed: 1.5
+    });
+  }, function() {
+    if (btn) btn.classList.remove('locating');
+    alert('Location access denied. Please enable location in your browser settings.');
+  }, { enableHighAccuracy: true, timeout: 8000 });
 }
 
 function openNav(address) {
