@@ -3138,7 +3138,8 @@ async function setDetailStage(stage) {
     await sb.from('activity').insert({
       business_id: String(b.id||b._id),
       type: 'pipeline',
-      note: 'Pipeline moved from "' + prevStage + '" → "' + stage + '"'
+      note: 'Pipeline moved from "' + prevStage + '" → "' + stage + '"',
+      created_by: currentProfile ? (currentProfile.full_name || 'Unknown') : 'Unknown'
     });
 
     b.pipeline_stage = stage;
@@ -3196,6 +3197,7 @@ async function saveContact() {
   var phone = document.getElementById('cf-phone').value.trim();
   var email = document.getElementById('cf-email').value.trim();
   var title = document.getElementById('cf-title').value;
+  var byName = currentProfile ? (currentProfile.full_name || 'Unknown') : 'Unknown';
 
   if (!first && !last) { alert('Enter at least a first or last name.'); return; }
 
@@ -3209,6 +3211,15 @@ async function saveContact() {
       phone: phone, email: email, job_title: title
     });
     if (r.error) throw r.error;
+
+    // Log contact creation to activity
+    await sb.from('activity').insert({
+      business_id: String(b.id||b._id),
+      type: 'contact',
+      note: 'Contact added: ' + [first, last].filter(Boolean).join(' ') + (title ? ' (' + title + ')' : ''),
+      created_by: byName
+    });
+
     toggleContactForm();
     loadContacts(b);
   } catch(e) {
@@ -3230,14 +3241,15 @@ async function loadActivity(b) {
       return;
     }
     el.innerHTML = '<div class="activity-feed">'+r.data.map(function(a){
-      var icon = a.type==='contacted'?'📞':a.type==='visited'?'📍':a.type==='pipeline'?'🔄':'💬';
-      var iconCls = a.type==='contacted'?'contacted':a.type==='visited'?'visited':a.type==='pipeline'?'pipeline':'note';
-      var text = a.type==='note' ? a.note : a.type==='pipeline' ? a.note : (a.type.charAt(0).toUpperCase()+a.type.slice(1));
+      var icon    = a.type==='contacted'?'📞':a.type==='visited'?'📍':a.type==='pipeline'?'🔄':a.type==='contact'?'👤':'💬';
+      var iconCls = a.type==='contacted'?'contacted':a.type==='visited'?'visited':a.type==='pipeline'?'pipeline':a.type==='contact'?'pipeline':'note';
+      var text    = (a.type==='note'||a.type==='pipeline'||a.type==='contact') ? a.note : (a.type.charAt(0).toUpperCase()+a.type.slice(1));
+      var byLine  = a.created_by ? '<span style="color:var(--accent);font-weight:600;">'+a.created_by+'</span> · ' : '';
       return '<div class="activity-item">'+
         '<div class="act-icon '+iconCls+'">'+icon+'</div>'+
         '<div class="act-content">'+
           '<div class="act-text">'+text+'</div>'+
-          '<div class="act-time">'+fmtTime(a.created_at)+'</div>'+
+          '<div class="act-time">'+byLine+fmtTime(a.created_at)+'</div>'+
         '</div></div>';
     }).join('')+'</div>';
   } catch(e) {
@@ -3247,10 +3259,12 @@ async function loadActivity(b) {
 
 async function logActivity(type) {
   var b = lastSelectedBiz; if (!b) return;
+  var byName = currentProfile ? (currentProfile.full_name || 'Unknown') : 'Unknown';
   try {
     var r = await sb.from('activity').insert({
       business_id: String(b.id||b._id),
-      type: type, note: ''
+      type: type, note: '',
+      created_by: byName
     });
     if (r.error) throw r.error;
     loadActivity(b);
@@ -3262,6 +3276,7 @@ async function saveNote() {
   var noteEl = document.getElementById('note-input');
   var note = noteEl ? noteEl.value.trim() : '';
   if (!note) return;
+  var byName = currentProfile ? (currentProfile.full_name || 'Unknown') : 'Unknown';
 
   var btn = document.querySelector('.note-submit-btn');
   btn.textContent = '...'; btn.disabled = true;
@@ -3269,7 +3284,8 @@ async function saveNote() {
   try {
     var r = await sb.from('activity').insert({
       business_id: String(b.id||b._id),
-      type: 'note', note: note
+      type: 'note', note: note,
+      created_by: byName
     });
     if (r.error) throw r.error;
     noteEl.value = '';
