@@ -2075,23 +2075,30 @@ function renderPins() {
 }
 
 // ── NAVIGATION ──
-var currentNav = 'map';
+var currentNav = 'map'; // 'map' = no panel open
 
 function navTo(tab) {
+  // Toggle: if already on this tab, close it and return to map
+  if (tab !== 'map' && currentNav === tab) {
+    tab = 'map';
+  }
   currentNav = tab;
-  ['map','filters','list','contacts'].forEach(function(t){
+
+  // Update nav button active states — no button active when map
+  ['filters','list','contacts'].forEach(function(t){
     var m = document.getElementById('nm-'+t);
     var d = document.getElementById('nd-'+t);
     if (m) m.classList.toggle('active', t === tab);
     if (d) d.classList.toggle('active', t === tab);
   });
+
   var sidebar  = document.getElementById('sidebar');
   var results  = document.getElementById('results-panel');
   var contacts = document.getElementById('contacts-panel');
   var detail   = document.getElementById('detail');
   var overlay  = document.getElementById('overlay');
 
-  // Close all panels
+  // Close all panels first
   sidebar.classList.remove('open');
   results.classList.remove('open');
   contacts.classList.remove('open');
@@ -2099,13 +2106,11 @@ function navTo(tab) {
   if (detail) detail.classList.remove('open');
 
   if (tab === 'map') {
-    // Close route panel if open
+    // Close route panel too
     var rp = document.getElementById('route-panel');
     if (rp) rp.classList.remove('open');
-    // If a business was open, stay centered on it
-    if (lastSelectedBiz && lastSelectedBiz.lat && lastSelectedBiz.lon) {
-      map.easeTo({center:[lastSelectedBiz.lon, lastSelectedBiz.lat], zoom:16, duration:300});
-    }
+    var vrBtn = document.getElementById('view-route-btn');
+    if (vrBtn) vrBtn.style.display = _routeStops && _routeStops.length > 0 ? 'block' : 'none';
   } else if (tab === 'filters') {
     sidebar.classList.add('open');
     overlay.classList.add('show');
@@ -2118,30 +2123,26 @@ function navTo(tab) {
   }
 }
 
-function toggleSidebar()  { navTo(currentNav === 'filters' ? 'map' : 'filters'); }
-function toggleList()     { navTo(currentNav === 'list'    ? 'map' : 'list'); }
+function toggleSidebar()  { navTo('filters'); }
+function toggleList()     { navTo('list'); }
 function openResults()    { navTo('list'); }
 function closeResults()   {
-  // Just close the results panel — don't affect detail or nav state
   document.getElementById('results-panel').classList.remove('open');
-  var titleEl = document.querySelector('#results-panel .sheet-title');
-  if (titleEl) titleEl.textContent = 'Results';
-  if (currentNav === 'list') currentNav = 'map';
-  var m = document.getElementById('nm-list'); if(m) m.classList.remove('active');
-  var d = document.getElementById('nd-list'); if(d) d.classList.remove('active');
-  var m2 = document.getElementById('nm-map'); if(m2) m2.classList.add('active');
-  var d2 = document.getElementById('nd-map'); if(d2) d2.classList.add('active');
+  if (currentNav === 'list') {
+    currentNav = 'map';
+    var m = document.getElementById('nm-list'); if(m) m.classList.remove('active');
+    var d = document.getElementById('nd-list'); if(d) d.classList.remove('active');
+  }
 }
 function openSidebar()    { navTo('filters'); }
 function closeSidebar()   {
-  // Just close the filter panel — don't affect detail or nav state
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('overlay').classList.remove('show');
-  if (currentNav === 'filters') currentNav = 'map';
-  var m = document.getElementById('nm-filters'); if(m) m.classList.remove('active');
-  var d = document.getElementById('nd-filters'); if(d) d.classList.remove('active');
-  var m2 = document.getElementById('nm-map'); if(m2) m2.classList.add('active');
-  var d2 = document.getElementById('nd-map'); if(d2) d2.classList.add('active');
+  if (currentNav === 'filters') {
+    currentNav = 'map';
+    var m = document.getElementById('nm-filters'); if(m) m.classList.remove('active');
+    var d = document.getElementById('nd-filters'); if(d) d.classList.remove('active');
+  }
 }
 function applyAndClose() {
   applyFilters();
@@ -5529,10 +5530,6 @@ function onMapClick(e) {
 
 <!-- DESKTOP LEFT NAV -->
 <nav id="nav-desktop">
-  <button class="nav-item-desk active" id="nd-map" onclick="navTo('map')">
-    <svg viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
-    Map
-  </button>
   <button class="nav-item-desk" id="nd-filters" onclick="navTo('filters')">
     <svg viewBox="0 0 24 24"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
     Filters
@@ -5559,10 +5556,6 @@ function onMapClick(e) {
 
 <!-- MOBILE BOTTOM NAV -->
 <nav id="nav">
-  <button class="nav-item active" id="nm-map" onclick="navTo('map')">
-    <svg viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
-    Map
-  </button>
   <button class="nav-item" id="nm-filters" onclick="navTo('filters')">
     <svg viewBox="0 0 24 24"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
     Filters
