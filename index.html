@@ -4602,10 +4602,41 @@ function renderOpportunities(b, opp) {
             '<span class="opp-toggle-slider"></span>'+
           '</label>'+
         '</div>'+
-        '<div class="opp-fields'+(isOn?' active':'')+'" id="opp-fields-'+p.key+'">'+
+        '<div class="opp-fields'+(isOn?' active':'')+'" id="opp-fields-'+p.key+'" data-stage="'+stage+'">'+
           miniPipeline(p.key, stage)+
+          // Current Supplier — multi-select chips
           '<label class="opp-field-label">Current Supplier</label>'+
-          '<input class="opp-supplier-input" id="opp-sup-'+p.key+'" placeholder="e.g. Shell, Chevron, Local co-op..." value="'+supplier+'">'+
+          (function(){
+            var SUPPLIERS = ['Shell','Chevron','Mobil','Valvoline','Castrol','Citgo','BP','Phillips 66','Sunoco','Local Co-op','Other'];
+            var selected = supplier ? supplier.split(',').map(function(s){return s.trim();}).filter(Boolean) : [];
+            var chips = selected.map(function(s){
+              return '<span style="display:inline-flex;align-items:center;gap:3px;background:var(--accent-light);color:var(--accent);border-radius:100px;padding:3px 9px;font-size:11px;font-weight:600;white-space:nowrap;margin:2px;">'+
+                s+'<button type="button" onclick="_removeOppChip(\'sup\',\''+p.key+'\',\''+s.replace(/'/g,"\\'")+'\')" style="background:none;border:none;cursor:pointer;color:var(--accent);font-size:13px;line-height:1;padding:0 0 0 2px;">×</button></span>';
+            }).join('');
+            var available = SUPPLIERS.filter(function(s){ return selected.indexOf(s)<0; });
+            return '<div id="opp-sup-chips-'+p.key+'" style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:6px;min-height:28px;">'+chips+'</div>'+
+              '<select onchange="_addOppChip(\'sup\',\''+p.key+'\',this)" style="width:100%;border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;font-family:Inter,sans-serif;color:var(--muted);background:#fff;cursor:pointer;margin-bottom:.75rem;" id="opp-sup-'+p.key+'">'+
+              '<option value="">+ Add supplier</option>'+
+              available.map(function(s){ return '<option value="'+s+'">'+s+'</option>'; }).join('')+
+              '</select>';
+          })()+
+          // Brands Used — lubricants only
+          (p.key === 'lubricants' ? (function(){
+            var BRANDS = ['Mobil 1','Castrol EDGE','Valvoline Full Synthetic','Shell Rotella','Pennzoil Platinum','Royal Purple','Amsoil','Delo','Rotella T6','Kendall','Other'];
+            var brandVal = opp['lube_brands'] || '';
+            var selected = brandVal ? brandVal.split(',').map(function(s){return s.trim();}).filter(Boolean) : [];
+            var chips = selected.map(function(s){
+              return '<span style="display:inline-flex;align-items:center;gap:3px;background:#f0fdf4;color:#059669;border-radius:100px;padding:3px 9px;font-size:11px;font-weight:600;white-space:nowrap;margin:2px;">'+
+                s+'<button type="button" onclick="_removeOppChip(\'brand\',\'lubricants\',\''+s.replace(/'/g,"\\'")+'\')" style="background:none;border:none;cursor:pointer;color:#059669;font-size:13px;line-height:1;padding:0 0 0 2px;">×</button></span>';
+            }).join('');
+            var available = BRANDS.filter(function(s){ return selected.indexOf(s)<0; });
+            return '<label class="opp-field-label">Brands Used</label>'+
+              '<div id="opp-brand-chips-lubricants" style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:6px;min-height:28px;">'+chips+'</div>'+
+              '<select onchange="_addOppChip(\'brand\',\'lubricants\',this)" style="width:100%;border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;font-family:Inter,sans-serif;color:var(--muted);background:#fff;cursor:pointer;margin-bottom:.75rem;" id="opp-brand-lubricants">'+
+              '<option value="">+ Add brand</option>'+
+              available.map(function(s){ return '<option value="'+s+'">'+s+'</option>'; }).join('')+
+              '</select>';
+          })() : '')+
           '<label class="opp-field-label">Volume ('+p.unit+')</label>'+
           '<div class="opp-volume-wrap">'+
             '<input type="range" id="opp-vol-'+p.key+'" min="0" max="'+p.max+'" step="'+(p.max>=10000?500:p.max>=1000?100:25)+'" value="'+gallons+'" oninput="updateVolLabel(\''+p.key+'\','+p.max+')">'+
@@ -4617,6 +4648,52 @@ function renderOpportunities(b, opp) {
 
   html += '<button class="opp-save-btn" id="opp-save-btn" onclick="saveOpportunities()">Save Opportunities</button>';
   el.innerHTML = html;
+}
+
+// Read chip values from a chip container as comma-separated string
+function _getOppChips(type, key) {
+  var id = type === 'sup' ? 'opp-sup-chips-'+key : 'opp-brand-chips-'+key;
+  var wrap = document.getElementById(id);
+  if (!wrap) return '';
+  return Array.from(wrap.querySelectorAll('span')).map(function(s){
+    return s.childNodes[0] ? s.childNodes[0].textContent.trim() : '';
+  }).filter(Boolean).join(', ');
+}
+
+function _addOppChip(type, key, sel) {
+  var val = sel.value; if (!val) return;
+  sel.value = '';
+  var id = type === 'sup' ? 'opp-sup-chips-'+key : 'opp-brand-chips-'+key;
+  var color = type === 'sup' ? 'var(--accent)' : '#059669';
+  var bg    = type === 'sup' ? 'var(--accent-light)' : '#f0fdf4';
+  var wrap  = document.getElementById(id);
+  if (!wrap) return;
+  // Don't add duplicates
+  var existing = Array.from(wrap.querySelectorAll('span')).map(function(s){ return s.childNodes[0]?s.childNodes[0].textContent.trim():''; });
+  if (existing.indexOf(val) >= 0) return;
+  var chip = document.createElement('span');
+  chip.style.cssText = 'display:inline-flex;align-items:center;gap:3px;background:'+bg+';color:'+color+';border-radius:100px;padding:3px 9px;font-size:11px;font-weight:600;white-space:nowrap;margin:2px;';
+  chip.innerHTML = val+'<button type="button" onclick="_removeOppChip(\''+type+'\',\''+key+'\',\''+val.replace(/'/g,"\\'")+'\')" style="background:none;border:none;cursor:pointer;color:'+color+';font-size:13px;line-height:1;padding:0 0 0 2px;">×</button>';
+  wrap.appendChild(chip);
+  // Remove from dropdown
+  Array.from(sel.options).forEach(function(o){ if(o.value===val) sel.removeChild(o); });
+}
+
+function _removeOppChip(type, key, val) {
+  var id = type === 'sup' ? 'opp-sup-chips-'+key : 'opp-brand-chips-'+key;
+  var wrap = document.getElementById(id);
+  if (!wrap) return;
+  Array.from(wrap.querySelectorAll('span')).forEach(function(s){
+    if ((s.childNodes[0]?s.childNodes[0].textContent.trim():'') === val) wrap.removeChild(s);
+  });
+  // Re-add to dropdown
+  var selId = type === 'sup' ? 'opp-sup-'+key : 'opp-brand-'+key;
+  var sel = document.getElementById(selId);
+  if (sel) {
+    var opt = document.createElement('option');
+    opt.value = val; opt.textContent = val;
+    sel.appendChild(opt);
+  }
 }
 
 function setOppStage(key, stage) {
@@ -4685,14 +4762,15 @@ async function saveOpportunities() {
 
   OPP_PRODUCTS.forEach(function(p){
     var cb     = document.getElementById('opp-on-'+p.key);
-    var sup    = document.getElementById('opp-sup-'+p.key);
     var vol    = document.getElementById('opp-vol-'+p.key);
     var fields = document.getElementById('opp-fields-'+p.key);
     payload['uses_'+p.key]       = cb  ? cb.checked : false;
-    payload[p.field+'_supplier'] = sup ? sup.value.trim() : '';
+    payload[p.field+'_supplier'] = _getOppChips('sup', p.key);
     payload[p.field+'_gallons']  = vol ? parseInt(vol.value)||0 : 0;
     payload[p.field+'_stage']    = fields && fields.dataset.stage ? fields.dataset.stage : 'Lead Captured';
   });
+  // Lube brands — only for lubricants
+  payload['lube_brands'] = _getOppChips('brand', 'lubricants');
 
   try {
     // Load previous opp data to compare changes
