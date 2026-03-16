@@ -2874,6 +2874,15 @@ function applyFilters() {
           });
           if (!anyMatch) return false;
         }
+        // Brand filter — lubricants only
+        if (productKey === 'lubricants' && state.brands && state.brands.length > 0) {
+          var bizBrands = opp['lube_brands'] || '';
+          var bizBrandArr = bizBrands.split(',').map(function(s){ return s.trim().toLowerCase(); });
+          var anyBrand = state.brands.some(function(b){
+            return bizBrandArr.indexOf(b.toLowerCase()) >= 0;
+          });
+          if (!anyBrand) return false;
+        }
         return true;
       });
     });
@@ -5402,7 +5411,7 @@ function initOppFilterSliders() {
   _renderOppFilterProducts();
   _initSupplierFilterDropdown();
   OPP_FILTER_PRODUCTS.forEach(function(p){
-    _oppFilterState[p.key] = { enabled: false, stage: 'all', suppliers: [] };
+    _oppFilterState[p.key] = { enabled: false, stage: 'all', suppliers: [], brands: [] };
   });
 }
 
@@ -5413,14 +5422,15 @@ function _renderOppFilterProducts() {
   var STAGE_COLORS = {'all':'var(--muted)','Lead Captured':'#9b93d4','Qualified':'#4a36c8','Fact-Finding':'#d97706','Proposal Sent':'#16a34a','Credit Application':'#9333ea','Won Opportunity':'#059669','Lost':'#dc2626'};
   var LABELS = ['All','Lead','Qualified','Fact-Find','Proposal','Credit','Won','Lost'];
   var BASE_SUPPLIERS = ['Shell','Chevron','Mobil','Valvoline','Castrol','Citgo','BP','Phillips 66','Sunoco','Local Co-op'];
-
+  var BASE_BRANDS = ['Mobil 1','Castrol EDGE','Valvoline Full Synthetic','Shell Rotella','Pennzoil Platinum','Royal Purple','Amsoil','Delo','Rotella T6','Kendall'];
   var PRODUCT_LABELS = {lubricants:'Lubricants',fuel_delivery:'Fuel Delivery',cardlock:'Cardlock',propane:'Propane',uco:'Used Cooking Oil'};
 
   wrap.innerHTML = OPP_FILTER_PRODUCTS.map(function(p){
-    var state = _oppFilterState[p.key] || {enabled:false, stage:'all', suppliers:[]};
+    var state = _oppFilterState[p.key] || {enabled:false, stage:'all', suppliers:[], brands:[]};
     var customSup = _getCustomList('suppliers');
     var allSup = BASE_SUPPLIERS.concat(customSup);
     var selSups = state.suppliers || [];
+    var selBrands = state.brands || [];
 
     var stageDotsHtml = STAGES_FULL.map(function(s,i){
       var isActive = (state.stage||'all') === s;
@@ -5437,6 +5447,25 @@ function _renderOppFilterProducts() {
     }).join('');
 
     var availSup = allSup.filter(function(s){ return selSups.indexOf(s)<0; });
+
+    // Brands — lubricants only
+    var brandsHtml = '';
+    if (p.key === 'lubricants') {
+      var customBrands = _getCustomList('brands');
+      var allBrands = BASE_BRANDS.concat(customBrands);
+      var availBrands = allBrands.filter(function(s){ return selBrands.indexOf(s)<0; });
+      var brandChipsHtml = selBrands.map(function(s){
+        return '<span style="display:inline-flex;align-items:center;gap:3px;background:#f0fdf4;color:#059669;border-radius:100px;padding:2px 8px;font-size:11px;font-weight:600;white-space:nowrap;">'+
+          s+'<button type="button" onclick="_removeOppFilterBrand(\''+s.replace(/'/g,"\\'")+'\')" style="background:none;border:none;cursor:pointer;color:#059669;font-size:12px;line-height:1;padding:0 0 0 2px;">×</button></span>';
+      }).join('');
+      brandsHtml =
+        '<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:10px 0 6px;">Brands Used</div>'+
+        '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;min-height:20px;">'+brandChipsHtml+'</div>'+
+        '<select onchange="_addOppFilterBrand(this)" style="width:100%;border:1px solid var(--border);border-radius:7px;padding:5px 8px;font-size:12px;font-family:Inter,sans-serif;color:var(--muted);background:#fff;cursor:pointer;">'+
+          '<option value="">+ Filter by brand</option>'+
+          availBrands.map(function(s){ return '<option value="'+s+'">'+s+'</option>'; }).join('')+
+        '</select>';
+    }
 
     return '<div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:8px;">'+
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--paper2);cursor:pointer;" onclick="_toggleOppFilterProduct(\''+p.key+'\')">'+
@@ -5458,6 +5487,7 @@ function _renderOppFilterProducts() {
             '<option value="">+ Filter by supplier</option>'+
             availSup.map(function(s){ return '<option value="'+s+'">'+s+'</option>'; }).join('')+
           '</select>'+
+          brandsHtml+
         '</div>'
       : '')+
     '</div>';
@@ -5490,6 +5520,23 @@ function _addOppFilterSupplier(key, sel) {
 function _removeOppFilterSupplier(key, val) {
   if (!_oppFilterState[key]) return;
   _oppFilterState[key].suppliers = _oppFilterState[key].suppliers.filter(function(s){ return s !== val; });
+  _renderOppFilterProducts();
+  _syncOppFilters();
+}
+
+function _addOppFilterBrand(sel) {
+  var val = sel.value; if (!val) return;
+  sel.value = '';
+  if (!_oppFilterState['lubricants']) _oppFilterState['lubricants'] = {enabled:true,stage:'all',suppliers:[],brands:[]};
+  if (!_oppFilterState['lubricants'].brands) _oppFilterState['lubricants'].brands = [];
+  if (_oppFilterState['lubricants'].brands.indexOf(val) < 0) _oppFilterState['lubricants'].brands.push(val);
+  _renderOppFilterProducts();
+  _syncOppFilters();
+}
+
+function _removeOppFilterBrand(val) {
+  if (!_oppFilterState['lubricants']) return;
+  _oppFilterState['lubricants'].brands = (_oppFilterState['lubricants'].brands||[]).filter(function(s){ return s !== val; });
   _renderOppFilterProducts();
   _syncOppFilters();
 }
@@ -6210,7 +6257,7 @@ function onDraw(e) {
 }
 function clearFilters() {
   filters = { opp:'all', contact:'all', industry:'all', pipeline:'all', subIndustry:'all', status:'all', rep:'all', reps:[], opp_product:'all', opp_stage:'all', opp_min_volume:0, supplierFilter:[] };
-  OPP_FILTER_PRODUCTS.forEach(function(p){ _oppFilterState[p.key] = {enabled:false,stage:'all',suppliers:[]}; });
+  OPP_FILTER_PRODUCTS.forEach(function(p){ _oppFilterState[p.key] = {enabled:false,stage:'all',suppliers:[],brands:[]}; });
   _renderOppFilterProducts();
   _renderSupplierFilterChips();
   filtersApplied = false;
