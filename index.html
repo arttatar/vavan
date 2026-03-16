@@ -1036,6 +1036,15 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
         </select>
       </div>
 
+      <!-- TAGS FILTER -->
+      <div class="sb-sec">
+        <div class="sb-title">Tags</div>
+        <div id="tag-filter-chips" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;"></div>
+        <select id="tag-filter-sel" onchange="_tagFilterAdd(this)" style="width:100%;border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;font-family:'Inter',sans-serif;color:var(--muted);background:var(--paper);cursor:pointer;">
+          <option value="">+ Filter by tag</option>
+        </select>
+      </div>
+
     </div><!-- end filter-scroll -->
 
     <div class="apply-wrap">
@@ -1166,7 +1175,7 @@ var filters = {
   opp:'all', contact:'all', industry:'all', pipeline:'all',
   subIndustry:'all', status:'all', rep:'all', reps:[],
   opp_product:'all', opp_stage:'all', opp_min_volume:0,
-  supplierFilter:[], statuses:[],
+  supplierFilter:[], tags:[], statuses:[],
   // Per-product pipeline stage filters
   opp_lube_stage:'all', opp_fuel_stage:'all', opp_cardlock_stage:'all',
   opp_propane_stage:'all', opp_uco_stage:'all'
@@ -1498,6 +1507,7 @@ async function startApp() {
   prog(70, 'Loading opportunities...');
   await loadOppCache();
   initOppFilterSliders();
+  _initTagFilterDropdown();
   prog(80, 'Placing pins...');
   if (map.isStyleLoaded()) {
     renderPins();
@@ -1556,6 +1566,7 @@ function normalizeRecord(b) {
   b.locality    = (b.locality    || b.city    || '').trim();
   b.state       = (b.state       || '').trim();
   b.zip         = (b.zip         || b.postal_code || b.zipcode || '').trim();
+  b.tags        = b.tags ? (Array.isArray(b.tags) ? b.tags : (typeof b.tags==='string' ? (function(){ try{return JSON.parse(b.tags)||[];}catch(e){return[];} })() : [])) : [];
   b.social_links = (typeof b.social_links === 'object' && b.social_links) ? b.social_links :
     (typeof b.social_links === 'string' && b.social_links) ? JSON.parse(b.social_links) : {};
   b.full_address= (b.full_address|| '').trim() || [b.street, b.locality].filter(Boolean).join(', ');
@@ -2219,6 +2230,8 @@ function navTo(tab) {
     // Always reset scroll to top when opening filters
     var fs = document.getElementById('filter-scroll');
     if (fs) fs.scrollTop = 0;
+    // Refresh tag dropdown in case new tags were created
+    _initTagFilterDropdown();
   } else if (tab === 'list') {
     renderList();
     results.classList.add('open');
@@ -2392,6 +2405,8 @@ function updateFilterBadge() {
   else if (Array.isArray(filters.opp_product) && filters.opp_product.length) parts.push(filters.opp_product.length + ' product line'+(filters.opp_product.length>1?'s':''));
   // Supplier
   if (filters.supplierFilter && filters.supplierFilter.length) parts.push('Supplier: ' + filters.supplierFilter.join(', '));
+  // Tags
+  if (filters.tags && filters.tags.length) parts.push(filters.tags.map(function(t){ return '#'+t; }).join(' '));
   // Area
   if (selPoly) parts.push('Area');
   // Search
@@ -2974,6 +2989,14 @@ function applyFilters() {
       var bSubs = b.sub_industry_inferred || (b.sub_industry ? [b.sub_industry] : []);
       if (!Array.isArray(bSubs)) bSubs = [bSubs];
       return bSubs.some(function(s){ return filters.subIndustry.indexOf(s) > -1; });
+    });
+  }
+
+  // Tags filter — show businesses that have ALL selected tags
+  if (filters.tags && filters.tags.length) {
+    data = data.filter(function(b){
+      var bTags = _getBizTags(b);
+      return filters.tags.every(function(t){ return bTags.indexOf(t) >= 0; });
     });
   }
 
@@ -3873,6 +3896,104 @@ var IND_COLORS = {
 };
 var IND_DEFAULT = '#9b93d4';
 
+// ── TAGS ──
+function _getTagsKey() {
+  return 'vavan_tags_' + (currentProfile ? currentProfile.client_id||'default' : 'default');
+}
+function _getAllTags() {
+  try { return JSON.parse(localStorage.getItem(_getTagsKey())||'[]'); } catch(e){ return []; }
+}
+function _saveAllTags(arr) {
+  try { localStorage.setItem(_getTagsKey(), JSON.stringify(arr)); } catch(e){}
+}
+function _getBizTags(b) {
+  if (!b.tags) return [];
+  if (Array.isArray(b.tags)) return b.tags;
+  try { return JSON.parse(b.tags)||[]; } catch(e){ return []; }
+}
+
+async function _saveBizTags(biz, tags) {
+  try {
+    var val = tags.length ? JSON.stringify(tags) : null;
+    var r = await sb.from('businesses').update({tags: val, updated_at: new Date().toISOString()}).eq('id', biz.id||biz._id);
+    if (r.error) throw r.error;
+    biz.tags = tags;
+    if (_bizById[biz._id]) _bizById[biz._id].tags = tags;
+    _logChange('Tags → ' + (tags.length ? tags.map(function(t){ return '#'+t; }).join(', ') : 'cleared'), 'edit');
+    renderDetailPanel(biz);
+    switchTab('profile');
+  } catch(e) { _showToast('Tag save failed'); }
+}
+
+function _addTag(sel) {
+  var val = sel.value; if (!val) return;
+  sel.value = '';
+  var biz = lastSelectedBiz; if (!biz) return;
+  var tags = _getBizTags(biz);
+  if (tags.indexOf(val) >= 0) return;
+  tags.push(val);
+  _saveBizTags(biz, tags);
+}
+
+function _removeTag(val) {
+  var biz = lastSelectedBiz; if (!biz) return;
+  var tags = _getBizTags(biz).filter(function(t){ return t !== val; });
+  _saveBizTags(biz, tags);
+}
+
+function _createNewTag() {
+  var name = prompt('New tag name (no spaces, short):');
+  if (!name || !name.trim()) return;
+  name = name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-_]/g, '');
+  if (!name) return;
+  // Save to global tag list
+  var all = _getAllTags();
+  if (all.indexOf(name) < 0) { all.push(name); _saveAllTags(all); }
+  // Add to current biz
+  var biz = lastSelectedBiz; if (!biz) return;
+  var tags = _getBizTags(biz);
+  if (tags.indexOf(name) >= 0) { renderDetailPanel(biz); return; }
+  tags.push(name);
+  _saveBizTags(biz, tags);
+}
+
+function _initTagFilterDropdown() {
+  var sel = document.getElementById('tag-filter-sel');
+  if (!sel) return;
+  var tags = _getAllTags();
+  while (sel.options.length > 1) sel.remove(1);
+  tags.forEach(function(t){
+    var opt = document.createElement('option');
+    opt.value = t; opt.textContent = '#' + t;
+    sel.appendChild(opt);
+  });
+  if (!filters.tags) filters.tags = [];
+  _renderTagFilterChips();
+}
+
+function _tagFilterAdd(sel) {
+  var val = sel.value; if (!val) return;
+  sel.value = '';
+  if (!filters.tags) filters.tags = [];
+  if (filters.tags.indexOf(val) < 0) filters.tags.push(val);
+  _renderTagFilterChips();
+}
+
+function _tagFilterRemove(val) {
+  if (!filters.tags) return;
+  filters.tags = filters.tags.filter(function(t){ return t !== val; });
+  _renderTagFilterChips();
+}
+
+function _renderTagFilterChips() {
+  var wrap = document.getElementById('tag-filter-chips');
+  if (!wrap) return;
+  wrap.innerHTML = (filters.tags||[]).map(function(t){
+    return '<span style="display:inline-flex;align-items:center;gap:3px;background:#f0f4ff;color:#4a36c8;border-radius:100px;padding:3px 10px;font-size:11px;font-weight:600;white-space:nowrap;">'+
+      '#'+t+'<button onclick="_tagFilterRemove(\''+t.replace(/'/g,"\\'")+'\')" style="background:none;border:none;cursor:pointer;color:#4a36c8;font-size:13px;line-height:1;padding:0 0 0 2px;">×</button></span>';
+  }).join('');
+}
+
 function hoverBiz(id) {
   var biz = _bizById[id] || _bizById[String(id)];
   if (!biz || !biz.lat || !biz.lon) return;
@@ -4144,6 +4265,31 @@ function renderDetailPanel(b) {
         })()+
         // 9. Location type — only if set
         (b.location_type ? '<div class="det-field-row"><span class="det-field-label">Location Type</span><span class="det-field-value">'+b.location_type+'</span></div>' : '')+
+        // 10. Tags
+        (function(){
+          var tags = b.tags ? (Array.isArray(b.tags) ? b.tags : (typeof b.tags==='string' ? JSON.parse(b.tags||'[]') : [])) : [];
+          var allTags = _getAllTags();
+          var available = allTags.filter(function(t){ return tags.indexOf(t)<0; });
+          var chips = tags.map(function(t){
+            return '<span style="display:inline-flex;align-items:center;gap:3px;background:#f0f4ff;color:#4a36c8;border-radius:100px;padding:3px 10px;font-size:11px;font-weight:600;white-space:nowrap;">'+
+              '#'+t+
+              '<button onclick="_removeTag(\''+t.replace(/'/g,"\\'")+'\')" style="background:none;border:none;cursor:pointer;color:#4a36c8;font-size:13px;line-height:1;padding:0 0 0 2px;">×</button>'+
+            '</span>';
+          }).join('');
+          return '<div style="border-top:1px solid var(--border);margin-top:.5rem;padding-top:.75rem;">'+
+            '<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem;">Tags</div>'+
+            '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px;min-height:20px;">'+
+              (chips || '<span style="font-size:12px;color:var(--muted);">No tags</span>')+
+            '</div>'+
+            '<div style="display:flex;gap:6px;">'+
+              '<select onchange="_addTag(this)" style="flex:1;border:1px dashed var(--border);border-radius:7px;padding:5px 8px;font-size:12px;font-family:Inter,sans-serif;color:var(--muted);background:transparent;cursor:pointer;">'+
+                '<option value="">+ Add tag</option>'+
+                available.map(function(t){ return '<option value="'+t+'">'+t+'</option>'; }).join('')+
+              '</select>'+
+              '<button onclick="_createNewTag()" style="padding:5px 10px;background:var(--accent-light);border:1px dashed var(--accent);border-radius:7px;font-size:11px;font-weight:700;color:var(--accent);cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;">+ New</button>'+
+            '</div>'+
+          '</div>';
+        })()+
       '</div>'+
       // Edit mode — shows ALL fields regardless of whether they're set
       '<div id="det-edit" class="det-edit-form">'+
@@ -6382,10 +6528,11 @@ function onDraw(e) {
   applyFilters();
 }
 function clearFilters() {
-  filters = { opp:'all', contact:'all', industry:'all', pipeline:'all', subIndustry:'all', status:'all', statuses:[], rep:'all', reps:[], opp_product:'all', opp_stage:'all', opp_min_volume:0, supplierFilter:[] };
+  filters = { opp:'all', contact:'all', industry:'all', pipeline:'all', subIndustry:'all', status:'all', statuses:[], rep:'all', reps:[], opp_product:'all', opp_stage:'all', opp_min_volume:0, supplierFilter:[], tags:[] };
   OPP_FILTER_PRODUCTS.forEach(function(p){ _oppFilterState[p.key] = {enabled:false,stage:'all',suppliers:[],brands:[]}; });
   _renderOppFilterProducts();
   _renderSupplierFilterChips();
+  _renderTagFilterChips();
   filtersApplied = false;
   filteredData = [];
   setPipelineStage('all', null);
