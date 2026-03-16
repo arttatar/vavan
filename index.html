@@ -1217,6 +1217,373 @@ async function doLogin() {
 
 async function doSignOut() { await sb.auth.signOut(); location.reload(); }
 
+// ── SUPER ADMIN / CLIENT MANAGEMENT ──
+// Role hierarchy: vavan_super > admin > rep
+var SUPER_ADMIN_EMAILS = ['art@interstate-oil.com', 'arttatar1@gmail.com', 'atatar@interstateoil.com']; // Add super admin emails here
+
+async function checkIfSuperAdmin() {
+  var session = await sb.auth.getSession();
+  if (!session.data || !session.data.session) return false;
+  var email = session.data.session.user.email;
+  // Check by email OR by role in sales_profiles
+  if (SUPER_ADMIN_EMAILS.indexOf(email) >= 0) return true;
+  var r = await sb.from('sales_profiles').select('role').eq('user_id', session.data.session.user.id).single();
+  return r.data && r.data.role === 'vavan_super';
+}
+
+function openClientManagement() {
+  var existing = document.getElementById('client-mgmt-modal');
+  if (existing) { existing.style.display = 'flex'; return; }
+
+  var modal = document.createElement('div');
+  modal.id = 'client-mgmt-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(13,13,20,.85);z-index:19500;display:flex;align-items:center;justify-content:center;font-family:Inter,sans-serif;padding:16px;';
+
+  modal.innerHTML =
+    '<div style="background:#fff;border-radius:16px;width:100%;max-width:680px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3);">'+
+      '<div style="background:var(--ink);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">'+
+        '<div>'+
+          '<div style="font-size:16px;font-weight:800;color:#fff;font-family:Syne,sans-serif;">Vavan — Client Management</div>'+
+          '<div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px;">Super Admin</div>'+
+        '</div>'+
+        '<button onclick="document.getElementById(\'client-mgmt-modal\').style.display=\'none\'" style="background:rgba(255,255,255,.12);border:none;border-radius:50%;width:30px;height:30px;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>'+
+      '</div>'+
+      '<div style="display:flex;border-bottom:1px solid var(--border);flex-shrink:0;">'+
+        '<button onclick="_cmTab(\'clients\')" id="cm-tab-clients" style="flex:1;padding:10px;background:var(--accent-light);border:none;border-bottom:2px solid var(--accent);font-size:13px;font-weight:700;color:var(--accent);cursor:pointer;font-family:Inter,sans-serif;">Clients</button>'+
+        '<button onclick="_cmTab(\'new\')" id="cm-tab-new" style="flex:1;padding:10px;background:none;border:none;border-bottom:2px solid transparent;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;font-family:Inter,sans-serif;">+ New Client</button>'+
+      '</div>'+
+      '<div id="cm-body" style="flex:1;overflow-y:auto;padding:16px;"></div>'+
+    '</div>';
+
+  document.body.appendChild(modal);
+  _cmLoadClients();
+}
+
+function _cmTab(tab) {
+  ['clients','new'].forEach(function(t){
+    var btn = document.getElementById('cm-tab-'+t);
+    if (btn) {
+      btn.style.background = t===tab ? 'var(--accent-light)' : 'none';
+      btn.style.borderBottomColor = t===tab ? 'var(--accent)' : 'transparent';
+      btn.style.color = t===tab ? 'var(--accent)' : 'var(--muted)';
+      btn.style.fontWeight = t===tab ? '700' : '600';
+    }
+  });
+  if (tab === 'clients') _cmLoadClients();
+  else if (tab === 'new') _cmNewClientForm();
+}
+
+async function _cmLoadClients() {
+  var body = document.getElementById('cm-body');
+  if (!body) return;
+  body.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:20px;text-align:center;">Loading clients...</div>';
+  try {
+    var r = await sb.from('clients').select('*').order('name', {ascending:true});
+    var clients = r.data || [];
+    if (!clients.length) {
+      body.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:40px;text-align:center;">No clients yet.<br><br>Click <strong>+ New Client</strong> to create the first one.</div>';
+      return;
+    }
+    body.innerHTML = clients.map(function(c){
+      return '<div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;display:flex;align-items:center;gap:12px;">'+
+        '<div style="width:40px;height:40px;border-radius:10px;background:var(--accent-light);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;font-weight:800;color:var(--accent);font-family:Syne,sans-serif;">'+
+          (c.name||'?')[0].toUpperCase()+
+        '</div>'+
+        '<div style="flex:1;min-width:0;">'+
+          '<div style="font-size:14px;font-weight:700;color:var(--ink);">'+c.name+'</div>'+
+          '<div style="font-size:11px;color:var(--muted);margin-top:2px;">'+
+            (c.markets||'No markets assigned')+' · '+
+            '<span style="color:'+(c.active?'#059669':'#dc2626')+';">'+(c.active?'Active':'Inactive')+'</span>'+
+          '</div>'+
+        '</div>'+
+        '<div style="display:flex;gap:6px;">'+
+          '<button onclick="_cmEditClient(\''+c.id+'\')" style="padding:6px 12px;background:var(--paper2);border:1px solid var(--border);border-radius:7px;font-size:12px;font-weight:600;color:var(--ink);cursor:pointer;font-family:Inter,sans-serif;">Edit</button>'+
+          '<button onclick="_cmManageClient(\''+c.id+'\',\''+c.name.replace(/'/g,"\\'")+'\',\''+c.client_id+'\')" style="padding:6px 12px;background:var(--accent);border:none;border-radius:7px;font-size:12px;font-weight:600;color:#fff;cursor:pointer;font-family:Inter,sans-serif;">Manage →</button>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+  } catch(e) {
+    body.innerHTML = '<div style="color:#dc2626;font-size:13px;padding:20px;">Error: '+e.message+'<br><br>Make sure the <code>clients</code> table exists in Supabase.</div>';
+  }
+}
+
+function _cmNewClientForm(prefill) {
+  var body = document.getElementById('cm-body');
+  if (!body) return;
+  prefill = prefill || {};
+  body.innerHTML =
+    '<div style="max-width:480px;">'+
+      '<div style="font-size:14px;font-weight:700;color:var(--ink);margin-bottom:16px;">New Client Account</div>'+
+      '<label class="abiz-label">Company Name *</label>'+
+      '<input class="settings-input" id="cm-co-name" value="'+(prefill.company_name||'')+'" placeholder="e.g. Interstate Oil Company">'+
+      '<label class="abiz-label">Admin Name *</label>'+
+      '<input class="settings-input" id="cm-admin-name" value="'+(prefill.admin_name||'')+'" placeholder="First Last">'+
+      '<label class="abiz-label">Admin Email *</label>'+
+      '<input class="settings-input" id="cm-admin-email" type="email" value="'+(prefill.admin_email||'')+'" placeholder="admin@company.com">'+
+      '<label class="abiz-label">Markets (comma separated)</label>'+
+      '<input class="settings-input" id="cm-markets" value="'+(prefill.markets||'Las Vegas')+'" placeholder="Las Vegas, Sacramento">'+
+      '<label class="abiz-label">Notes</label>'+
+      '<input class="settings-input" id="cm-notes" value="'+(prefill.notes||'')+'" placeholder="Optional notes">'+
+      '<div id="cm-form-status" style="font-size:12px;min-height:20px;margin:.5rem 0;"></div>'+
+      '<button onclick="_cmCreateClient()" style="width:100%;padding:12px;background:var(--accent);border:none;border-radius:9px;color:#fff;font-size:14px;font-weight:700;font-family:Inter,sans-serif;cursor:pointer;">Create Client & Send Admin Invite</button>'+
+    '</div>';
+}
+
+async function _cmCreateClient() {
+  var name       = document.getElementById('cm-co-name').value.trim();
+  var adminName  = document.getElementById('cm-admin-name').value.trim();
+  var adminEmail = document.getElementById('cm-admin-email').value.trim();
+  var markets    = document.getElementById('cm-markets').value.trim();
+  var notes      = document.getElementById('cm-notes').value.trim();
+  var statusEl   = document.getElementById('cm-form-status');
+
+  if (!name)       { statusEl.style.color='#dc2626'; statusEl.textContent='Company name required.'; return; }
+  if (!adminName)  { statusEl.style.color='#dc2626'; statusEl.textContent='Admin name required.'; return; }
+  if (!adminEmail) { statusEl.style.color='#dc2626'; statusEl.textContent='Admin email required.'; return; }
+
+  statusEl.style.color='var(--muted)'; statusEl.textContent='Creating client...';
+
+  try {
+    // Generate a unique client_id
+    var clientId = 'cli_' + Date.now().toString(36) + Math.random().toString(36).substr(2,5);
+
+    // 1. Create client record
+    var cr = await sb.from('clients').insert({
+      name: name,
+      client_id: clientId,
+      markets: markets,
+      notes: notes,
+      active: true,
+      created_at: new Date().toISOString()
+    }).select().single();
+    if (cr.error) throw cr.error;
+
+    // 2. Store pending invite for admin
+    try {
+      await sb.from('pending_invites').upsert({
+        email:          adminEmail,
+        full_name:      adminName,
+        territory_code: 'LAS-ALL',
+        territory_name: markets,
+        role:           'admin',
+        client_id:      cr.data.id,
+        invited_by:     'Vavan Super Admin',
+        invited_at:     new Date().toISOString()
+      }, { onConflict: 'email' });
+    } catch(e){ /* non-fatal */ }
+
+    // 3. Send magic link to admin
+    var invR = await sb.auth.signInWithOtp({
+      email: adminEmail,
+      options: {
+        shouldCreateUser: true,
+        data: {
+          full_name:      adminName,
+          role:           'admin',
+          client_id:      cr.data.id,
+          territory_name: markets,
+          territory_code: 'LAS-ALL'
+        }
+      }
+    });
+    if (invR.error) throw invR.error;
+
+    statusEl.style.color='#059669';
+    statusEl.textContent='✓ Client created! Admin invite sent to '+adminEmail;
+
+    // Refresh client list
+    setTimeout(function(){ _cmTab('clients'); }, 2000);
+
+  } catch(e) {
+    statusEl.style.color='#dc2626';
+    statusEl.textContent='Error: '+e.message;
+  }
+}
+
+async function _cmManageClient(clientDbId, clientName, clientId) {
+  var body = document.getElementById('cm-body');
+  if (!body) return;
+  body.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:20px;text-align:center;">Loading '+clientName+'...</div>';
+
+  try {
+    // Load all reps for this client
+    var r = await sb.from('sales_profiles').select('*').eq('client_id', clientDbId).order('full_name');
+    var reps = r.data || [];
+
+    // Load this week's activity
+    var weekAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString();
+    var actR = await sb.from('activity').select('created_by, type').gte('created_at', weekAgo);
+    var actThisWeek = actR.data || [];
+
+    body.innerHTML =
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">'+
+        '<button onclick="_cmLoadClients()" style="background:var(--paper2);border:1px solid var(--border);border-radius:7px;padding:6px 12px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;font-family:Inter,sans-serif;">← All Clients</button>'+
+        '<div style="font-size:15px;font-weight:700;color:var(--ink);">'+clientName+'</div>'+
+      '</div>'+
+      '<div style="display:flex;gap:8px;margin-bottom:16px;">'+
+        '<button onclick="_cmInviteRepForClient(\''+clientDbId+'\',\''+clientName.replace(/'/g,"\\'")+'\',\''+clientId+'\')" style="padding:8px 16px;background:var(--accent);border:none;border-radius:8px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;font-family:Inter,sans-serif;">+ Invite Rep</button>'+
+      '</div>'+
+      (reps.length === 0 ?
+        '<div style="color:var(--muted);font-size:13px;padding:20px;text-align:center;border:1px dashed var(--border);border-radius:10px;">No reps yet. Invite the first rep above.</div>'
+      :
+        '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">'+reps.length+' Rep'+(reps.length>1?'s':'')+'</div>'+
+        reps.map(function(p){
+          var acts = actThisWeek.filter(function(a){ return a.created_by === p.full_name; });
+          var visits = acts.filter(function(a){ return a.type==='visited'; }).length;
+          var contacts = acts.filter(function(a){ return a.type==='contacted'; }).length;
+          return '<div style="border:1px solid var(--border);border-radius:9px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;">'+
+            '<div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;">'+_getInitials(p.full_name)+'</div>'+
+            '<div style="flex:1;">'+
+              '<div style="font-size:13px;font-weight:700;color:var(--ink);">'+(p.full_name||'Unnamed')+'</div>'+
+              '<div style="font-size:11px;color:var(--muted);margin-top:1px;">'+
+                (p.role||'rep')+' · '+(p.territory_name||'No territory')+
+              '</div>'+
+              (acts.length ?
+                '<div style="display:flex;gap:6px;margin-top:4px;">'+
+                  (visits ? '<span style="font-size:10px;background:#fff7e6;color:#d97706;border-radius:100px;padding:1px 7px;font-weight:600;">'+visits+' visits</span>' : '')+
+                  (contacts ? '<span style="font-size:10px;background:#f0fdf4;color:#059669;border-radius:100px;padding:1px 7px;font-weight:600;">'+contacts+' contacts</span>' : '')+
+                '</div>' : '<div style="font-size:10px;color:var(--muted);margin-top:3px;">No activity this week</div>')+
+            '</div>'+
+            '<span style="font-size:10px;background:'+(p.role==='admin'?'var(--accent-light)':'var(--paper2)')+';color:'+(p.role==='admin'?'var(--accent)':'var(--muted)')+';padding:3px 8px;border-radius:100px;font-weight:600;">'+
+              (p.role||'rep')+
+            '</span>'+
+          '</div>';
+        }).join('')
+      );
+  } catch(e) {
+    body.innerHTML = '<div style="color:#dc2626;font-size:13px;">Error: '+e.message+'</div>';
+  }
+}
+
+function _cmInviteRepForClient(clientDbId, clientName, clientId) {
+  var body = document.getElementById('cm-body');
+  if (!body) return;
+  body.innerHTML =
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">'+
+      '<button onclick="_cmManageClient(\''+clientDbId+'\',\''+clientName.replace(/'/g,"\\'")+'\',\''+clientId+'\')" style="background:var(--paper2);border:1px solid var(--border);border-radius:7px;padding:6px 12px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;font-family:Inter,sans-serif;">← Back</button>'+
+      '<div style="font-size:14px;font-weight:700;color:var(--ink);">Invite Rep — '+clientName+'</div>'+
+    '</div>'+
+    '<div style="max-width:440px;">'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.5rem;">'+
+        '<div><label class="abiz-label">Full Name *</label>'+
+          '<input class="settings-input" id="cm-rep-name" placeholder="First Last" style="margin:0;"></div>'+
+        '<div><label class="abiz-label">Role</label>'+
+          '<select class="settings-select" id="cm-rep-role" style="margin:0;">'+
+            '<option value="rep">Rep</option>'+
+            '<option value="admin">Admin</option>'+
+          '</select></div>'+
+      '</div>'+
+      '<label class="abiz-label">Email *</label>'+
+      '<input class="settings-input" id="cm-rep-email" type="email" placeholder="rep@company.com">'+
+      '<label class="abiz-label">Territory / Markets</label>'+
+      '<input class="settings-input" id="cm-rep-territory" value="Las Vegas" placeholder="Las Vegas">'+
+      '<div id="cm-rep-status" style="font-size:12px;min-height:20px;margin:.5rem 0;"></div>'+
+      '<button onclick="_cmSendRepInvite(\''+clientDbId+'\',\''+clientName.replace(/'/g,"\\'")+'\',\''+clientId+'\')" style="width:100%;padding:12px;background:var(--accent);border:none;border-radius:9px;color:#fff;font-size:14px;font-weight:700;font-family:Inter,sans-serif;cursor:pointer;">Send Invite Link</button>'+
+    '</div>';
+}
+
+async function _cmSendRepInvite(clientDbId, clientName, clientId) {
+  var name      = document.getElementById('cm-rep-name').value.trim();
+  var email     = document.getElementById('cm-rep-email').value.trim();
+  var role      = document.getElementById('cm-rep-role').value;
+  var territory = document.getElementById('cm-rep-territory').value.trim();
+  var statusEl  = document.getElementById('cm-rep-status');
+
+  if (!name)  { statusEl.style.color='#dc2626'; statusEl.textContent='Name required.'; return; }
+  if (!email) { statusEl.style.color='#dc2626'; statusEl.textContent='Email required.'; return; }
+
+  statusEl.style.color='var(--muted)'; statusEl.textContent='Sending invite...';
+
+  try {
+    // Store pending invite
+    await sb.from('pending_invites').upsert({
+      email:          email,
+      full_name:      name,
+      territory_code: 'LAS-ALL',
+      territory_name: territory,
+      role:           role,
+      client_id:      clientDbId,
+      invited_by:     currentProfile ? currentProfile.full_name : 'Admin',
+      invited_at:     new Date().toISOString()
+    }, { onConflict: 'email' });
+
+    // Send magic link
+    var r = await sb.auth.signInWithOtp({
+      email: email,
+      options: {
+        shouldCreateUser: true,
+        data: {
+          full_name:      name,
+          role:           role,
+          client_id:      clientDbId,
+          territory_name: territory,
+          territory_code: 'LAS-ALL'
+        }
+      }
+    });
+    if (r.error) throw r.error;
+
+    statusEl.style.color='#059669';
+    statusEl.textContent='✓ Invite sent to '+email;
+
+    // Clear form
+    document.getElementById('cm-rep-name').value='';
+    document.getElementById('cm-rep-email').value='';
+
+  } catch(e) {
+    statusEl.style.color='#dc2626';
+    statusEl.textContent='Error: '+e.message;
+  }
+}
+
+async function _cmEditClient(clientDbId) {
+  var r = await sb.from('clients').select('*').eq('id', clientDbId).single();
+  if (r.data) {
+    _cmTab('new');
+    // Pre-fill form
+    setTimeout(function(){
+      var d = r.data;
+      var setVal = function(id, val){ var el=document.getElementById(id); if(el) el.value=val||''; };
+      setVal('cm-co-name', d.company_name);
+      setVal('cm-markets', d.markets);
+      setVal('cm-notes', d.notes);
+      // Change button to update
+      var btn = document.querySelector('#cm-body button:last-of-type');
+      if (btn) {
+        btn.textContent = 'Update Client';
+        btn.onclick = async function() {
+          await sb.from('clients').update({
+            company_name: document.getElementById('cm-co-name').value.trim(),
+            markets: document.getElementById('cm-markets').value.trim(),
+            notes: document.getElementById('cm-notes').value.trim()
+          }).eq('id', clientDbId);
+          _cmTab('clients');
+        };
+      }
+    }, 50);
+  }
+}
+
+// Hook into account menu for super admins
+async function _maybeShowSuperAdminBtn() {
+  var isSuperAdmin = await checkIfSuperAdmin();
+  var menu = document.getElementById('account-menu');
+  if (!isSuperAdmin || !menu) return;
+  // Add client management button if not already there
+  if (document.getElementById('super-admin-btn')) return;
+  var btn = document.createElement('button');
+  btn.id = 'super-admin-btn';
+  btn.onclick = function(){ closeAccountMenu(); openClientManagement(); };
+  btn.style.cssText = 'width:100%;padding:12px 16px;background:none;border:none;border-bottom:1px solid var(--border);cursor:pointer;text-align:left;display:flex;align-items:center;gap:10px;font-size:13px;font-weight:500;color:var(--accent);font-family:Inter,sans-serif;';
+  btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg> Client Management';
+  // Insert at top of menu actions
+  var settingsBtn = document.getElementById('account-menu-settings');
+  if (settingsBtn) menu.insertBefore(btn, settingsBtn);
+  else menu.insertBefore(btn, menu.lastElementChild);
+}
+
+
+
 // ── ACCOUNT MENU ──
 function _getInitials(name) {
   if (!name) return '?';
@@ -1399,6 +1766,7 @@ async function loadProfile() {
       populateRepFilter();
       _initTagFilterDropdown();
       _initSupplierFilterDropdown();
+      _maybeShowSuperAdminBtn();
 
       // Show onboarding for first-time logins
       if (isFirstLogin) {
