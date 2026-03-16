@@ -648,6 +648,66 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
 .opp-save-btn:disabled{opacity:.6;}
 .opp-summary{font-size:11px;color:var(--muted);margin-top:3px;}
 
+/* ── ROUTE BUILDER ── */
+#route-btn{display:none;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;color:rgba(255,255,255,.7);cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;}
+#route-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.route-select-bar{display:none;position:sticky;top:0;z-index:20;background:var(--ink);padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.1);gap:6px;flex-wrap:wrap;align-items:center;}
+.route-select-bar.active{display:flex;}
+.route-sel-count{font-size:12px;font-weight:700;color:#fff;margin-right:4px;flex-shrink:0;}
+.route-sel-btn{background:rgba(255,255,255,.1);border:none;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;color:#fff;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;}
+.route-sel-btn.accent{background:var(--accent);}
+.route-sel-btn.red{background:#dc2626;}
+.bitem-check{width:20px;height:20px;border-radius:6px;border:2px solid var(--border);background:#fff;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.15s;}
+.bitem-check.checked{background:var(--accent);border-color:var(--accent);}
+.bitem-check.checked::after{content:'✓';color:#fff;font-size:12px;font-weight:700;}
+/* Route Panel */
+#route-panel{position:fixed;top:calc(var(--header) + env(safe-area-inset-top,0px));right:0;bottom:0;width:320px;background:#fff;z-index:850;transform:translateX(100%);transition:transform .3s;display:flex;flex-direction:column;box-shadow:-4px 0 20px rgba(0,0,0,.15);}
+#route-panel.open{transform:translateX(0);}
+@media(max-width:768px){
+  #route-panel{width:100%;top:calc(var(--header) + env(safe-area-inset-top,0px));bottom:60px;}
+}
+.route-panel-header{padding:.75rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:var(--ink);}
+.route-panel-title{font-size:14px;font-weight:700;color:#fff;}
+.route-panel-close{background:none;border:none;color:rgba(255,255,255,.6);font-size:20px;cursor:pointer;padding:0;line-height:1;}
+.route-top-actions{padding:.5rem .75rem;display:flex;gap:6px;flex-shrink:0;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.route-action-btn{flex:1;min-width:80px;padding:7px 6px;border:none;border-radius:8px;font-size:11px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;white-space:nowrap;}
+.route-action-btn.green{background:#dcfce7;color:#059669;}
+.route-action-btn.blue{background:var(--accent-light);color:var(--accent);}
+.route-action-btn.red{background:#fef2f2;color:#dc2626;}
+.route-stops{flex:1;overflow-y:auto;}
+.route-stop{display:flex;align-items:flex-start;gap:10px;padding:.75rem 1rem;border-bottom:1px solid var(--border);transition:background .15s;}
+.route-stop.active-stop{background:var(--accent-light);}
+.route-stop.completed{opacity:.5;}
+.route-stop.skipped{opacity:.4;text-decoration:line-through;}
+.route-stop-num{width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;}
+.route-stop-num.completed{background:#059669;}
+.route-stop-num.skipped{background:#9ca3af;}
+.route-stop-num.active{background:var(--accent);box-shadow:0 0 0 3px rgba(108,92,231,.3);}
+.route-stop-info{flex:1;min-width:0;}
+.route-stop-name{font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.route-stop-addr{font-size:11px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.route-stop-status{font-size:10px;font-weight:700;margin-top:3px;}
+.route-stop-actions{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;}
+.route-stop-btn{padding:3px 8px;border-radius:6px;border:none;font-size:10px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;}
+.route-stop-btn.nav{background:#e0f2fe;color:#0369a1;}
+.route-stop-btn.done{background:#dcfce7;color:#059669;}
+.route-stop-btn.skip{background:#f3f4f6;color:#6b7280;}
+.route-stop-btn.remove{background:#fef2f2;color:#dc2626;}
+.route-empty{padding:2rem 1rem;text-align:center;color:var(--muted);font-size:13px;}
+/* Start point modal */
+#route-start-modal{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1200;display:none;align-items:center;justify-content:center;}
+#route-start-modal.open{display:flex;}
+.route-start-box{background:#fff;border-radius:16px;padding:1.5rem;width:90%;max-width:360px;}
+.route-start-title{font-size:16px;font-weight:700;color:var(--ink);margin-bottom:1rem;}
+.route-start-opt{display:flex;align-items:center;gap:12px;padding:.75rem;border:2px solid var(--border);border-radius:10px;cursor:pointer;margin-bottom:.75rem;transition:.15s;}
+.route-start-opt:hover{border-color:var(--accent);}
+.route-start-opt.selected{border-color:var(--accent);background:var(--accent-light);}
+.route-start-opt-icon{font-size:24px;flex-shrink:0;}
+.route-start-opt-text{font-size:13px;font-weight:600;color:var(--ink);}
+.route-start-opt-sub{font-size:11px;color:var(--muted);}
+#route-custom-addr{width:100%;border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;font-family:'Inter',sans-serif;margin-top:.5rem;display:none;outline:none;}
+#route-custom-addr:focus{border-color:var(--accent);}
+
 /* LOADER */
 #loader{position:fixed;inset:0;z-index:8000;background:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;}
 #loader.hidden{display:none;}
@@ -688,6 +748,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
     <div id="pcount-wrap"><b id="pcount">0</b> businesses</div>
     <button onclick="openAddBusiness()" style="background:var(--accent);border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;color:#fff;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;">+ Add</button>
     <button id="my-accounts-btn" onclick="filterMyAccounts()" style="display:none;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;color:rgba(255,255,255,.7);cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;">My Accounts</button>
+    <button id="route-btn" onclick="toggleRouteMode()">🗺 Route</button>
     <button id="settings-btn" onclick="openSettings()" style="display:none;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:5px 9px;font-size:16px;cursor:pointer;color:rgba(255,255,255,.6);line-height:1;" title="Admin Settings">⚙️</button>
     <div id="uinfo">Signed in as <b id="uemail"></b></div>
     <button id="signout-btn" onclick="doSignOut()">Sign out</button>
@@ -927,6 +988,13 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
         <div class="sheet-title">Results</div>
       </div>
     </div>
+    <!-- Route Selection Bar — shown in route mode -->
+    <div class="route-select-bar" id="route-select-bar">
+      <span class="route-sel-count" id="route-sel-count">0 selected</span>
+      <button class="route-sel-btn" onclick="routeSelectAll()">Select All</button>
+      <button class="route-sel-btn" onclick="routeClearSelection()">Clear</button>
+      <button class="route-sel-btn accent" onclick="buildRouteFromSelection()">Build Route</button>
+    </div>
     <div id="rcount"></div>
     <div id="biz-list"></div>
   </div>
@@ -1101,6 +1169,10 @@ async function loadProfile() {
       var maBtn = document.getElementById('my-accounts-btn');
       if (maBtn && currentProfile.full_name) maBtn.style.display = '';
 
+      // Show Route button for all logged-in users
+      var routeBtn = document.getElementById('route-btn');
+      if (routeBtn) routeBtn.style.display = '';
+
       // Show settings in desktop nav for admins only
       if (currentProfile.role === 'admin') {
         var navSettingsBtn = document.getElementById('nd-settings');
@@ -1197,7 +1269,10 @@ async function startApp() {
   if (map.isStyleLoaded()) {
     renderPins();
     prog(100, 'Ready!');
-    setTimeout(function(){ document.getElementById('loader').classList.add('hidden'); }, 500);
+    setTimeout(function(){
+      document.getElementById('loader').classList.add('hidden');
+      _restoreRouteSession();
+    }, 500);
   } else {
     map.once('load', function() {
       renderPins();
@@ -2589,8 +2664,17 @@ function renderList() {
   document.getElementById('rcount').textContent = data.length.toLocaleString() + ' businesses' + (filtersApplied ? ' · '+total.toLocaleString()+' total filtered' : '');
   document.getElementById('biz-list').innerHTML = data.slice(0,200).map(function(b){
     var idx = b._id;
-    var s = b.score || calcScore(b);
     var color = bizColor(b);
+    if (_routeMode) {
+      var isChecked = !!_routeSelected[idx];
+      return '<div class="bitem" style="display:flex;align-items:center;gap:10px;" onclick="toggleRouteSelect('+idx+')">'+
+        '<div class="bitem-check'+(isChecked?' checked':'')+'" id="rcb-'+idx+'"></div>'+
+        '<div style="flex:1;min-width:0;">'+
+          '<div class="bname"><span class="sdot" style="background:'+color+'"></span>'+b.name+'</div>'+
+          '<div class="baddr">'+b.street+(b.industry?' · <em style=color:var(--muted)>'+b.industry+'</em>':'')+'</div>'+
+        '</div>'+
+      '</div>';
+    }
     return '<div class="bitem" onclick="selectBiz('+idx+')"><div class="bname"><span class="sdot" style="background:'+color+'"></span>'+b.name+'</div><div class="baddr">'+b.street+(b.industry?' · <em style=color:var(--muted)>'+b.industry+'</em>':'')+'</div>'+(b.phone?'<div class="bphone"><a href="tel:'+b.phone.replace(/\D/g,'')+'" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none;">'+b.phone+'</a></div>':'')+'</div>';
   }).join('') + (data.length>200?'<div style="padding:.75rem;font-size:12px;color:var(--muted);text-align:center">Showing 200 of '+data.length.toLocaleString()+' — zoom in or filter to narrow</div>':'');
 }
@@ -4152,6 +4236,415 @@ function _resetOppSlider(productId) {
   }
 }
 
+// ── ROUTE BUILDER ──
+var _routeMode = false;
+var _routeSelected = {}; // business _id → business object
+var _routeStops = [];    // ordered array of {biz, status:'pending'|'completed'|'skipped'}
+var _routeActive = false;
+var _routeCurrentStop = 0;
+var _routeStartPoint = null; // {lat, lon, label}
+var _routeStartType = 'gps'; // 'gps' or 'custom'
+var _routeMarkers = [];
+var _routeLine = null;
+
+function toggleRouteMode() {
+  _routeMode = !_routeMode;
+  var btn = document.getElementById('route-btn');
+  var bar = document.getElementById('route-select-bar');
+  var ndRoute = document.getElementById('nd-route');
+  var nmRoute = document.getElementById('nm-route');
+  btn.classList.toggle('active', _routeMode);
+  btn.textContent = _routeMode ? '✕ Exit Route' : '🗺 Route';
+  if (ndRoute) ndRoute.classList.toggle('active', _routeMode);
+  if (nmRoute) nmRoute.classList.toggle('active', _routeMode);
+  if (bar) bar.classList.toggle('active', _routeMode);
+  renderList();
+  if (_routeMode) {
+    navTo('list');
+  } else {
+    _routeSelected = {};
+    updateRouteSelCount();
+    renderList();
+  }
+}
+
+function toggleRouteSelect(id) {
+  var data = filtersApplied ? filteredData : allData;
+  var b = _bizById[id] || data.find(function(x){ return String(x._id)===String(id); });
+  if (!b) return;
+  if (_routeSelected[id]) {
+    delete _routeSelected[id];
+  } else {
+    _routeSelected[id] = b;
+  }
+  updateRouteSelCount();
+  // Update checkbox visual
+  var cb = document.getElementById('rcb-'+id);
+  if (cb) cb.classList.toggle('checked', !!_routeSelected[id]);
+}
+
+function updateRouteSelCount() {
+  var count = Object.keys(_routeSelected).length;
+  var el = document.getElementById('route-sel-count');
+  if (el) el.textContent = count + ' selected';
+}
+
+function routeSelectAll() {
+  var data = filtersApplied ? filteredData : allData;
+  data.forEach(function(b){ _routeSelected[b._id] = b; });
+  updateRouteSelCount();
+  renderList();
+}
+
+function routeClearSelection() {
+  _routeSelected = {};
+  updateRouteSelCount();
+  renderList();
+}
+
+function buildRouteFromSelection() {
+  var selected = Object.values(_routeSelected);
+  if (selected.length < 1) { alert('Select at least 1 business to build a route.'); return; }
+  if (selected.length > 50) { alert('Maximum 50 stops per route. Please narrow your selection.'); return; }
+  // Show start point modal
+  document.getElementById('route-start-modal').classList.add('open');
+}
+
+function selectRouteStart(type) {
+  _routeStartType = type;
+  document.getElementById('rso-gps').classList.toggle('selected', type==='gps');
+  document.getElementById('rso-custom').classList.toggle('selected', type==='custom');
+  var customInput = document.getElementById('route-custom-addr');
+  customInput.style.display = type==='custom' ? 'block' : 'none';
+  if (type==='custom') customInput.focus();
+}
+
+function closeRouteStartModal() {
+  document.getElementById('route-start-modal').classList.remove('open');
+}
+
+function changeRouteStart() {
+  document.getElementById('route-start-modal').classList.add('open');
+}
+
+async function confirmRouteStart() {
+  closeRouteStartModal();
+  if (_routeStartType === 'gps') {
+    if (!navigator.geolocation) {
+      alert('GPS not available. Please use a custom address.');
+      return;
+    }
+    var btn = document.querySelector('#route-start-modal .route-start-box button:last-child');
+    navigator.geolocation.getCurrentPosition(function(pos){
+      _routeStartPoint = { lat: pos.coords.latitude, lon: pos.coords.longitude, label: 'My Location' };
+      _generateRoute();
+    }, function(){
+      alert('Could not get GPS location. Please try a custom address.');
+    }, { enableHighAccuracy: true, timeout: 8000 });
+  } else {
+    var addr = document.getElementById('route-custom-addr').value.trim();
+    if (!addr) { alert('Please enter a starting address.'); return; }
+    // Geocode using Mapbox
+    try {
+      var token = 'pk.eyJ1IjoiYXJ0dGF0YXIiLCJhIjoiY21pdWppYThlMjEzcjNxb3JjaDZkdWs4dyJ9.d-lDV_T6-_T2_10CHxfvVg';
+      var url = 'https://api.mapbox.com/geocoding/v5/mapbox.places/'+encodeURIComponent(addr)+'.json?access_token='+token+'&limit=1';
+      var r = await fetch(url);
+      var data = await r.json();
+      if (data.features && data.features.length) {
+        var coords = data.features[0].center;
+        _routeStartPoint = { lat: coords[1], lon: coords[0], label: addr };
+        _generateRoute();
+      } else {
+        alert('Could not find that address. Try being more specific.');
+      }
+    } catch(e) {
+      alert('Geocoding failed: ' + e.message);
+    }
+  }
+}
+
+function _nearestNeighbor(start, stops) {
+  var remaining = stops.slice();
+  var ordered = [];
+  var current = start;
+  while (remaining.length) {
+    var nearest = null, nearestDist = Infinity, nearestIdx = 0;
+    remaining.forEach(function(s, i){
+      var d = Math.pow(s.biz.lat - current.lat, 2) + Math.pow(s.biz.lon - current.lon, 2);
+      if (d < nearestDist) { nearestDist = d; nearest = s; nearestIdx = i; }
+    });
+    ordered.push(nearest);
+    current = { lat: nearest.biz.lat, lon: nearest.biz.lon };
+    remaining.splice(nearestIdx, 1);
+  }
+  return ordered;
+}
+
+function _generateRoute() {
+  var selected = Object.values(_routeSelected);
+  var stops = selected.filter(function(b){ return b.lat && b.lon; }).map(function(b){
+    return { biz: b, status: 'pending' };
+  });
+  if (!stops.length) { alert('Selected businesses have no coordinates.'); return; }
+
+  _routeStops = _nearestNeighbor(_routeStartPoint, stops);
+  _routeActive = false;
+  _routeCurrentStop = 0;
+
+  // Save to session
+  _saveRouteSession();
+
+  // Draw on map
+  _drawRouteOnMap();
+
+  // Open route panel
+  openRoutePanel();
+
+  // Exit route selection mode
+  _routeMode = false;
+  _routeSelected = {};
+  var btn = document.getElementById('route-btn');
+  if (btn) { btn.classList.remove('active'); btn.textContent = '🗺 Route'; }
+  var bar = document.getElementById('route-select-bar');
+  if (bar) bar.classList.remove('active');
+  renderList();
+}
+
+function _drawRouteOnMap() {
+  // Remove old route markers and line
+  _routeMarkers.forEach(function(m){ m.remove(); });
+  _routeMarkers = [];
+  if (_routeLine && map.getLayer('route-line')) { map.removeLayer('route-line'); map.removeSource('route-line-src'); _routeLine = null; }
+
+  if (!_routeStops.length) return;
+
+  // Draw numbered markers
+  _routeStops.forEach(function(stop, i){
+    if (!stop.biz.lat || !stop.biz.lon) return;
+    var el = document.createElement('div');
+    var color = stop.status==='completed'?'#059669':stop.status==='skipped'?'#9ca3af':'#4a36c8';
+    el.innerHTML = '<div style="width:28px;height:28px;border-radius:50%;background:'+color+';color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3);">'+(i+1)+'</div>';
+    var marker = new mapboxgl.Marker({element:el, anchor:'center'})
+      .setLngLat([stop.biz.lon, stop.biz.lat])
+      .addTo(map);
+    _routeMarkers.push(marker);
+  });
+
+  // Draw connecting line
+  var coords = [];
+  if (_routeStartPoint) coords.push([_routeStartPoint.lon, _routeStartPoint.lat]);
+  _routeStops.forEach(function(s){ if (s.biz.lon && s.biz.lat) coords.push([s.biz.lon, s.biz.lat]); });
+  if (coords.length > 1) {
+    try {
+      map.addSource('route-line-src', { type:'geojson', data:{ type:'Feature', geometry:{ type:'LineString', coordinates:coords }}});
+      map.addLayer({ id:'route-line', type:'line', source:'route-line-src', paint:{ 'line-color':'#4a36c8', 'line-width':2, 'line-dasharray':[2,2], 'line-opacity':.7 }});
+      _routeLine = true;
+    } catch(e) {}
+  }
+
+  renderRouteStops();
+}
+
+function getRouteMapStyle() {
+  var hour = new Date().getHours();
+  return (hour >= 6 && hour < 20)
+    ? 'mapbox://styles/mapbox/navigation-day-v1'
+    : 'mapbox://styles/mapbox/navigation-night-v1';
+}
+
+function openRoutePanel() {
+  // Switch to navigation map style
+  map.setStyle(getRouteMapStyle());
+  map.once('styledata', function(){ _drawRouteOnMap(); });
+  document.getElementById('route-panel').classList.add('open');
+  if (_routeStops.length) {
+    var bounds = new mapboxgl.LngLatBounds();
+    if (_routeStartPoint) bounds.extend([_routeStartPoint.lon, _routeStartPoint.lat]);
+    _routeStops.forEach(function(s){ if (s.biz.lon && s.biz.lat) bounds.extend([s.biz.lon, s.biz.lat]); });
+    map.fitBounds(bounds, { padding: 80, maxZoom: 14 });
+  }
+  renderRouteStops();
+}
+
+function closeRoutePanel() {
+  document.getElementById('route-panel').classList.remove('open');
+  // Restore dark map style
+  map.setStyle('mapbox://styles/mapbox/dark-v11');
+  map.once('styledata', function(){ _drawRouteOnMap(); });
+}
+
+function renderRouteStops() {
+  var el = document.getElementById('route-stops-list');
+  var sub = document.getElementById('route-panel-subtitle');
+  if (!el) return;
+  if (!_routeStops.length) { el.innerHTML = '<div class="route-empty">No stops. Select businesses from the list.</div>'; return; }
+
+  var done = _routeStops.filter(function(s){ return s.status==='completed'; }).length;
+  var skipped = _routeStops.filter(function(s){ return s.status==='skipped'; }).length;
+  if (sub) sub.textContent = _routeStops.length+' stops · '+done+' done · '+(_routeStartPoint?_routeStartPoint.label:'');
+
+  el.innerHTML = _routeStops.map(function(stop, i){
+    var isActive = _routeActive && i === _routeCurrentStop;
+    var cls = 'route-stop'+(isActive?' active-stop':'')+(stop.status==='completed'?' completed':'')+(stop.status==='skipped'?' skipped':'');
+    var numCls = 'route-stop-num'+(stop.status==='completed'?' completed':stop.status==='skipped'?' skipped':isActive?' active':'');
+    var numIcon = stop.status==='completed'?'✓':stop.status==='skipped'?'↷':(i+1);
+    var statusColor = stop.status==='completed'?'color:#059669':stop.status==='skipped'?'color:#9ca3af':'color:var(--accent)';
+    var statusText = stop.status==='completed'?'✓ Completed':stop.status==='skipped'?'↷ Skipped':'⏳ Pending';
+    return '<div class="'+cls+'" id="rstop-'+i+'">'+
+      '<div class="'+numCls+'">'+numIcon+'</div>'+
+      '<div class="route-stop-info">'+
+        '<div class="route-stop-name">'+stop.biz.name+'</div>'+
+        '<div class="route-stop-addr">'+(stop.biz.street||stop.biz.full_address||'')+'</div>'+
+        '<div class="route-stop-status" style="'+statusColor+'">'+statusText+'</div>'+
+        '<div class="route-stop-actions">'+
+          '<button class="route-stop-btn nav" onclick="navigateToStop('+i+')">Navigate</button>'+
+          (stop.status!=='completed'?'<button class="route-stop-btn done" onclick="completeStop('+i+')">✓ Done</button>':'')+
+          (stop.status==='pending'?'<button class="route-stop-btn skip" onclick="skipStop('+i+')">Skip</button>':'')+
+          '<button class="route-stop-btn remove" onclick="removeStop('+i+')">Remove</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+
+  // Scroll active stop into view
+  if (_routeActive) {
+    var activeEl = document.getElementById('rstop-'+_routeCurrentStop);
+    if (activeEl) activeEl.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  }
+}
+
+function startRoute() {
+  if (!_routeStops.length) return;
+  _routeActive = true;
+  // Find first pending stop
+  _routeCurrentStop = _routeStops.findIndex(function(s){ return s.status==='pending'; });
+  if (_routeCurrentStop < 0) _routeCurrentStop = 0;
+  renderRouteStops();
+  // Fly to first stop
+  var stop = _routeStops[_routeCurrentStop];
+  if (stop && stop.biz.lat) map.flyTo({ center:[stop.biz.lon, stop.biz.lat], zoom:15, speed:1.5 });
+}
+
+function completeStop(idx) {
+  _routeStops[idx].status = 'completed';
+  // Log visited activity
+  var b = _routeStops[idx].biz;
+  sb.from('activity').insert({
+    business_id: String(b.id||b._id),
+    type: 'visited',
+    note: 'Visited during route',
+    client_id: currentProfile ? currentProfile.client_id : null,
+    created_by: currentProfile ? (currentProfile.full_name||'') : ''
+  }).then(function(){});
+  _saveRouteSession();
+  _drawRouteOnMap();
+  // Auto advance to next pending
+  if (_routeActive) {
+    var next = _routeStops.findIndex(function(s, i){ return i > idx && s.status==='pending'; });
+    if (next >= 0) {
+      _routeCurrentStop = next;
+      var stop = _routeStops[next];
+      map.flyTo({ center:[stop.biz.lon, stop.biz.lat], zoom:15, speed:1.5 });
+    }
+  }
+  renderRouteStops();
+  // Check if all done
+  var allDone = _routeStops.every(function(s){ return s.status!=='pending'; });
+  if (allDone) { _routeActive = false; renderRouteStops(); setTimeout(function(){ alert('🎉 Route complete! All stops visited.'); }, 300); }
+}
+
+function skipStop(idx) {
+  _routeStops[idx].status = 'skipped';
+  _saveRouteSession();
+  _drawRouteOnMap();
+  if (_routeActive) {
+    var next = _routeStops.findIndex(function(s, i){ return i > idx && s.status==='pending'; });
+    if (next >= 0) { _routeCurrentStop = next; map.flyTo({ center:[_routeStops[next].biz.lon, _routeStops[next].biz.lat], zoom:15, speed:1.5 }); }
+  }
+  renderRouteStops();
+}
+
+function removeStop(idx) {
+  _routeStops.splice(idx, 1);
+  if (_routeCurrentStop >= _routeStops.length) _routeCurrentStop = Math.max(0, _routeStops.length-1);
+  _saveRouteSession();
+  _drawRouteOnMap();
+}
+
+function navigateToStop(idx) {
+  var stop = _routeStops[idx];
+  if (!stop) return;
+  var addr = encodeURIComponent(stop.biz.full_address || stop.biz.street || stop.biz.name);
+  var lat = stop.biz.lat, lon = stop.biz.lon;
+  // Try Apple Maps on iOS, Google Maps elsewhere
+  var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  var url = isIOS
+    ? 'maps://maps.apple.com/?daddr='+lat+','+lon
+    : 'https://www.google.com/maps/dir/?api=1&destination='+lat+','+lon;
+  window.open(url, '_blank');
+}
+
+function reoptimizeRoute() {
+  if (!_routeStartPoint || !_routeStops.length) return;
+  var pending = _routeStops.filter(function(s){ return s.status==='pending'; });
+  var done = _routeStops.filter(function(s){ return s.status!=='pending'; });
+  var reopt = _nearestNeighbor(_routeStartPoint, pending);
+  _routeStops = done.concat(reopt);
+  _routeCurrentStop = done.length;
+  _saveRouteSession();
+  _drawRouteOnMap();
+}
+
+function clearRoute() {
+  if (_routeStops.length && !confirm('Clear the current route?')) return;
+  _routeStops = [];
+  _routeActive = false;
+  _routeCurrentStop = 0;
+  _routeMarkers.forEach(function(m){ m.remove(); });
+  _routeMarkers = [];
+  if (_routeLine && map.getLayer('route-line')) { try{ map.removeLayer('route-line'); map.removeSource('route-line-src'); }catch(e){} _routeLine = null; }
+  localStorage.removeItem('vavan_route');
+  renderRouteStops();
+  closeRoutePanel();
+  var btn = document.getElementById('route-btn');
+  if (btn) btn.textContent = '🗺 Route';
+}
+
+function _saveRouteSession() {
+  try {
+    localStorage.setItem('vavan_route', JSON.stringify({
+      stops: _routeStops.map(function(s){ return { bizId: String(s.biz._id||s.biz.id), status: s.status }; }),
+      startPoint: _routeStartPoint,
+      currentStop: _routeCurrentStop,
+      active: _routeActive
+    }));
+  } catch(e) {}
+}
+
+function _restoreRouteSession() {
+  try {
+    var saved = localStorage.getItem('vavan_route');
+    if (!saved) return;
+    var data = JSON.parse(saved);
+    if (!data.stops || !data.stops.length) return;
+    var stops = [];
+    data.stops.forEach(function(s){
+      var b = _bizById[s.bizId] || allData.find(function(x){ return String(x._id||x.id)===s.bizId; });
+      if (b) stops.push({ biz: b, status: s.status });
+    });
+    if (!stops.length) return;
+    _routeStops = stops;
+    _routeStartPoint = data.startPoint;
+    _routeCurrentStop = data.currentStop || 0;
+    _routeActive = data.active || false;
+    _drawRouteOnMap();
+    // Show route button as active
+    var btn = document.getElementById('route-btn');
+    if (btn) btn.style.display = '';
+    openRoutePanel();
+  } catch(e) {}
+}
+
 function activateTool(t) {
   if (activeTool===t) { deactivate(); return; }
   deactivate(); activeTool = t;
@@ -4337,6 +4830,46 @@ function onMapClick(e) {
   </div>
 </div>
 
+<!-- ROUTE START MODAL -->
+<div id="route-start-modal">
+  <div class="route-start-box">
+    <div class="route-start-title">📍 Set Starting Point</div>
+    <div class="route-start-opt selected" id="rso-gps" onclick="selectRouteStart('gps')">
+      <div class="route-start-opt-icon">📡</div>
+      <div><div class="route-start-opt-text">My Current Location</div><div class="route-start-opt-sub">Uses your GPS position</div></div>
+    </div>
+    <div class="route-start-opt" id="rso-custom" onclick="selectRouteStart('custom')">
+      <div class="route-start-opt-icon">🏠</div>
+      <div><div class="route-start-opt-text">Custom Address</div><div class="route-start-opt-sub">Office, hotel, or any location</div></div>
+    </div>
+    <input id="route-custom-addr" placeholder="Enter starting address...">
+    <div style="display:flex;gap:8px;margin-top:1rem;">
+      <button onclick="closeRouteStartModal()" style="flex:1;padding:10px;background:#f3f4f6;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;">Cancel</button>
+      <button onclick="confirmRouteStart()" style="flex:1;padding:10px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;">Build Route</button>
+    </div>
+  </div>
+</div>
+
+<!-- ROUTE PANEL -->
+<div id="route-panel">
+  <div class="route-panel-header">
+    <div>
+      <div class="route-panel-title">🗺 Route</div>
+      <div id="route-panel-subtitle" style="font-size:11px;color:rgba(255,255,255,.5);margin-top:1px;"></div>
+    </div>
+    <button class="route-panel-close" onclick="closeRoutePanel()">✕</button>
+  </div>
+  <div class="route-top-actions">
+    <button class="route-action-btn green" onclick="startRoute()">▶ Start</button>
+    <button class="route-action-btn blue" onclick="reoptimizeRoute()">⟳ Re-Optimize</button>
+    <button class="route-action-btn blue" onclick="changeRouteStart()">📍 Start Point</button>
+    <button class="route-action-btn red" onclick="clearRoute()">✕ Clear</button>
+  </div>
+  <div class="route-stops" id="route-stops-list">
+    <div class="route-empty">No stops yet. Select businesses from the list.</div>
+  </div>
+</div>
+
 <!-- DESKTOP LEFT NAV -->
 <nav id="nav-desktop">
   <button class="nav-item-desk active" id="nd-map" onclick="navTo('map')">
@@ -4355,6 +4888,10 @@ function onMapClick(e) {
   <button class="nav-item-desk" id="nd-contacts" onclick="navTo('contacts')">
     <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
     Contacts
+  </button>
+  <button class="nav-item-desk" id="nd-route" onclick="toggleRouteMode();navTo('list')">
+    <svg viewBox="0 0 24 24"><circle cx="3" cy="6" r="2"/><circle cx="21" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M5 6h6a4 4 0 0 1 4 4v4"/><path d="M19 6h-6"/></svg>
+    Route
   </button>
   <!-- Settings — admin only, pushed to bottom, desktop only -->
   <button class="nav-item-desk" id="nd-settings" onclick="openSettings()" style="display:none;margin-top:auto;">
@@ -4381,6 +4918,10 @@ function onMapClick(e) {
   <button class="nav-item" id="nm-contacts" onclick="navTo('contacts')">
     <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
     Contacts
+  </button>
+  <button class="nav-item" id="nm-route" onclick="toggleRouteMode();navTo('list')">
+    <svg viewBox="0 0 24 24"><circle cx="3" cy="6" r="2"/><circle cx="21" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M5 6h6a4 4 0 0 1 4 4v4"/><path d="M19 6h-6"/></svg>
+    Route
   </button>
 </nav>
 
