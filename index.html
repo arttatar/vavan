@@ -858,6 +858,11 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
         </div>
       </div>
     </div>
+    <!-- Help / Onboarding -->
+    <button onclick="closeAccountMenu();_showOnboarding();" style="width:100%;padding:12px 16px;background:none;border:none;border-bottom:1px solid var(--border);cursor:pointer;text-align:left;display:flex;align-items:center;gap:10px;font-size:13px;font-weight:500;color:var(--ink);">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      How to Use Vavan
+    </button>
     <!-- Settings — admin only -->
     <button id="account-menu-settings" onclick="closeAccountMenu();openSettings();" style="display:none;width:100%;padding:12px 16px;background:none;border:none;border-bottom:1px solid var(--border);cursor:pointer;text-align:left;display:flex;align-items:center;gap:10px;font-size:13px;font-weight:500;color:var(--ink);">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -1312,9 +1317,55 @@ async function loadProfile() {
     var session = await sb.auth.getSession();
     if (!session.data || !session.data.session) return;
     var userId = session.data.session.user.id;
+    var userEmail = session.data.session.user.email;
+    var userMeta = session.data.session.user.user_metadata || {};
+
     var r = await sb.from('sales_profiles').select('*').eq('user_id', userId).single();
+
+    // Auto-create profile for invited users who don't have one yet
+    if (!r.data || r.error) {
+      // Check pending invite or use metadata from magic link
+      var pendingName = userMeta.full_name || '';
+      var pendingTerr = userMeta.territory_code || 'LAS-ALL';
+      var pendingTerrName = userMeta.territory_name || 'Las Vegas';
+      var pendingRole = userMeta.role || 'rep';
+      var pendingClientId = userMeta.client_id || null;
+
+      // Check pending_invites table as fallback
+      try {
+        var pi = await sb.from('pending_invites').select('*').eq('email', userEmail).maybeSingle();
+        if (pi.data) {
+          pendingName = pi.data.full_name || pendingName;
+          pendingTerr = pi.data.territory_code || pendingTerr;
+          pendingTerrName = pi.data.territory_name || pendingTerrName;
+          pendingRole = pi.data.role || pendingRole;
+          pendingClientId = pi.data.client_id || pendingClientId;
+        }
+      } catch(e){}
+
+      if (pendingName || userEmail) {
+        var newProfile = {
+          user_id: userId,
+          full_name: pendingName || userEmail.split('@')[0],
+          email: userEmail,
+          territory_code: pendingTerr,
+          territory_name: pendingTerrName,
+          role: pendingRole,
+          client_id: pendingClientId,
+          created_at: new Date().toISOString()
+        };
+        var cr = await sb.from('sales_profiles').insert(newProfile).select().single();
+        if (cr.data) {
+          r = { data: cr.data };
+          // Mark as first login for onboarding
+          r.data._isFirstLogin = true;
+        }
+      }
+    }
+
     if (r.data) {
       currentProfile = r.data;
+      var isFirstLogin = !!r.data._isFirstLogin;
 
       // Load client's purchased markets
       if (currentProfile.client_id) {
@@ -1338,20 +1389,21 @@ async function loadProfile() {
         }
       }
 
-      // Show My Accounts button
       var maBtn = document.getElementById('my-accounts-btn');
       if (maBtn && currentProfile.full_name) maBtn.style.display = '';
 
-      // Show Route button for all logged-in users
       var routeBtn = document.getElementById('route-btn');
       if (routeBtn) routeBtn.style.display = '';
 
-      // Populate account menu
       _updateAccountUI(currentProfile.full_name || '', currentProfile.role === 'admin');
-
       populateRepFilter();
       _initTagFilterDropdown();
       _initSupplierFilterDropdown();
+
+      // Show onboarding for first-time logins
+      if (isFirstLogin) {
+        setTimeout(function(){ _showOnboarding(); }, 1500);
+      }
     }
   } catch(e) {
     console.warn('Profile load error:', e);
@@ -1399,6 +1451,56 @@ function _renderStatusPills() {
     var el = document.getElementById('status-pill-'+s);
     if (el) el.classList.toggle('on', statuses.indexOf(s) >= 0);
   });
+}
+
+// ── ONBOARDING ──
+function _showOnboarding() {
+  if (document.getElementById('onboarding-overlay')) return;
+  var name = currentProfile ? (currentProfile.full_name || '').split(' ')[0] : 'there';
+  var territory = currentProfile ? (currentProfile.territory_name || 'your territory') : 'your territory';
+
+  var overlay = document.createElement('div');
+  overlay.id = 'onboarding-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(13,13,20,.85);z-index:19000;display:flex;align-items:center;justify-content:center;font-family:Inter,sans-serif;padding:20px;';
+
+  overlay.innerHTML =
+    '<div style="background:#fff;border-radius:20px;width:100%;max-width:420px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3);">'+
+      // Header
+      '<div style="background:var(--accent);padding:28px 24px 20px;text-align:center;">'+
+        '<div style="font-size:36px;margin-bottom:8px;">👋</div>'+
+        '<div style="font-size:22px;font-weight:800;color:#fff;font-family:Syne,sans-serif;">Welcome, '+name+'!</div>'+
+        '<div style="font-size:13px;color:rgba(255,255,255,.8);margin-top:4px;">You\'re set up for <strong>'+territory+'</strong></div>'+
+      '</div>'+
+      // Tips
+      '<div style="padding:20px 24px;">'+
+        '<div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;">Quick start</div>'+
+        [
+          ['🔍','Filter businesses','Use Filters to search by industry, status, or area. Tap Apply to see pins on the map.'],
+          ['📍','Log a visit','Open any business → tap Visited or Contacted → select an outcome. It logs instantly.'],
+          ['🗺️','Build a route','Filter your area → List → select businesses → Build Route. The app optimizes the order.'],
+          ['📊','Track opportunities','Open a business → Opportunities tab → toggle the product lines they use and set the pipeline stage.'],
+          ['👤','Claim accounts','Open any unassigned business → tap Claim to assign it to yourself.']
+        ].map(function(tip){
+          return '<div style="display:flex;gap:12px;margin-bottom:14px;">'+
+            '<div style="font-size:22px;flex-shrink:0;margin-top:1px;">'+tip[0]+'</div>'+
+            '<div>'+
+              '<div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:2px;">'+tip[1]+'</div>'+
+              '<div style="font-size:12px;color:var(--muted);line-height:1.5;">'+tip[2]+'</div>'+
+            '</div>'+
+          '</div>';
+        }).join('')+
+      '</div>'+
+      // CTA
+      '<div style="padding:0 24px 24px;">'+
+        '<button onclick="document.getElementById(\'onboarding-overlay\').remove()" '+
+          'style="width:100%;padding:14px;background:var(--accent);border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;font-family:Inter,sans-serif;cursor:pointer;">'+
+          'Start Working My Territory →'+
+        '</button>'+
+        '<div style="text-align:center;margin-top:8px;font-size:11px;color:var(--muted);">You can access help anytime from your account menu</div>'+
+      '</div>'+
+    '</div>';
+
+  document.body.appendChild(overlay);
 }
 
 // ── REP MULTI-FILTER ──
@@ -3155,14 +3257,33 @@ async function renderRepsTab(body) {
     var r = await sb.from('sales_profiles').select('*').order('full_name', {ascending:true});
     if (r.error) throw r.error;
     _allProfiles = r.data || [];
+
+    // Load this week's activity counts per rep
+    var weekAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString();
+    var actR = await sb.from('activity').select('created_by, type').gte('created_at', weekAgo);
+    var actThisWeek = actR.data || [];
+
+    function repStats(repName) {
+      var acts = actThisWeek.filter(function(a){ return a.created_by === repName; });
+      var visits    = acts.filter(function(a){ return a.type === 'visited'; }).length;
+      var contacts  = acts.filter(function(a){ return a.type === 'contacted'; }).length;
+      var notes     = acts.filter(function(a){ return a.type === 'note'; }).length;
+      return { total: acts.length, visits: visits, contacts: contacts, notes: notes };
+    }
+
     if (!_allProfiles.length) {
       body.innerHTML = '<div class="det-empty">No rep profiles found.</div>';
       return;
     }
+
     body.innerHTML =
       '<div class="settings-section">'+
-        '<div class="settings-section-title">All Reps ('+_allProfiles.length+')</div>'+
+        '<div class="settings-section-title" style="display:flex;justify-content:space-between;align-items:center;">'+
+          '<span>All Reps ('+_allProfiles.length+')</span>'+
+          '<span style="font-size:10px;font-weight:500;color:var(--muted);">Activity this week</span>'+
+        '</div>'+
         _allProfiles.map(function(p){
+          var stats = repStats(p.full_name || '');
           return '<div class="rep-row" id="rep-row-'+p.id+'">'+
             '<div style="flex:1;">'+
               '<div class="rep-row-name">'+(p.full_name||'Unnamed Rep')+'</div>'+
@@ -3171,6 +3292,14 @@ async function renderRepsTab(body) {
                 ' · <span style="color:'+(p.role==='admin'?'var(--accent)':'var(--muted)')+'">'+
                 (p.role||'rep')+'</span>'+
               '</div>'+
+              // Activity stats bar
+              (stats.total > 0 ?
+                '<div style="display:flex;gap:8px;margin-top:5px;">'+
+                  (stats.visits  ? '<span style="font-size:10px;background:#fff7e6;color:#d97706;border-radius:100px;padding:1px 7px;font-weight:600;">'+stats.visits+'V</span>' : '')+
+                  (stats.contacts? '<span style="font-size:10px;background:#f0fdf4;color:#059669;border-radius:100px;padding:1px 7px;font-weight:600;">'+stats.contacts+'C</span>' : '')+
+                  (stats.notes   ? '<span style="font-size:10px;background:var(--paper2);color:var(--muted);border-radius:100px;padding:1px 7px;font-weight:600;">'+stats.notes+'N</span>' : '')+
+                '</div>'
+              : '<div style="font-size:10px;color:var(--muted);margin-top:4px;">No activity this week</div>')+
             '</div>'+
             '<div class="rep-row-actions">'+
               '<button class="rep-edit-btn" onclick="editRepInline(\''+p.id+'\')">Edit</button>'+
@@ -3251,11 +3380,18 @@ function renderInviteTab(body) {
     '<div class="settings-section">'+
       '<div class="settings-section-title">Invite a New Rep</div>'+
       '<div class="invite-form">'+
-        '<label class="abiz-label">Full Name</label>'+
-        '<input class="settings-input" id="inv-name" placeholder="First Last">'+
-        '<label class="abiz-label">Email Address</label>'+
-        '<input class="settings-input" id="inv-email" type="email" placeholder="rep@company.com">'+
-        '<label class="abiz-label">Markets Serviced</label>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.5rem;">'+
+          '<div><label class="abiz-label">Full Name *</label>'+
+            '<input class="settings-input" id="inv-name" placeholder="First Last" style="margin:0;"></div>'+
+          '<div><label class="abiz-label">Role</label>'+
+            '<select class="settings-select" id="inv-role" style="margin:0;">'+
+              '<option value="rep">Rep</option>'+
+              '<option value="admin">Admin</option>'+
+            '</select></div>'+
+        '</div>'+
+        '<label class="abiz-label">Email Address *</label>'+
+        '<input class="settings-input" id="inv-email" type="email" placeholder="rep@interstate-oil.com">'+
+        '<label class="abiz-label">Markets Assigned</label>'+
         '<div style="display:flex;flex-wrap:wrap;gap:6px;padding:.5rem;background:#fff;border:1px solid var(--border);border-radius:8px;margin-bottom:.5rem;" id="inv-markets">'+
           VAVAN_MARKETS.map(function(m){
             return '<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;white-space:nowrap;">'+
@@ -3263,55 +3399,86 @@ function renderInviteTab(body) {
               m.name+'</label>';
           }).join('')+
         '</div>'+
-        '<div id="inv-status" style="font-size:12px;color:var(--muted);min-height:20px;margin:.5rem 0;"></div>'+
+        '<div id="inv-status" style="font-size:12px;min-height:20px;margin:.5rem 0;"></div>'+
         '<button class="settings-save-btn" onclick="sendInvite()" style="width:100%;">Send Invite Link</button>'+
       '</div>'+
       '<div style="margin-top:1rem;padding:.875rem;background:var(--paper);border-radius:10px;border:1px solid var(--border);">'+
         '<div class="settings-section-title" style="margin-bottom:.5rem;">How it works</div>'+
-        '<div style="font-size:12px;color:var(--muted);line-height:1.6;">'+
-          '1. Enter the rep\'s name, email, and territory.<br>'+
-          '2. They\'ll receive a magic link to set their password.<br>'+
-          '3. Their profile is auto-created with the assigned territory.<br>'+
-          '4. They can only see businesses in their territory.'+
+        '<div style="font-size:12px;color:var(--muted);line-height:1.7;">'+
+          '1. Enter the rep\'s name, email, role, and market.<br>'+
+          '2. They\'ll receive a magic link — no password needed.<br>'+
+          '3. First login shows them an onboarding screen.<br>'+
+          '4. Their profile is created with their assigned territory.<br>'+
+          '5. They only see businesses in their market.'+
         '</div>'+
       '</div>'+
     '</div>';
 }
 
 async function sendInvite() {
-  var name      = document.getElementById('inv-name').value.trim();
-  var email     = document.getElementById('inv-email').value.trim();
+  var name        = document.getElementById('inv-name').value.trim();
+  var email       = document.getElementById('inv-email').value.trim();
+  var role        = document.getElementById('inv-role') ? document.getElementById('inv-role').value : 'rep';
   var marketsWrap = document.getElementById('inv-markets');
-  var markets   = marketsWrap ? Array.from(marketsWrap.querySelectorAll('input:checked')).map(function(cb){ return cb.value; }) : [];
-  var statusEl  = document.getElementById('inv-status');
-  if (!name || !email) { statusEl.textContent = 'Name and email required.'; return; }
-  if (!markets.length) { statusEl.textContent = 'Select at least one market.'; return; }
+  var markets     = marketsWrap ? Array.from(marketsWrap.querySelectorAll('input:checked')).map(function(cb){ return cb.value; }) : [];
+  var statusEl    = document.getElementById('inv-status');
 
+  if (!name)          { statusEl.style.color='#ef4444'; statusEl.textContent='Name required.'; return; }
+  if (!email)         { statusEl.style.color='#ef4444'; statusEl.textContent='Email required.'; return; }
+  if (!markets.length){ statusEl.style.color='#ef4444'; statusEl.textContent='Select at least one market.'; return; }
+
+  statusEl.style.color = 'var(--muted)';
   statusEl.textContent = 'Sending invite...';
-  try {
-    // Create the user via Supabase auth invite
-    var r = await sb.auth.admin ? sb.auth.admin.inviteUserByEmail(email) : null;
-    // Fallback: use signInWithOtp which sends a magic link
-    if (!r) {
-      r = await sb.auth.signInWithOtp({ email: email, options: { shouldCreateUser: true } });
-    }
-    if (r && r.error) throw r.error;
+  var btn = document.querySelector('.settings-save-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
 
-    // Pre-create the sales profile so territory is ready when they log in
-    var tname = territory.replace('LAS-','Las Vegas - ').replace('SAC-','Sacramento - ').replace('-ALL',' All');
-    var existing = await sb.from('sales_profiles').select('id').eq('user_id', '00000000-0000-0000-0000-000000000000').maybeSingle();
+  try {
+    var territoryName = markets.join(', ');
+    var territoryCode = 'LAS-ALL'; // default; expand when multi-market
+
+    // Send magic link invite via Supabase OTP
+    var r = await sb.auth.signInWithOtp({
+      email: email,
+      options: {
+        shouldCreateUser: true,
+        data: {
+          full_name: name,
+          territory_code: territoryCode,
+          territory_name: territoryName,
+          role: role,
+          client_id: currentProfile ? currentProfile.client_id : null
+        }
+      }
+    });
+    if (r.error) throw r.error;
+
+    // Store pending invite so profile is ready when they first log in
+    try {
+      await sb.from('pending_invites').upsert({
+        email:          email,
+        full_name:      name,
+        territory_code: territoryCode,
+        territory_name: territoryName,
+        role:           role,
+        client_id:      currentProfile ? currentProfile.client_id : null,
+        invited_by:     currentProfile ? currentProfile.full_name : '',
+        invited_at:     new Date().toISOString()
+      }, { onConflict: 'email' });
+    } catch(e){ /* pending_invites table optional */ }
 
     statusEl.style.color = '#059669';
-    statusEl.textContent = 'Invite sent to '+email+'. They will receive a login link.';
+    statusEl.textContent = '✓ Invite sent to ' + email + '. They\'ll receive a login link.';
 
-    // Note: profile will be created when they first log in via onAuthStateChange
-    // Store pending invite in a simple way
-    var pendingKey = 'vavan_pending_'+email.replace('@','_');
-    try { localStorage.setItem(pendingKey, JSON.stringify({name:name, territory_code:territory, territory_name:tname})); } catch(e){}
+    // Reset form
+    document.getElementById('inv-name').value = '';
+    document.getElementById('inv-email').value = '';
+    if (marketsWrap) marketsWrap.querySelectorAll('input').forEach(function(cb){ cb.checked = false; });
 
   } catch(e) {
     statusEl.style.color = '#ef4444';
-    statusEl.textContent = e.message;
+    statusEl.textContent = e.message || 'Invite failed.';
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Send Invite Link'; }
   }
 }
 
