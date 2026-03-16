@@ -241,6 +241,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
 @media (min-width:769px){
   #nav{ display:none; }
   #nav-desktop{ display:flex; }
+  #header-add-btn{ display:none; } /* hidden on desktop — use left nav Add button */
   #map{ left:64px; }
   /* Panels start at 64px left edge, slide in from there */
   #sidebar{
@@ -273,6 +274,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
 }
 @media (max-width:768px){
   #nav-desktop{ display:none; }
+  #header-add-btn{ display:block; } /* show on mobile */
   #map{ bottom:60px; }
   #contacts-panel{
     top:auto !important; bottom:60px !important;
@@ -822,7 +824,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
     <div class="spacer"></div>
     <div id="filter-badge"></div>
     <div id="pcount-wrap"><b id="pcount">0</b> businesses</div>
-    <button onclick="openAddBusiness()" style="background:var(--accent);border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;color:#fff;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;">+ Add</button>
+    <button id="header-add-btn" onclick="openAddBusiness()" style="background:var(--accent);border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;color:#fff;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;">+ Add</button>
     <button id="my-accounts-btn" onclick="filterMyAccounts()" style="display:none;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;color:rgba(255,255,255,.7);cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;">My Accounts</button>
     <button id="route-btn" onclick="toggleRouteMode()">Route</button>
     <!-- Account button — replaces uinfo + signout + settings in header -->
@@ -1249,8 +1251,8 @@ function _updateAccountEmail(email) {
   if (btn) btn.textContent = initials;
   var av = document.getElementById('account-menu-avatar');
   if (av) av.textContent = initials;
-  var ndAv = document.getElementById('nd-account-avatar');
-  if (ndAv) ndAv.textContent = initials;
+  // nd-account-avatar removed
+  
 }
 
 function _updateAccountUI(fullName, isAdmin) {
@@ -1259,8 +1261,8 @@ function _updateAccountUI(fullName, isAdmin) {
   var btn = document.getElementById('account-initials');
   if (btn) btn.textContent = initials;
   // Desktop nav avatar
-  var ndAv = document.getElementById('nd-account-avatar');
-  if (ndAv) ndAv.textContent = initials;
+  // nd-account-avatar removed
+  
   // Menu avatar + name
   var menuAv = document.getElementById('account-menu-avatar');
   if (menuAv) menuAv.textContent = initials;
@@ -1295,7 +1297,7 @@ function _closeMenuOutside(e) {
   var menu = document.getElementById('account-menu');
   var btn  = document.getElementById('account-btn');
   var ndBtn = document.getElementById('nd-account');
-  if (menu && !menu.contains(e.target) && e.target !== btn && e.target !== ndBtn) {
+  if (menu && !menu.contains(e.target) && e.target !== btn) {
     closeAccountMenu();
   }
 }
@@ -5551,10 +5553,10 @@ function onMapClick(e) {
     <svg viewBox="0 0 24 24"><circle cx="3" cy="6" r="2"/><circle cx="21" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M5 6h6a4 4 0 0 1 4 4v4"/><path d="M19 6h-6"/></svg>
     Route
   </button>
-  <!-- Account — bottom of desktop nav, always visible -->
-  <button class="nav-item-desk" id="nd-account" onclick="toggleAccountMenu()" style="margin-top:auto;position:relative;">
-    <div id="nd-account-avatar" style="width:28px;height:28px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;margin:0 auto 2px;">?</div>
-    Account
+  <!-- Add Business — desktop nav, pushed to bottom -->
+  <button class="nav-item-desk" onclick="openAddBusiness()" style="margin-top:auto;color:var(--accent);">
+    <svg viewBox="0 0 24 24" style="stroke:var(--accent);"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+    Add
   </button>
 </nav>
 
