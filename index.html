@@ -2378,21 +2378,27 @@ function updateOppVolumeFilter() {
 
 function updateFilterBadge() {
   var parts = [];
-  if (filters.industry !== 'all') parts.push(filters.industry);
-  if (filters.contact !== 'all') parts.push(filters.contact);
-  if (filters.pipeline !== 'all') parts.push(filters.pipeline);
-  if (filters.rep && filters.rep !== 'all') parts.push(filters.rep === 'unassigned' ? 'Unassigned' : filters.rep);
-  if (filters.opp_product && filters.opp_product !== 'all') {
-    if (filters.opp_product === 'none') {
-      parts.push('No Pipeline Assigned');
-    } else {
-      var oppLabel = {lubricants:'Lubricants',fuel_delivery:'Fuel Delivery',cardlock:'Cardlock',propane:'Propane',uco:'Used Cooking Oil'}[filters.opp_product] || filters.opp_product;
-      var stagePart = filters.opp_stage && filters.opp_stage !== 'all' ? ' · '+filters.opp_stage : '';
-      parts.push(oppLabel+stagePart);
-    }
-  }
-  var q = document.getElementById('s-city').value.trim() || document.getElementById('s-name').value.trim();
+  // Industry
+  if (Array.isArray(filters.industry) && filters.industry.length) parts.push(filters.industry.join(', '));
+  // Sub-industry
+  if (Array.isArray(filters.subIndustry) && filters.subIndustry.length) parts.push(filters.subIndustry.length + ' sub-ind');
+  // Status
+  if (filters.statuses && filters.statuses.length) parts.push(filters.statuses.join(', '));
+  // Rep
+  var repActive = filters.reps && filters.reps.length ? filters.reps : (filters.rep && filters.rep !== 'all' ? [filters.rep] : []);
+  if (repActive.length) parts.push(repActive.map(function(r){ return r==='unassigned'?'Unassigned':r==='__assigned__'?'Assigned':r; }).join(', '));
+  // Opp pipeline
+  if (filters.opp_product === 'none') parts.push('No Pipeline');
+  else if (Array.isArray(filters.opp_product) && filters.opp_product.length) parts.push(filters.opp_product.length + ' product line'+(filters.opp_product.length>1?'s':''));
+  // Supplier
+  if (filters.supplierFilter && filters.supplierFilter.length) parts.push('Supplier: ' + filters.supplierFilter.join(', '));
+  // Area
+  if (selPoly) parts.push('Area');
+  // Search
+  var q = document.getElementById('s-name') && document.getElementById('s-name').value.trim();
   if (q) parts.push('"'+q+'"');
+  var loc = document.getElementById('s-city') && document.getElementById('s-city').value.trim();
+  if (loc) parts.push(loc);
   var badge = document.getElementById('filter-badge');
   if (parts.length) { badge.textContent = parts.join(' · '); badge.classList.add('visible'); }
   else badge.classList.remove('visible');
@@ -2852,16 +2858,11 @@ function applyFilters() {
         if (ind === 'Services')     return bInd === 'services' || bInd === 'services business';
         if (ind === 'Hospitality')  return bInd === 'hospitality' || bInd === 'leisure' || bInd === 'hospitality & leisure';
         if (ind === 'Government')   return bInd === 'government' || bInd === 'institutions' || bInd === 'government & institutions';
-        if (ind === 'Competitors')  return b.is_competitor === true || bInd === 'competitors';
         return (b.industry||'') === ind;
       });
     });
   }
-  if (filters.opp==='high') data = data.filter(function(b){ return (b.score||0)>=80; });
-  else if (filters.opp==='med') data = data.filter(function(b){ return (b.score||0)>=65&&(b.score||0)<80; });
-  else if (filters.opp==='low') data = data.filter(function(b){ return (b.score||0)<65; });
 
-  // Status filter
   // Status filter — multi-select
   var activeStatuses = filters.statuses && filters.statuses.length ? filters.statuses : (filters.status && filters.status !== 'all' && filters.status !== 'multi' ? [filters.status] : []);
   if (activeStatuses.length) {
@@ -2991,6 +2992,7 @@ function applyFilters() {
   }
   document.getElementById('pcount').textContent = data.length.toLocaleString() + ' matched';
   updateFabCount();
+  updateFilterBadge();
 }
 
 // ── LIST ──
@@ -5638,6 +5640,31 @@ function _removeOppFilterBrand(val) {
   _oppFilterState['lubricants'].brands = (_oppFilterState['lubricants'].brands||[]).filter(function(s){ return s !== val; });
   _renderOppFilterProducts();
   _syncOppFilters();
+}
+
+function _syncOppFilters() {
+  var activeProducts = [];
+  OPP_FILTER_PRODUCTS.forEach(function(p){
+    var state = _oppFilterState[p.key];
+    if (state && state.enabled) activeProducts.push(p.key);
+  });
+  var allPill = document.getElementById('opp-pill-all');
+  var nonePill = document.getElementById('opp-pill-none');
+  if (activeProducts.length > 0) {
+    filters.opp_product = activeProducts;
+    if (allPill) allPill.classList.remove('on');
+    if (nonePill) nonePill.classList.remove('on');
+  } else if (filters.opp_product !== 'none') {
+    filters.opp_product = 'all';
+    filters.opp_stage = 'all';
+    if (allPill) allPill.classList.add('on');
+    if (nonePill) nonePill.classList.remove('on');
+  }
+  // Re-apply immediately so map + list update
+  applyFilters();
+  if (document.getElementById('results-panel') && document.getElementById('results-panel').classList.contains('open')) {
+    renderList();
+  }
 }
 
 function _initSupplierFilterDropdown() {
