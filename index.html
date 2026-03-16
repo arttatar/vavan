@@ -622,6 +622,28 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
   #locate-btn{ right:10px; bottom:100px; }
 }
 
+/* Opportunities */
+.opp-product{border:1px solid var(--border);border-radius:10px;padding:.875rem;margin-bottom:.75rem;background:var(--paper);}
+.opp-product-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;}
+.opp-product-name{font-size:13px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:8px;}
+.opp-toggle{position:relative;width:40px;height:22px;flex-shrink:0;}
+.opp-toggle input{opacity:0;width:0;height:0;}
+.opp-toggle-slider{position:absolute;inset:0;background:var(--border);border-radius:22px;cursor:pointer;transition:.2s;}
+.opp-toggle input:checked + .opp-toggle-slider{background:var(--accent);}
+.opp-toggle-slider:before{content:'';position:absolute;width:18px;height:18px;left:2px;bottom:2px;background:#fff;border-radius:50%;transition:.2s;}
+.opp-toggle input:checked + .opp-toggle-slider:before{transform:translateX(18px);}
+.opp-fields{display:none;margin-top:.75rem;}
+.opp-fields.active{display:block;}
+.opp-field-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;display:block;}
+.opp-supplier-input{width:100%;border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:13px;font-family:'Inter',sans-serif;color:var(--ink);background:#fff;outline:none;margin-bottom:.75rem;}
+.opp-supplier-input:focus{border-color:var(--accent);}
+.opp-volume-wrap{display:flex;align-items:center;gap:10px;}
+.opp-volume-wrap input[type=range]{flex:1;accent-color:var(--accent);}
+.opp-volume-val{font-size:12px;font-weight:700;color:var(--accent);min-width:70px;text-align:right;}
+.opp-save-btn{width:100%;padding:10px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;margin-top:.5rem;}
+.opp-save-btn:disabled{opacity:.6;}
+.opp-summary{font-size:11px;color:var(--muted);margin-top:3px;}
+
 /* LOADER */
 #loader{position:fixed;inset:0;z-index:8000;background:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;}
 #loader.hidden{display:none;}
@@ -822,6 +844,28 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
         </select>
       </div>
 
+      <!-- OPPORTUNITIES -->
+      <div class="sb-sec">
+        <div class="sb-title">Opportunities</div>
+        <div class="pills" id="opp-filter-pills">
+          <span class="pill on" data-f="opp_product" data-v="all">All</span>
+          <span class="pill" data-f="opp_product" data-v="lubricants">🛢 Lubricants</span>
+          <span class="pill" data-f="opp_product" data-v="fuel_delivery">⛽ Fuel Delivery</span>
+          <span class="pill" data-f="opp_product" data-v="cardlock">💳 Cardlock</span>
+          <span class="pill" data-f="opp_product" data-v="propane">🔥 Propane</span>
+          <span class="pill" data-f="opp_product" data-v="uco">🍳 Used Cooking Oil</span>
+        </div>
+        <div id="opp-volume-filter" style="display:none;margin-top:.75rem;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <span style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;">Min Volume</span>
+            <span style="font-size:12px;font-weight:700;color:var(--accent);" id="opp-vol-filter-lbl">0 gal/mo</span>
+          </div>
+          <input type="range" id="opp-vol-filter-slider" min="0" max="10000" step="100" value="0"
+            style="width:100%;accent-color:var(--accent);"
+            oninput="updateOppVolumeFilter()">
+        </div>
+      </div>
+
       <!-- AREA TOOLS -->
       <div class="sb-sec">
         <div class="sb-title">Area Selection</div>
@@ -936,7 +980,7 @@ function _buildLookup() {
   _bizById = {};
   allData.forEach(function(b){ _bizById[b._id] = b; });
 }
-var filters = { opp:'all', contact:'all', industry:'all', pipeline:'all', subIndustry:'all', status:'all', rep:'all' };
+var filters = { opp:'all', contact:'all', industry:'all', pipeline:'all', subIndustry:'all', status:'all', rep:'all', opp_product:'all', opp_min_volume:0 };
 var activeTool = null, selPoly = null, radMiles = 5;
 
 // ── LOGIN ──
@@ -1086,6 +1130,20 @@ function filterMyAccounts() {
 }
 
 var _appStarted = false;
+var _oppCache = {}; // keyed by business_id — loaded once at startup
+
+// Load all opportunity records for this client into cache
+async function loadOppCache() {
+  try {
+    if (!currentProfile || !currentProfile.client_id) return;
+    var r = await sb.from('business_opportunities')
+      .select('*')
+      .eq('client_id', currentProfile.client_id);
+    if (r.data) {
+      r.data.forEach(function(o){ _oppCache[String(o.business_id)] = o; });
+    }
+  } catch(e) { console.warn('Could not load opp cache:', e); }
+}
 async function startApp() {
   if (_appStarted) return;
   _appStarted = true;
@@ -1098,6 +1156,8 @@ async function startApp() {
   await loadProfile();
   prog(30, 'Loading businesses...');
   await loadData();
+  prog(70, 'Loading opportunities...');
+  await loadOppCache();
   prog(80, 'Placing pins...');
   if (map.isStyleLoaded()) {
     renderPins();
@@ -1894,6 +1954,15 @@ function clearPipelineFilter() {
   setPipelineStage('all', null);
 }
 
+function updateOppVolumeFilter() {
+  var slider = document.getElementById('opp-vol-filter-slider');
+  var lbl = document.getElementById('opp-vol-filter-lbl');
+  if (slider && lbl) {
+    filters.opp_min_volume = parseInt(slider.value) || 0;
+    lbl.textContent = fmtGallons(filters.opp_min_volume);
+  }
+}
+
 function updateFilterBadge() {
   var parts = [];
   if (filters.industry !== 'all') parts.push(filters.industry);
@@ -1914,6 +1983,12 @@ document.querySelectorAll('.pill[data-f]').forEach(function(p){
     document.querySelectorAll('[data-f="'+p.dataset.f+'"]').forEach(function(x){ x.classList.remove('on'); });
     p.classList.add('on');
     filters[p.dataset.f] = p.dataset.v;
+    // Show volume slider when an opp product is selected
+    if (p.dataset.f === 'opp_product') {
+      var volWrap = document.getElementById('opp-volume-filter');
+      if (volWrap) volWrap.style.display = p.dataset.v === 'all' ? 'none' : 'block';
+      if (p.dataset.v === 'all') { filters.opp_min_volume = 0; }
+    }
   });
 });
 
@@ -2351,6 +2426,23 @@ function applyFilters() {
   if (filters.pipeline && filters.pipeline !== 'all') {
     data = data.filter(function(b){
       return (b.pipeline_stage || '') === filters.pipeline;
+    });
+  }
+
+  // Opportunity product filter — filter by businesses that have that product tracked
+  if (filters.opp_product && filters.opp_product !== 'all') {
+    var minVol = filters.opp_min_volume || 0;
+    data = data.filter(function(b){
+      var opp = _oppCache[String(b.id||b._id)];
+      if (!opp) return false;
+      var productKey = 'uses_' + filters.opp_product;
+      if (!opp[productKey]) return false;
+      if (minVol > 0) {
+        var prod = OPP_PRODUCTS.find(function(p){ return p.key === filters.opp_product; });
+        var vol = prod ? (opp[prod.field+'_gallons'] || 0) : 0;
+        return vol >= minVol;
+      }
+      return true;
     });
   }
 
@@ -2975,6 +3067,7 @@ function renderDetailPanel(b) {
     // ── TABS ──
     '<div class="det-tabs">'+
       '<div class="det-tab active" onclick="switchTab(\'profile\')">Profile</div>'+
+      '<div class="det-tab" onclick="switchTab(\'opportunities\')">💡 Opps</div>'+
       '<div class="det-tab" onclick="switchTab(\'contacts\')">Contacts</div>'+
       '<div class="det-tab" onclick="switchTab(\'activity\')">Activity</div>'+
     '</div>'+
@@ -3076,16 +3169,22 @@ function renderDetailPanel(b) {
         '<button class="note-submit-btn" onclick="saveNote()">Add</button>'+
       '</div>'+
       '<div id="activity-feed"><div class="det-empty">Loading activity...</div></div>'+
+    '</div>'+
+
+    // ── SECTION 4: OPPORTUNITIES ──
+    '<div id="det-opportunities" class="det-section">'+
+      '<div id="opp-body"><div class="det-empty">Loading opportunities...</div></div>'+
     '</div>';
 
-  // Load contacts and activity async
+  // Load async sections
   loadContacts(b);
   loadActivity(b);
+  loadOpportunities(b);
 }
 
 function switchTab(tab) {
   document.querySelectorAll('.det-tab').forEach(function(t,i){
-    var tabs = ['profile','contacts','activity'];
+    var tabs = ['profile','opportunities','contacts','activity'];
     t.classList.toggle('active', tabs[i]===tab);
   });
   document.querySelectorAll('.det-section').forEach(function(s){
@@ -3360,7 +3459,145 @@ async function saveNote() {
   finally { btn.textContent = 'Add'; btn.disabled = false; }
 }
 
-// ── AREA TOOLS ──
+// ── OPPORTUNITIES ──
+var OPP_PRODUCTS = [
+  { key:'lubricants',     label:'🛢 Lubricants',       field:'lube',       unit:'gal/mo',  max:5000 },
+  { key:'fuel_delivery',  label:'⛽ Fuel Delivery',    field:'fuel',       unit:'gal/mo',  max:50000 },
+  { key:'cardlock',       label:'💳 Cardlock',         field:'cardlock',   unit:'gal/mo',  max:50000 },
+  { key:'propane',        label:'🔥 Propane',          field:'propane',    unit:'gal/mo',  max:5000 },
+  { key:'uco',            label:'🍳 Used Cooking Oil', field:'uco',        unit:'gal/mo',  max:1000 }
+];
+
+function fmtGallons(n) {
+  if (!n || n === 0) return '0 gal/mo';
+  if (n >= 1000) return (n/1000).toFixed(1)+'k gal/mo';
+  return n+' gal/mo';
+}
+
+async function loadOpportunities(b) {
+  var el = document.getElementById('opp-body');
+  if (!el) return;
+  try {
+    var r = await sb.from('business_opportunities')
+      .select('*')
+      .eq('business_id', String(b.id||b._id))
+      .eq('client_id', currentProfile ? currentProfile.client_id : '00000000-0000-0000-0000-000000000000')
+      .maybeSingle();
+    if (r.error) throw r.error;
+    renderOpportunities(b, r.data || {});
+  } catch(e) {
+    renderOpportunities(b, {});
+  }
+}
+
+function renderOpportunities(b, opp) {
+  var el = document.getElementById('opp-body');
+  if (!el) return;
+
+  var html = '<div style="padding:.25rem 0 .5rem;font-size:11px;color:var(--muted);">Track what this business currently uses and who supplies them.</div>';
+
+  OPP_PRODUCTS.forEach(function(p) {
+    var isOn = opp['uses_'+p.key] || false;
+    var supplier = opp[p.field+'_supplier'] || '';
+    var gallons = opp[p.field+'_gallons'] || 0;
+    var summaryText = isOn ? (supplier ? supplier + ' · ' : '') + fmtGallons(gallons) : 'Not tracked';
+
+    html +=
+      '<div class="opp-product">'+
+        '<div class="opp-product-header">'+
+          '<div>'+
+            '<div class="opp-product-name">'+p.label+'</div>'+
+            '<div class="opp-summary" id="opp-summary-'+p.key+'">'+summaryText+'</div>'+
+          '</div>'+
+          '<label class="opp-toggle">'+
+            '<input type="checkbox" id="opp-on-'+p.key+'" '+(isOn?'checked':'')+' onchange="toggleOppFields(\''+p.key+'\')">'+
+            '<span class="opp-toggle-slider"></span>'+
+          '</label>'+
+        '</div>'+
+        '<div class="opp-fields'+(isOn?' active':'')+'" id="opp-fields-'+p.key+'">'+
+          '<label class="opp-field-label">Current Supplier</label>'+
+          '<input class="opp-supplier-input" id="opp-sup-'+p.key+'" placeholder="e.g. Shell, Chevron, Local co-op..." value="'+supplier+'">'+
+          '<label class="opp-field-label">Volume ('+p.unit+')</label>'+
+          '<div class="opp-volume-wrap">'+
+            '<input type="range" id="opp-vol-'+p.key+'" min="0" max="'+p.max+'" step="'+(p.max>=10000?500:p.max>=1000?100:25)+'" value="'+gallons+'" oninput="updateVolLabel(\''+p.key+'\')">'+
+            '<span class="opp-volume-val" id="opp-vol-lbl-'+p.key+'">'+fmtGallons(gallons)+'</span>'+
+          '</div>'+
+        '</div>'+
+      '</div>';
+  });
+
+  html += '<button class="opp-save-btn" id="opp-save-btn" onclick="saveOpportunities()">Save Opportunities</button>';
+  el.innerHTML = html;
+}
+
+function toggleOppFields(key) {
+  var cb = document.getElementById('opp-on-'+key);
+  var fields = document.getElementById('opp-fields-'+key);
+  if (fields) fields.classList.toggle('active', cb.checked);
+}
+
+function updateVolLabel(key) {
+  var slider = document.getElementById('opp-vol-'+key);
+  var lbl = document.getElementById('opp-vol-lbl-'+key);
+  if (slider && lbl) lbl.textContent = fmtGallons(parseInt(slider.value));
+}
+
+async function saveOpportunities() {
+  var b = lastSelectedBiz; if (!b) return;
+  var btn = document.getElementById('opp-save-btn');
+  btn.textContent = 'Saving...'; btn.disabled = true;
+
+  var payload = {
+    business_id: String(b.id||b._id),
+    client_id: currentProfile ? currentProfile.client_id : null,
+    updated_at: new Date().toISOString(),
+    updated_by: currentProfile ? (currentProfile.full_name||'') : ''
+  };
+
+  OPP_PRODUCTS.forEach(function(p){
+    var cb  = document.getElementById('opp-on-'+p.key);
+    var sup = document.getElementById('opp-sup-'+p.key);
+    var vol = document.getElementById('opp-vol-'+p.key);
+    payload['uses_'+p.key]          = cb  ? cb.checked : false;
+    payload[p.field+'_supplier']    = sup ? sup.value.trim() : '';
+    payload[p.field+'_gallons']     = vol ? parseInt(vol.value)||0 : 0;
+  });
+
+  try {
+    var r = await sb.from('business_opportunities')
+      .upsert(payload, { onConflict: 'business_id,client_id' });
+    if (r.error) throw r.error;
+
+    // Update summary lines
+    OPP_PRODUCTS.forEach(function(p){
+      var sumEl = document.getElementById('opp-summary-'+p.key);
+      if (sumEl) {
+        var isOn = payload['uses_'+p.key];
+        var sup  = payload[p.field+'_supplier'];
+        var gal  = payload[p.field+'_gallons'];
+        sumEl.textContent = isOn ? (sup ? sup+' · ' : '') + fmtGallons(gal) : 'Not tracked';
+      }
+    });
+
+    // Log to activity
+    var active = OPP_PRODUCTS.filter(function(p){ return payload['uses_'+p.key]; });
+    if (active.length) {
+      await sb.from('activity').insert({
+        business_id: String(b.id||b._id),
+        type: 'opportunities',
+        note: 'Opportunities updated: ' + active.map(function(p){ return p.label+' ('+fmtGallons(payload[p.field+'_gallons'])+')'; }).join(', '),
+        client_id: currentProfile ? currentProfile.client_id : null,
+        created_by: currentProfile ? (currentProfile.full_name||'') : ''
+      });
+    }
+
+    btn.textContent = '✓ Saved';
+    setTimeout(function(){ btn.textContent = 'Save Opportunities'; btn.disabled = false; }, 2000);
+  } catch(e) {
+    alert('Save failed: ' + e.message);
+    btn.textContent = 'Save Opportunities'; btn.disabled = false;
+  }
+}
 function activateTool(t) {
   if (activeTool===t) { deactivate(); return; }
   deactivate(); activeTool = t;
@@ -3390,12 +3627,18 @@ function onDraw(e) {
   applyFilters();
 }
 function clearFilters() {
-  filters = { opp:'all', contact:'all', industry:'all', pipeline:'all', subIndustry:'all', status:'all', rep:'all' };
+  filters = { opp:'all', contact:'all', industry:'all', pipeline:'all', subIndustry:'all', status:'all', rep:'all', opp_product:'all', opp_min_volume:0 };
   filtersApplied = false;
   filteredData = [];
   setPipelineStage('all', null);
   var repEl = document.getElementById('s-rep');
-  if (repEl) repEl.value = 'all'; // reset slider
+  if (repEl) repEl.value = 'all';
+  var oppVolSlider = document.getElementById('opp-vol-filter-slider');
+  if (oppVolSlider) oppVolSlider.value = 0;
+  var oppVolLbl = document.getElementById('opp-vol-filter-lbl');
+  if (oppVolLbl) oppVolLbl.textContent = '0 gal/mo';
+  var oppVolWrap = document.getElementById('opp-volume-filter');
+  if (oppVolWrap) oppVolWrap.style.display = 'none'; // reset slider
   selectedIndustries = [];
   selectedSubIndustries = [];
   document.querySelectorAll('.ind-opt').forEach(function(o){ o.classList.remove('on'); });
