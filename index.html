@@ -163,7 +163,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
   flex-direction:column;
   align-items:center;
   padding-top:8px;
-  gap:4px;
+  padding-bottom:8px;
   z-index:900;
 }
 .nav-item-desk{
@@ -772,17 +772,6 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
         </select>
       </div>
 
-      <!-- CONTACT INFO -->
-      <div class="sb-sec">
-        <div class="sb-title">Contact Info</div>
-        <div class="pills">
-          <span class="pill on" data-f="contact" data-v="all">All</span>
-          <span class="pill green" data-f="contact" data-v="phone">Has phone</span>
-          <span class="pill green" data-f="contact" data-v="web">Has website</span>
-          <span class="pill green" data-f="contact" data-v="both">Phone &amp; website</span>
-        </div>
-      </div>
-
       <!-- AREA TOOLS -->
       <div class="sb-sec">
         <div class="sb-title">Area Selection</div>
@@ -852,19 +841,28 @@ mapboxgl.accessToken = MBOX;
 var allData = [], filteredData = [], filtersApplied = false, map, draw;
 var _bizById = {}; // fast lookup by _id
 var currentProfile = null; // loaded sales profile for logged-in user
+var clientMarkets  = [];   // markets this client has purchased, loaded on login
 
-// ── MARKETS ──
-// Add new markets here as Vavan expands. state = display only.
+// ── VAVAN MARKETS ──
+// These are Vavan's sellable market units. Each is exclusive per industry per client.
+// Interstate Oil currently has: Sacramento, Redding, Sparks, Woodland, Fresno, Las Vegas
 var VAVAN_MARKETS = [
-  { name:'Las Vegas', state:'NV' },
-  { name:'North Las Vegas', state:'NV' },
-  { name:'Henderson', state:'NV' },
-  { name:'Summerlin', state:'NV' },
-  { name:'Sacramento', state:'CA' },
-  { name:'Reno', state:'NV' },
-  { name:'Phoenix', state:'AZ' },
-  { name:'Los Angeles', state:'CA' },
-  { name:'San Diego', state:'CA' }
+  // Interstate Oil active markets
+  { name:'Las Vegas',   state:'NV', description:'Clark County metro', client:'Interstate Oil', available:false },
+  { name:'Sacramento',  state:'CA', description:'Sacramento metro, Elk Grove to Roseville', client:'Interstate Oil', available:false },
+  { name:'Redding',     state:'CA', description:'Shasta County and surrounding area', client:'Interstate Oil', available:false },
+  { name:'Sparks',      state:'NV', description:'Sparks, Reno and Washoe County', client:'Interstate Oil', available:false },
+  { name:'Woodland',    state:'CA', description:'Woodland, Davis and Yolo County', client:'Interstate Oil', available:false },
+  { name:'Fresno',      state:'CA', description:'Fresno metro and San Joaquin Valley', client:'Interstate Oil', available:false },
+  // Available markets — ready to sell
+  { name:'Phoenix',     state:'AZ', description:'Maricopa County metro', client:null, available:true },
+  { name:'Reno',        state:'NV', description:'Reno metro and surrounding area', client:null, available:true },
+  { name:'Bakersfield', state:'CA', description:'Kern County and surrounding area', client:null, available:true },
+  { name:'Stockton',    state:'CA', description:'San Joaquin County metro', client:null, available:true },
+  { name:'Los Angeles', state:'CA', description:'LA County metro area', client:null, available:true },
+  { name:'San Diego',   state:'CA', description:'San Diego County', client:null, available:true },
+  { name:'Portland',    state:'OR', description:'Portland metro and surrounding area', client:null, available:true },
+  { name:'Seattle',     state:'WA', description:'King County and Puget Sound area', client:null, available:true }
 ];
 
 // ── REP ROSTER ──
@@ -958,11 +956,14 @@ async function loadProfile() {
       var maBtn = document.getElementById('my-accounts-btn');
       if (maBtn && currentProfile.full_name) maBtn.style.display = '';
 
-      // Show settings gear for admins only
+      // Show settings in desktop nav only — admin only, never on mobile
       if (currentProfile.role === 'admin') {
-        var btn = document.getElementById('settings-btn');
-        if (btn) btn.style.display = '';
+        var navSettingsBtn = document.getElementById('nd-settings');
+        if (navSettingsBtn) navSettingsBtn.style.display = '';
       }
+      // Always keep header settings button hidden (moved to nav)
+      var headerSettingsBtn = document.getElementById('settings-btn');
+      if (headerSettingsBtn) headerSettingsBtn.style.display = 'none';
       // Populate rep filter dropdown with territory reps
       populateRepFilter();
     }
@@ -2525,32 +2526,58 @@ async function sendInvite() {
 
 // ── TERRITORIES TAB ──
 function renderMarketsTab(body) {
-  // Markets are defined in VAVAN_MARKETS — show which reps service each
+  var sold      = VAVAN_MARKETS.filter(function(m){ return !m.available; });
+  var available = VAVAN_MARKETS.filter(function(m){ return m.available; });
+
   body.innerHTML =
     '<div class="settings-section">'+
-      '<div class="settings-section-title">Markets & Assigned Reps</div>'+
-      VAVAN_MARKETS.map(function(m){
-        // Find reps assigned to this market from loaded profiles
-        var assignedReps = _allProfiles.filter(function(p){
-          var markets = (p.territory_name||'').split(',').map(function(s){ return s.trim(); });
-          return markets.indexOf(m.name) > -1;
-        });
-        var repNames = assignedReps.map(function(p){ return p.full_name||''; }).filter(Boolean);
-        return '<div class="territory-card">'+
+
+      // Active / sold markets
+      '<div class="settings-section-title">Active Markets ('+sold.length+' sold)</div>'+
+      sold.map(function(m){
+        // Count reps assigned to this market
+        var repCount = _allProfiles.filter(function(p){
+          return (p.territory_name||'').split(',').map(function(s){ return s.trim(); }).indexOf(m.name) > -1;
+        }).length;
+        return '<div class="territory-card" style="border-left:3px solid var(--accent);">'+
           '<div class="territory-card-header">'+
-            '<div class="territory-card-name">'+m.name+'</div>'+
-            '<div class="territory-card-code" style="font-size:11px;color:var(--muted);">'+m.state+'</div>'+
+            '<div>'+
+              '<div class="territory-card-name">'+m.name+'</div>'+
+              '<div style="font-size:11px;color:var(--muted);margin-top:2px;">'+m.description+'</div>'+
+            '</div>'+
+            '<div style="text-align:right;flex-shrink:0;">'+
+              '<div style="font-size:11px;font-weight:700;color:var(--accent);">'+m.state+'</div>'+
+              '<div style="font-size:10px;color:var(--muted);margin-top:2px;">'+repCount+' rep'+(repCount!==1?'s':'')+' assigned</div>'+
+            '</div>'+
           '</div>'+
-          '<div class="territory-card-reps">'+
-            (repNames.length ?
-              repNames.length+' rep'+(repNames.length>1?'s':'')+' · '+repNames.join(', ') :
-              '<span style="color:var(--muted);font-style:italic;">No reps assigned</span>')+
+          '<div style="margin-top:6px;display:flex;align-items:center;justify-content:space-between;">'+
+            '<span style="font-size:11px;font-weight:600;color:var(--accent);background:var(--accent-light);padding:2px 10px;border-radius:100px;">'+
+              (m.client||'Owned')+'</span>'+
+            '<span style="font-size:10px;color:var(--muted);">Exclusive · Oil</span>'+
           '</div>'+
         '</div>';
       }).join('')+
+
+      // Available markets
+      '<div class="settings-section-title" style="margin-top:1.25rem;">Available Markets ('+available.length+')</div>'+
+      available.map(function(m){
+        return '<div class="territory-card" style="border-left:3px solid #10b981;opacity:.85;">'+
+          '<div class="territory-card-header">'+
+            '<div>'+
+              '<div class="territory-card-name">'+m.name+'</div>'+
+              '<div style="font-size:11px;color:var(--muted);margin-top:2px;">'+m.description+'</div>'+
+            '</div>'+
+            '<div style="text-align:right;flex-shrink:0;">'+
+              '<div style="font-size:11px;font-weight:700;color:#10b981;">'+m.state+'</div>'+
+              '<div style="font-size:10px;color:#10b981;margin-top:2px;">Available</div>'+
+            '</div>'+
+          '</div>'+
+        '</div>';
+      }).join('')+
+
       '<div style="margin-top:1rem;padding:.875rem;background:var(--accent-light);border-radius:10px;border:1px solid rgba(108,92,231,.2);">'+
         '<div style="font-size:12px;color:var(--accent);line-height:1.6;">'+
-          '<b>To assign a rep to a market:</b> Go to Reps & Markets tab → Edit the rep → set their Markets field.'+
+          '<b>Adding a new market:</b> Tag businesses with the market name in Supabase, add the market to VAVAN_MARKETS in the app code, then assign reps to it via Reps & Markets.'+
         '</div>'+
       '</div>'+
     '</div>';
@@ -3364,6 +3391,11 @@ function onMapClick(e) {
   <button class="nav-item-desk" id="nd-contacts" onclick="navTo('contacts')">
     <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
     Contacts
+  </button>
+  <!-- Settings — admin only, pushed to bottom, desktop only -->
+  <button class="nav-item-desk" id="nd-settings" onclick="openSettings()" style="display:none;margin-top:auto;">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    Settings
   </button>
 </nav>
 
