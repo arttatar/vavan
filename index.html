@@ -684,6 +684,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
   transform:translateX(100%);
   transition:transform .3s cubic-bezier(.4,0,.2,1);
   display:flex;flex-direction:column;
+  overflow:hidden;
   box-shadow:-4px 0 24px rgba(0,0,0,.18);
 }
 #route-panel.open{transform:translateX(0);}
@@ -696,6 +697,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
     transform:translateY(110%) !important;
     transition:transform .3s cubic-bezier(.4,0,.2,1) !important;
     box-shadow:0 -4px 32px rgba(0,0,0,.22) !important;
+    overflow:hidden !important;
   }
   #route-panel.open{transform:translateY(0) !important;}
 }
@@ -705,7 +707,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
   padding:0 0 8px;
   background:var(--ink);
   border-bottom:1px solid rgba(255,255,255,.08);
-  flex-shrink:0;
+  flex:0 0 auto;
   display:flex;
   flex-direction:column;
 }
@@ -726,7 +728,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
 .rp-action-btn.red{background:#fef2f2;color:#dc2626;}
 
 /* Stop list */
-.rp-stops{flex:1;overflow-y:auto;}
+.rp-stops{flex:1 1 0;overflow-y:auto;min-height:0;}
 .rp-stop{
   display:flex;align-items:flex-start;gap:10px;
   padding:10px 14px;border-bottom:1px solid var(--border);
@@ -5422,7 +5424,7 @@ function onMapClick(e) {
 
 <!-- ROUTE PANEL -->
 <div id="route-panel">
-  <div class="rp-header" style="position:sticky;top:0;z-index:10;flex-shrink:0;">
+  <div class="rp-header">
     <div class="sheet-handle-wrap"><div class="sheet-handle" style="background:rgba(255,255,255,.3);"></div></div>
     <div class="sheet-topbar" style="padding-bottom:8px;">
       <div style="flex:1;min-width:0;">
