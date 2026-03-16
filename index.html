@@ -800,71 +800,96 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
 
       <!-- LUBE PIPELINE -->
       <div class="sb-sec" style="padding-top:0;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
           <div style="font-size:12px;font-weight:700;color:var(--ink);">🛢 Lubricants</div>
-          <span id="f-lube-lbl" style="font-size:11px;font-weight:700;color:var(--accent);">All Stages</span>
-        </div>
-        <div style="position:relative;padding:0 0 22px;" id="f-lube-track">
-          <div style="height:4px;background:var(--paper2);border-radius:2px;position:relative;margin:8px 0 0;">
-            <div id="f-lube-fill" style="position:absolute;left:0;top:0;height:100%;background:var(--accent);border-radius:2px;width:0%;transition:width .2s;"></div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span id="f-lube-lbl" style="font-size:11px;font-weight:700;color:var(--muted);display:none;">All Stages</span>
+            <label class="opp-toggle"><input type="checkbox" id="f-lube-on" onchange="toggleOppFilter('lube','lubricants')"><span class="opp-toggle-slider"></span></label>
           </div>
-          <div style="display:flex;justify-content:space-between;position:relative;margin-top:-6px;" id="f-lube-dots"></div>
+        </div>
+        <div id="f-lube-wrap" style="display:none;padding-bottom:4px;">
+          <div style="position:relative;padding:0 0 22px;">
+            <div style="height:4px;background:var(--paper2);border-radius:2px;position:relative;margin:8px 0 0;">
+              <div id="f-lube-fill" style="position:absolute;left:0;top:0;height:100%;background:var(--accent);border-radius:2px;width:0%;transition:width .2s;"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;position:relative;margin-top:-6px;" id="f-lube-dots"></div>
+          </div>
         </div>
       </div>
 
       <!-- FUEL PIPELINE -->
       <div class="sb-sec" style="padding-top:0;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
           <div style="font-size:12px;font-weight:700;color:var(--ink);">⛽ Fuel Delivery</div>
-          <span id="f-fuel-lbl" style="font-size:11px;font-weight:700;color:var(--accent);">All Stages</span>
-        </div>
-        <div style="position:relative;padding:0 0 22px;">
-          <div style="height:4px;background:var(--paper2);border-radius:2px;position:relative;margin:8px 0 0;">
-            <div id="f-fuel-fill" style="position:absolute;left:0;top:0;height:100%;background:var(--accent);border-radius:2px;width:0%;transition:width .2s;"></div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span id="f-fuel-lbl" style="font-size:11px;font-weight:700;color:var(--muted);display:none;">All Stages</span>
+            <label class="opp-toggle"><input type="checkbox" id="f-fuel-on" onchange="toggleOppFilter('fuel','fuel_delivery')"><span class="opp-toggle-slider"></span></label>
           </div>
-          <div style="display:flex;justify-content:space-between;position:relative;margin-top:-6px;" id="f-fuel-dots"></div>
+        </div>
+        <div id="f-fuel-wrap" style="display:none;padding-bottom:4px;">
+          <div style="position:relative;padding:0 0 22px;">
+            <div style="height:4px;background:var(--paper2);border-radius:2px;position:relative;margin:8px 0 0;">
+              <div id="f-fuel-fill" style="position:absolute;left:0;top:0;height:100%;background:var(--accent);border-radius:2px;width:0%;transition:width .2s;"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;position:relative;margin-top:-6px;" id="f-fuel-dots"></div>
+          </div>
         </div>
       </div>
 
       <!-- CARDLOCK PIPELINE -->
       <div class="sb-sec" style="padding-top:0;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
           <div style="font-size:12px;font-weight:700;color:var(--ink);">💳 Cardlock</div>
-          <span id="f-cardlock-lbl" style="font-size:11px;font-weight:700;color:var(--accent);">All Stages</span>
-        </div>
-        <div style="position:relative;padding:0 0 22px;">
-          <div style="height:4px;background:var(--paper2);border-radius:2px;position:relative;margin:8px 0 0;">
-            <div id="f-cardlock-fill" style="position:absolute;left:0;top:0;height:100%;background:var(--accent);border-radius:2px;width:0%;transition:width .2s;"></div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span id="f-cardlock-lbl" style="font-size:11px;font-weight:700;color:var(--muted);display:none;">All Stages</span>
+            <label class="opp-toggle"><input type="checkbox" id="f-cardlock-on" onchange="toggleOppFilter('cardlock','cardlock')"><span class="opp-toggle-slider"></span></label>
           </div>
-          <div style="display:flex;justify-content:space-between;position:relative;margin-top:-6px;" id="f-cardlock-dots"></div>
+        </div>
+        <div id="f-cardlock-wrap" style="display:none;padding-bottom:4px;">
+          <div style="position:relative;padding:0 0 22px;">
+            <div style="height:4px;background:var(--paper2);border-radius:2px;position:relative;margin:8px 0 0;">
+              <div id="f-cardlock-fill" style="position:absolute;left:0;top:0;height:100%;background:var(--accent);border-radius:2px;width:0%;transition:width .2s;"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;position:relative;margin-top:-6px;" id="f-cardlock-dots"></div>
+          </div>
         </div>
       </div>
 
       <!-- PROPANE PIPELINE -->
       <div class="sb-sec" style="padding-top:0;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
           <div style="font-size:12px;font-weight:700;color:var(--ink);">🔥 Propane</div>
-          <span id="f-propane-lbl" style="font-size:11px;font-weight:700;color:var(--accent);">All Stages</span>
-        </div>
-        <div style="position:relative;padding:0 0 22px;">
-          <div style="height:4px;background:var(--paper2);border-radius:2px;position:relative;margin:8px 0 0;">
-            <div id="f-propane-fill" style="position:absolute;left:0;top:0;height:100%;background:var(--accent);border-radius:2px;width:0%;transition:width .2s;"></div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span id="f-propane-lbl" style="font-size:11px;font-weight:700;color:var(--muted);display:none;">All Stages</span>
+            <label class="opp-toggle"><input type="checkbox" id="f-propane-on" onchange="toggleOppFilter('propane','propane')"><span class="opp-toggle-slider"></span></label>
           </div>
-          <div style="display:flex;justify-content:space-between;position:relative;margin-top:-6px;" id="f-propane-dots"></div>
+        </div>
+        <div id="f-propane-wrap" style="display:none;padding-bottom:4px;">
+          <div style="position:relative;padding:0 0 22px;">
+            <div style="height:4px;background:var(--paper2);border-radius:2px;position:relative;margin:8px 0 0;">
+              <div id="f-propane-fill" style="position:absolute;left:0;top:0;height:100%;background:var(--accent);border-radius:2px;width:0%;transition:width .2s;"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;position:relative;margin-top:-6px;" id="f-propane-dots"></div>
+          </div>
         </div>
       </div>
 
       <!-- UCO PIPELINE -->
       <div class="sb-sec" style="padding-top:0;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
           <div style="font-size:12px;font-weight:700;color:var(--ink);">🍳 Used Cooking Oil</div>
-          <span id="f-uco-lbl" style="font-size:11px;font-weight:700;color:var(--accent);">All Stages</span>
-        </div>
-        <div style="position:relative;padding:0 0 22px;">
-          <div style="height:4px;background:var(--paper2);border-radius:2px;position:relative;margin:8px 0 0;">
-            <div id="f-uco-fill" style="position:absolute;left:0;top:0;height:100%;background:var(--accent);border-radius:2px;width:0%;transition:width .2s;"></div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span id="f-uco-lbl" style="font-size:11px;font-weight:700;color:var(--muted);display:none;">All Stages</span>
+            <label class="opp-toggle"><input type="checkbox" id="f-uco-on" onchange="toggleOppFilter('uco','uco')"><span class="opp-toggle-slider"></span></label>
           </div>
-          <div style="display:flex;justify-content:space-between;position:relative;margin-top:-6px;" id="f-uco-dots"></div>
+        </div>
+        <div id="f-uco-wrap" style="display:none;padding-bottom:4px;">
+          <div style="position:relative;padding:0 0 22px;">
+            <div style="height:4px;background:var(--paper2);border-radius:2px;position:relative;margin:8px 0 0;">
+              <div id="f-uco-fill" style="position:absolute;left:0;top:0;height:100%;background:var(--accent);border-radius:2px;width:0%;transition:width .2s;"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;position:relative;margin-top:-6px;" id="f-uco-dots"></div>
+          </div>
         </div>
       </div>
 
@@ -2486,35 +2511,26 @@ function applyFilters() {
     });
   }
 
-  // Opportunity pipeline filter — independent per product line
-  var productFieldMap = {lubricants:'lube',fuel_delivery:'fuel',cardlock:'cardlock',propane:'propane',uco:'uco'};
+  // Opportunity pipeline filter — uses toggle enabled state per product
   if (filters.opp_product === 'none') {
-    // No pipeline at all on any product
     data = data.filter(function(b){
       var opp = _oppCache[String(b.id||b._id)];
       if (!opp) return true;
       return !OPP_PRODUCTS.some(function(p){ return opp['uses_'+p.key]; });
     });
-  } else {
-    // Check each product's stage filter independently — can combine e.g. Lube=Proposal AND Fuel=Qualified
-    var hasAnyProductFilter = OPP_PRODUCTS.some(function(p){
-      var field = productFieldMap[p.key];
-      var sf = filters['opp_'+field+'_stage'];
-      return sf && sf !== 'all';
+  } else if (filters.opp_product !== 'all') {
+    var oppStage = filters.opp_stage || 'all';
+    data = data.filter(function(b){
+      var opp = _oppCache[String(b.id||b._id)];
+      if (!opp) return false;
+      if (!opp['uses_'+filters.opp_product]) return false;
+      if (oppStage !== 'all') {
+        var prod = OPP_PRODUCTS.find(function(p){ return p.key === filters.opp_product; });
+        if (!prod) return false;
+        if ((opp[prod.field+'_stage'] || 'Lead Captured') !== oppStage) return false;
+      }
+      return true;
     });
-    if (hasAnyProductFilter) {
-      data = data.filter(function(b){
-        var opp = _oppCache[String(b.id||b._id)];
-        if (!opp) return false;
-        return OPP_PRODUCTS.every(function(p){
-          var field = productFieldMap[p.key];
-          var sf = filters['opp_'+field+'_stage'];
-          if (!sf || sf === 'all') return true;
-          if (!opp['uses_'+p.key]) return false;
-          return (opp[p.field+'_stage'] || 'Lead Captured') === sf;
-        });
-      });
-    }
   }
 
   if (filters.contact==='phone') data = data.filter(function(b){ return b.phone; });
@@ -3960,11 +3976,11 @@ var OPP_FILTER_PRODUCTS = [
   {key:'propane',      id:'propane'},
   {key:'uco',          id:'uco'}
 ];
-var _oppFilterState = {};
+var _oppFilterState = {}; // {key: {enabled: bool, stage: string}}
 
 function initOppFilterSliders() {
   OPP_FILTER_PRODUCTS.forEach(function(p){
-    _oppFilterState[p.key] = 'all';
+    _oppFilterState[p.key] = { enabled: false, stage: 'all' };
     var dotsEl = document.getElementById('f-'+p.id+'-dots');
     if (!dotsEl) return;
     dotsEl.innerHTML = OPP_FILTER_STAGES.map(function(s,i){
@@ -3979,17 +3995,52 @@ function initOppFilterSliders() {
   });
 }
 
-function setOppFilterStage(productKey, productId, stage) {
-  // Reset all other product sliders to All when selecting a specific product+stage
-  if (stage !== 'all') {
-    OPP_FILTER_PRODUCTS.forEach(function(p){
-      if (p.key !== productKey) {
-        _oppFilterState[p.key] = 'all';
-        _resetOppSlider(p.id);
-      }
-    });
+function toggleOppFilter(productId, productKey) {
+  var cb = document.getElementById('f-'+productId+'-on');
+  var wrap = document.getElementById('f-'+productId+'-wrap');
+  var lbl = document.getElementById('f-'+productId+'-lbl');
+  var enabled = cb && cb.checked;
+  _oppFilterState[productKey] = _oppFilterState[productKey] || { enabled: false, stage: 'all' };
+  _oppFilterState[productKey].enabled = enabled;
+  if (wrap) wrap.style.display = enabled ? 'block' : 'none';
+  if (lbl) lbl.style.display = enabled ? '' : 'none';
+  // If turning off, reset stage to all
+  if (!enabled) {
+    _oppFilterState[productKey].stage = 'all';
+    _resetOppSlider(productId);
   }
-  _oppFilterState[productKey] = stage;
+  _syncOppFilters();
+}
+
+function _syncOppFilters() {
+  // Find first enabled product with a specific stage selected
+  var activeProduct = null, activeStage = 'all';
+  OPP_FILTER_PRODUCTS.forEach(function(p){
+    var state = _oppFilterState[p.key];
+    if (state && state.enabled) {
+      activeProduct = p.key;
+      activeStage = state.stage || 'all';
+    }
+  });
+  // Check top-level No Pipeline pill
+  var noPipePill = document.querySelector('[data-f="opp_product"][data-v="none"]');
+  var noPipeOn = noPipePill && noPipePill.classList.contains('on');
+  if (noPipeOn) {
+    filters.opp_product = 'none';
+    filters.opp_stage = 'all';
+  } else if (activeProduct) {
+    filters.opp_product = activeProduct;
+    filters.opp_stage = activeStage;
+  } else {
+    filters.opp_product = 'all';
+    filters.opp_stage = 'all';
+  }
+}
+
+function setOppFilterStage(productKey, productId, stage) {
+  _oppFilterState[productKey] = _oppFilterState[productKey] || { enabled: true, stage: 'all' };
+  _oppFilterState[productKey].stage = stage;
+
   var STAGES = OPP_FILTER_STAGES;
   var idx = STAGES.indexOf(stage);
   var isAll = stage === 'all';
@@ -4023,24 +4074,18 @@ function setOppFilterStage(productKey, productId, stage) {
     });
   }
 
-  document.querySelectorAll('[data-f="opp_product"][data-v="all"],[data-f="opp_product"][data-v="none"]').forEach(function(x){ x.classList.remove('on'); });
-
-  if (!isAll) {
-    filters.opp_product = productKey;
-    filters.opp_stage   = stage;
-  } else {
-    filters.opp_product = 'all';
-    filters.opp_stage   = 'all';
-    var allPill = document.querySelector('[data-f="opp_product"][data-v="all"]');
-    if (allPill) allPill.classList.add('on');
-  }
+  _syncOppFilters();
 }
 
 function _resetOppSlider(productId) {
+  var cb = document.getElementById('f-'+productId+'-on');
+  if (cb) cb.checked = false;
+  var wrap = document.getElementById('f-'+productId+'-wrap');
+  if (wrap) wrap.style.display = 'none';
+  var lbl = document.getElementById('f-'+productId+'-lbl');
+  if (lbl){ lbl.textContent='All Stages'; lbl.style.color='var(--muted)'; lbl.style.display='none'; }
   var fill = document.getElementById('f-'+productId+'-fill');
   if (fill){ fill.style.width='0%'; fill.style.background='var(--accent)'; }
-  var lbl = document.getElementById('f-'+productId+'-lbl');
-  if (lbl){ lbl.textContent='All Stages'; lbl.style.color='var(--accent)'; }
   var dotsEl = document.getElementById('f-'+productId+'-dots');
   if (dotsEl) {
     dotsEl.querySelectorAll('.pipe-dot').forEach(function(dot,i){
