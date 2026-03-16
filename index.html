@@ -793,8 +793,8 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
       <div class="sb-sec">
         <div class="sb-title">Opportunity Pipeline</div>
         <div class="pills" style="margin-bottom:.25rem;">
-          <span class="pill on" data-f="opp_product" data-v="all">All</span>
-          <span class="pill" data-f="opp_product" data-v="none" style="color:#dc2626;border-color:#dc2626;">No Pipeline</span>
+          <span class="pill on" id="opp-pill-all" onclick="setOppPipelineAll()">All</span>
+          <span class="pill" id="opp-pill-none" onclick="setOppPipelineNone()" style="color:#dc2626;border-color:#dc2626;">No Pipeline</span>
         </div>
       </div>
 
@@ -3540,16 +3540,30 @@ async function loadContacts(b) {
   var el = document.getElementById('contacts-list');
   if (!el) return;
   try {
-    var r = await sb.from('contacts').select('*').eq('business_id', String(b.id||b._id)).order('created_at', {ascending:false});
+    var r = await sb.from('contacts').select('*').eq('business_id', String(b.id||b._id)).order('created_at', {ascending:true});
     if (r.error) throw r.error;
     if (!r.data || !r.data.length) {
       el.innerHTML = '<div class="det-empty">No contacts yet. Add one above.</div>';
       return;
     }
-    el.innerHTML = r.data.map(function(c){
-      return '<div class="contact-card">'+
-        '<div class="contact-card-name">'+(c.first_name||'')+' '+(c.last_name||'')+'</div>'+
-        '<div class="contact-card-title">'+(c.job_title||'')+'</div>'+
+    // Sort: primary first, rest by created_at
+    var contacts = r.data.slice().sort(function(a,b){ return (b.is_primary?1:0)-(a.is_primary?1:0); });
+    el.innerHTML = contacts.map(function(c){
+      var isPrimary = c.is_primary || false;
+      return '<div class="contact-card" style="'+(isPrimary?'border-color:var(--accent);background:var(--accent-light);':'')+'" id="contact-'+c.id+'">'+
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;">'+
+          '<div>'+
+            '<div class="contact-card-name">'+
+              (isPrimary?'<span style="color:var(--accent);font-size:13px;margin-right:4px;">★</span>':'')+
+              (c.first_name||'')+' '+(c.last_name||'')+
+            '</div>'+
+            '<div class="contact-card-title">'+(c.job_title||'')+'</div>'+
+          '</div>'+
+          '<button onclick="setPrimaryContact(\''+c.id+'\',\''+String(b.id||b._id)+'\')" '+
+            'style="background:'+(isPrimary?'var(--accent)':'none')+';color:'+(isPrimary?'#fff':'#bbb')+';border:'+(isPrimary?'none':'1px solid #ddd')+';border-radius:100px;padding:3px 8px;font-size:11px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;">'+
+            (isPrimary?'★ Primary':'☆ Set Primary')+
+          '</button>'+
+        '</div>'+
         (c.phone?'<div class="contact-card-row">📞 <a href="tel:'+c.phone.replace(/\D/g,'')+'">'+c.phone+'</a></div>':'')+
         (c.email?'<div class="contact-card-row">✉️ <a href="mailto:'+c.email+'">'+c.email+'</a></div>':'')+
       '</div>';
@@ -3557,6 +3571,18 @@ async function loadContacts(b) {
   } catch(e) {
     el.innerHTML = '<div class="det-empty">Could not load contacts.</div>';
   }
+}
+
+async function setPrimaryContact(contactId, businessId) {
+  try {
+    // Clear primary on all contacts for this business
+    await sb.from('contacts').update({ is_primary: false }).eq('business_id', businessId);
+    // Set selected contact as primary
+    await sb.from('contacts').update({ is_primary: true }).eq('id', contactId);
+    // Reload
+    var b = lastSelectedBiz;
+    if (b) loadContacts(b);
+  } catch(e) { alert('Could not set primary: ' + e.message); }
 }
 
 function toggleContactForm() {
@@ -4012,8 +4038,33 @@ function toggleOppFilter(productId, productKey) {
   _syncOppFilters();
 }
 
+function setOppPipelineAll() {
+  OPP_FILTER_PRODUCTS.forEach(function(p){
+    _oppFilterState[p.key] = { enabled: false, stage: 'all' };
+    _resetOppSlider(p.id);
+  });
+  filters.opp_product = 'all';
+  filters.opp_stage = 'all';
+  var allPill = document.getElementById('opp-pill-all');
+  var nonePill = document.getElementById('opp-pill-none');
+  if (allPill) allPill.classList.add('on');
+  if (nonePill) nonePill.classList.remove('on');
+}
+
+function setOppPipelineNone() {
+  OPP_FILTER_PRODUCTS.forEach(function(p){
+    _oppFilterState[p.key] = { enabled: false, stage: 'all' };
+    _resetOppSlider(p.id);
+  });
+  filters.opp_product = 'none';
+  filters.opp_stage = 'all';
+  var allPill = document.getElementById('opp-pill-all');
+  var nonePill = document.getElementById('opp-pill-none');
+  if (nonePill) nonePill.classList.add('on');
+  if (allPill) allPill.classList.remove('on');
+}
+
 function _syncOppFilters() {
-  // Find first enabled product with a specific stage selected
   var activeProduct = null, activeStage = 'all';
   OPP_FILTER_PRODUCTS.forEach(function(p){
     var state = _oppFilterState[p.key];
@@ -4022,18 +4073,18 @@ function _syncOppFilters() {
       activeStage = state.stage || 'all';
     }
   });
-  // Check top-level No Pipeline pill
-  var noPipePill = document.querySelector('[data-f="opp_product"][data-v="none"]');
-  var noPipeOn = noPipePill && noPipePill.classList.contains('on');
-  if (noPipeOn) {
-    filters.opp_product = 'none';
-    filters.opp_stage = 'all';
-  } else if (activeProduct) {
+  var allPill = document.getElementById('opp-pill-all');
+  var nonePill = document.getElementById('opp-pill-none');
+  if (activeProduct) {
     filters.opp_product = activeProduct;
-    filters.opp_stage = activeStage;
-  } else {
+    filters.opp_stage   = activeStage;
+    if (allPill) allPill.classList.remove('on');
+    if (nonePill) nonePill.classList.remove('on');
+  } else if (filters.opp_product !== 'none') {
     filters.opp_product = 'all';
-    filters.opp_stage = 'all';
+    filters.opp_stage   = 'all';
+    if (allPill) allPill.classList.add('on');
+    if (nonePill) nonePill.classList.remove('on');
   }
 }
 
@@ -4137,11 +4188,7 @@ function clearFilters() {
   var repEl = document.getElementById('s-rep');
   if (repEl) repEl.value = 'all';
   // Reset opp filter sliders
-  if (typeof OPP_FILTER_PRODUCTS !== 'undefined') {
-    OPP_FILTER_PRODUCTS.forEach(function(p){ _oppFilterState[p.key]='all'; _resetOppSlider(p.id); });
-  }
-  document.querySelectorAll('[data-f="opp_product"][data-v="all"]').forEach(function(x){ x.classList.add('on'); });
-  document.querySelectorAll('[data-f="opp_product"][data-v="none"]').forEach(function(x){ x.classList.remove('on'); });
+  if (typeof OPP_FILTER_PRODUCTS !== 'undefined') setOppPipelineAll();
   selectedIndustries = [];
   selectedSubIndustries = [];
   document.querySelectorAll('.ind-opt').forEach(function(o){ o.classList.remove('on'); });
