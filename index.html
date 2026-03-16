@@ -2644,27 +2644,46 @@ function getVisibleData() {
     var bounds = map.getBounds();
     var w = bounds.getWest(), e = bounds.getEast();
     var s = bounds.getSouth(), n = bounds.getNorth();
-    var inView = source.filter(function(b){
+    return source.filter(function(b){
       return b.lat && b.lon &&
         b.lon >= w && b.lon <= e &&
         b.lat >= s && b.lat <= n;
     });
-    // If viewport returns nothing (zoomed way out or panned off data)
-    // fall back to full source so list isn't empty
-    return inView.length > 0 ? inView : source;
-  } catch(e) { return source; }
+  } catch(err) { return source; }
 }
 
 function renderList() {
   var data = getVisibleData().filter(function(b){ return b.lat&&b.lon; });
-  var total = filtersApplied ? filteredData.length : allData.length;
-  if (!data.length && !filtersApplied) {
-    document.getElementById('rcount').textContent = 'Apply filters or zoom into Las Vegas';
-    document.getElementById('biz-list').innerHTML = '<div style="padding:1.5rem;font-size:12px;color:var(--muted);text-align:center;">Use Filters to find businesses,<br>or zoom the map into Las Vegas.</div>';
+  var source = filtersApplied ? filteredData : allData;
+  var total = source.length;
+
+  if (!filtersApplied) {
+    document.getElementById('rcount').textContent = 'Apply filters to see businesses';
+    document.getElementById('biz-list').innerHTML =
+      '<div style="padding:1.5rem;font-size:12px;color:var(--muted);text-align:center;">'+
+      'Use Filters to find businesses,<br>then zoom the map to your area.</div>';
     return;
   }
+
+  if (!data.length && total > 0) {
+    document.getElementById('rcount').textContent = total.toLocaleString()+' filtered · none in view';
+    document.getElementById('biz-list').innerHTML =
+      '<div style="padding:1.5rem;font-size:12px;color:var(--muted);text-align:center;">'+
+      '<div style="font-size:20px;margin-bottom:.5rem;">🔍</div>'+
+      total.toLocaleString()+' businesses match your filters<br>'+
+      '<strong>Zoom or pan the map</strong> to see them here.</div>';
+    return;
+  }
+
+  if (!data.length) {
+    document.getElementById('rcount').textContent = 'No results in view';
+    document.getElementById('biz-list').innerHTML =
+      '<div style="padding:1.5rem;font-size:12px;color:var(--muted);text-align:center;">No businesses found.</div>';
+    return;
+  }
+
   var countLabel = data.length.toLocaleString() + ' in view';
-  if (total > data.length) countLabel += ' · ' + total.toLocaleString() + ' total' + (filtersApplied ? ' filtered' : '');
+  if (total > data.length) countLabel += ' · ' + total.toLocaleString() + ' total filtered';
   document.getElementById('rcount').textContent = countLabel;
   document.getElementById('biz-list').innerHTML = data.slice(0,200).map(function(b){
     var idx = b._id;
@@ -2679,8 +2698,12 @@ function renderList() {
         '</div>'+
       '</div>';
     }
-    return '<div class="bitem" onclick="selectBiz('+idx+')"><div class="bname"><span class="sdot" style="background:'+color+'"></span>'+b.name+'</div><div class="baddr">'+b.street+(b.industry?' · <em style=color:var(--muted)>'+b.industry+'</em>':'')+'</div>'+(b.phone?'<div class="bphone"><a href="tel:'+b.phone.replace(/\D/g,'')+'" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none;">'+b.phone+'</a></div>':'')+'</div>';
-  }).join('') + (data.length>200?'<div style="padding:.75rem;font-size:12px;color:var(--muted);text-align:center">Showing 200 of '+data.length.toLocaleString()+' — zoom in or filter to narrow</div>':'');
+    return '<div class="bitem" onclick="selectBiz('+idx+')">'+
+      '<div class="bname"><span class="sdot" style="background:'+color+'"></span>'+b.name+'</div>'+
+      '<div class="baddr">'+b.street+(b.industry?' · <em style=color:var(--muted)>'+b.industry+'</em>':'')+'</div>'+
+      (b.phone?'<div class="bphone"><a href="tel:'+b.phone.replace(/\D/g,'')+'" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none;">'+b.phone+'</a></div>':'')+
+    '</div>';
+  }).join('') + (data.length>200?'<div style="padding:.75rem;font-size:12px;color:var(--muted);text-align:center">Showing 200 of '+data.length.toLocaleString()+' — zoom in to narrow</div>':'');
 }
 
 // ── DETAIL ──
@@ -4294,7 +4317,8 @@ function updateRouteSelCount() {
 }
 
 function routeSelectAll() {
-  var data = filtersApplied ? filteredData : allData;
+  // Only select what's currently visible in the map — not all filtered data
+  var data = getVisibleData().filter(function(b){ return b.lat&&b.lon; });
   data.forEach(function(b){ _routeSelected[b._id] = b; });
   updateRouteSelCount();
   renderList();
