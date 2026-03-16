@@ -5536,6 +5536,11 @@ function onMapClick(e) {
 
 <!-- DESKTOP LEFT NAV -->
 <nav id="nav-desktop">
+  <!-- Add Business — top of desktop nav -->
+  <button class="nav-item-desk" onclick="openAddBusiness()" style="color:var(--accent);">
+    <svg viewBox="0 0 24 24" style="stroke:var(--accent);"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+    Add
+  </button>
   <button class="nav-item-desk" id="nd-filters" onclick="navTo('filters')">
     <svg viewBox="0 0 24 24"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
     Filters
@@ -5552,11 +5557,6 @@ function onMapClick(e) {
   <button class="nav-item-desk" id="nd-route" onclick="toggleRouteNav()">
     <svg viewBox="0 0 24 24"><circle cx="3" cy="6" r="2"/><circle cx="21" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M5 6h6a4 4 0 0 1 4 4v4"/><path d="M19 6h-6"/></svg>
     Route
-  </button>
-  <!-- Add Business — desktop nav, pushed to bottom -->
-  <button class="nav-item-desk" onclick="openAddBusiness()" style="margin-top:auto;color:var(--accent);">
-    <svg viewBox="0 0 24 24" style="stroke:var(--accent);"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-    Add
   </button>
 </nav>
 
