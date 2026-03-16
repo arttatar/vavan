@@ -843,7 +843,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
   <div id="overlay" onclick="closeSidebar();closeResults();"></div>
 
   <div id="sidebar">
-    <div class="panel-hdr" style="flex-direction:column;padding:0;border-bottom:1px solid var(--border);">
+    <div class="panel-hdr" style="flex-direction:column;padding:0;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10;background:#fff;flex-shrink:0;">
       <div class="sheet-handle-wrap"><div class="sheet-handle"></div></div>
       <div class="sheet-topbar">
         <div class="sheet-title">Filters</div>
@@ -2014,7 +2014,10 @@ function navTo(tab) {
   if (detail) detail.classList.remove('open');
 
   if (tab === 'map') {
-    // If a business was open, stay centered on it with pin still highlighted
+    // Close route panel if open
+    var rp = document.getElementById('route-panel');
+    if (rp) rp.classList.remove('open');
+    // If a business was open, stay centered on it
     if (lastSelectedBiz && lastSelectedBiz.lat && lastSelectedBiz.lon) {
       map.easeTo({center:[lastSelectedBiz.lon, lastSelectedBiz.lat], zoom:16, duration:300});
     }
@@ -5419,7 +5422,7 @@ function onMapClick(e) {
 
 <!-- ROUTE PANEL -->
 <div id="route-panel">
-  <div class="rp-header">
+  <div class="rp-header" style="position:sticky;top:0;z-index:10;flex-shrink:0;">
     <div class="sheet-handle-wrap"><div class="sheet-handle" style="background:rgba(255,255,255,.3);"></div></div>
     <div class="sheet-topbar" style="padding-bottom:8px;">
       <div style="flex:1;min-width:0;">
