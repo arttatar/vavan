@@ -4707,11 +4707,11 @@ async function saveNote() {
 
 // ── OPPORTUNITIES ──
 var OPP_PRODUCTS = [
-  { key:'lubricants',     label:'Lubricants',       field:'lube',       unit:'Gallons / Month',  max:1000,  maxLabel:'1,000+' },
+  { key:'lubricants',     label:'Lubricants',       field:'lube',       unit:'Gallons / Month',  max:1000,  maxLabel:'1,000+', step:10 },
   { key:'fuel_delivery',  label:'Fuel Delivery',    field:'fuel',       unit:'Gallons / Month',  max:50000, maxLabel:'50,000+' },
   { key:'cardlock',       label:'Cardlock',         field:'cardlock',   unit:'Gallons / Month',  max:50000, maxLabel:'50,000+' },
-  { key:'propane',        label:'Propane',          field:'propane',    unit:'Gallons / Month',  max:5000,  maxLabel:'5,000+' },
-  { key:'uco',            label:'Used Cooking Oil', field:'uco',        unit:'Gallons / Month',  max:500,   maxLabel:'500+' }
+  { key:'propane',        label:'Propane',          field:'propane',    unit:'Gallons / Month',  max:5000,  maxLabel:'5,000+', step:10 },
+  { key:'uco',            label:'Used Cooking Oil', field:'uco',        unit:'Gallons / Month',  max:500,   maxLabel:'500+', step:10 }
 ];
 
 function fmtGallons(n, maxVal) {
@@ -4843,7 +4843,7 @@ function renderOpportunities(b, opp) {
           })() : '')+
           '<label class="opp-field-label">Volume ('+p.unit+')</label>'+
           '<div class="opp-volume-wrap">'+
-            '<input type="range" id="opp-vol-'+p.key+'" min="0" max="'+p.max+'" step="'+(p.max>=10000?500:p.max>=1000?100:25)+'" value="'+gallons+'" oninput="updateVolLabel(\''+p.key+'\','+p.max+')">'+
+            '<input type="range" id="opp-vol-'+p.key+'" min="0" max="'+p.max+'" step="'+(p.step || (p.max>=10000?500:p.max>=1000?100:25))+'" value="'+gallons+'" oninput="updateVolLabel(\''+p.key+'\','+p.max+')">'+
             '<span class="opp-volume-val" id="opp-vol-lbl-'+p.key+'">'+fmtGallons(gallons,p.max)+'</span>'+
           '</div>'+
         '</div>'+
