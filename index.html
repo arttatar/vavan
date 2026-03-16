@@ -2638,30 +2638,34 @@ function applyFilters() {
 
 // ── LIST ──
 function getVisibleData() {
-  // If filters applied — show all matching results (not just map viewport)
-  if (filtersApplied) return filteredData;
-  // No filters — show what's in current map viewport from allData
-  if (!map) return [];
+  var source = filtersApplied ? filteredData : allData;
+  if (!map) return source;
   try {
     var bounds = map.getBounds();
-    return allData.filter(function(b){
+    var w = bounds.getWest(), e = bounds.getEast();
+    var s = bounds.getSouth(), n = bounds.getNorth();
+    var inView = source.filter(function(b){
       return b.lat && b.lon &&
-        b.lon >= bounds.getWest() && b.lon <= bounds.getEast() &&
-        b.lat >= bounds.getSouth() && b.lat <= bounds.getNorth();
+        b.lon >= w && b.lon <= e &&
+        b.lat >= s && b.lat <= n;
     });
-  } catch(e) { return []; }
+    // If viewport returns nothing (zoomed way out or panned off data)
+    // fall back to full source so list isn't empty
+    return inView.length > 0 ? inView : source;
+  } catch(e) { return source; }
 }
 
 function renderList() {
   var data = getVisibleData().filter(function(b){ return b.lat&&b.lon; });
   var total = filtersApplied ? filteredData.length : allData.length;
-  var label = filtersApplied ? ' filtered' : ' · zoom into Las Vegas to see businesses';
   if (!data.length && !filtersApplied) {
     document.getElementById('rcount').textContent = 'Apply filters or zoom into Las Vegas';
     document.getElementById('biz-list').innerHTML = '<div style="padding:1.5rem;font-size:12px;color:var(--muted);text-align:center;">Use Filters to find businesses,<br>or zoom the map into Las Vegas.</div>';
     return;
   }
-  document.getElementById('rcount').textContent = data.length.toLocaleString() + ' businesses' + (filtersApplied ? ' · '+total.toLocaleString()+' total filtered' : '');
+  var countLabel = data.length.toLocaleString() + ' in view';
+  if (total > data.length) countLabel += ' · ' + total.toLocaleString() + ' total' + (filtersApplied ? ' filtered' : '');
+  document.getElementById('rcount').textContent = countLabel;
   document.getElementById('biz-list').innerHTML = data.slice(0,200).map(function(b){
     var idx = b._id;
     var color = bizColor(b);
