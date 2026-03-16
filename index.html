@@ -3381,10 +3381,9 @@ function closeAddBusiness() {
   document.getElementById('ab-location-type').value = '';
   document.getElementById('ab-status-msg').textContent = '';
   // Reset sub-industry
-  var subRow = document.getElementById('ab-sub-industry-row');
   var subChips = document.getElementById('ab-sub-chips');
-  if (subRow) subRow.style.display = 'none';
   if (subChips) subChips.innerHTML = '';
+  _abUpdateSubIndustry('');
   // Reset product checkboxes
   ['lubricants','fuel_delivery','cardlock','propane','uco'].forEach(function(k){
     var cb = document.getElementById('ab-prod-'+k);
@@ -3477,17 +3476,24 @@ async function _quickMarkDead() {
 }
 
 function _abUpdateSubIndustry(ind) {
-  var row = document.getElementById('ab-sub-industry-row');
   var sel = document.getElementById('ab-sub-industry');
-  if (!ind || !SUB_MAP[ind] || !SUB_MAP[ind].length) {
-    if (row) row.style.display = 'none';
-    return;
-  }
-  // Clear existing options
-  sel.innerHTML = '<option value="">+ Add sub-industry</option>';
+  if (!sel) return;
   // Get currently selected chips to exclude
   var chips = document.getElementById('ab-sub-chips');
   var selected = chips ? Array.from(chips.querySelectorAll('span')).map(function(s){ return s.dataset.val||''; }) : [];
+  // Reset dropdown
+  sel.innerHTML = '';
+  if (!ind || !SUB_MAP[ind] || !SUB_MAP[ind].length) {
+    var placeholder = document.createElement('option');
+    placeholder.value = ''; placeholder.textContent = 'Select industries first';
+    sel.appendChild(placeholder);
+    sel.disabled = true;
+    return;
+  }
+  sel.disabled = false;
+  var def = document.createElement('option');
+  def.value = ''; def.textContent = '+ Add sub-industry';
+  sel.appendChild(def);
   SUB_MAP[ind].forEach(function(s){
     if (selected.indexOf(s.val) < 0) {
       var opt = document.createElement('option');
@@ -3495,7 +3501,6 @@ function _abUpdateSubIndustry(ind) {
       sel.appendChild(opt);
     }
   });
-  if (row) row.style.display = 'block';
 }
 
 function _abAddSubChip(sel) {
@@ -6703,11 +6708,11 @@ function onMapClick(e) {
             <option value="RealEstate">Real Estate</option>
           </select>
         </div>
-        <div class="abiz-field" id="ab-sub-industry-row" style="display:none;">
+        <div class="abiz-field" id="ab-sub-industry-row">
           <label class="abiz-label">Sub-Industry <span style="font-weight:400;color:var(--muted);font-size:9px;">(optional)</span></label>
           <div id="ab-sub-chips" style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px;min-height:0;"></div>
           <select class="abiz-select" id="ab-sub-industry" onchange="_abAddSubChip(this)">
-            <option value="">+ Add sub-industry</option>
+            <option value="">Select industries first</option>
           </select>
         </div>
       </div>
@@ -6723,10 +6728,6 @@ function onMapClick(e) {
             <option value="Other">Other</option>
           </select>
         </div>
-      </div>
-
-      <!-- Status -->
-      <div class="abiz-row">
         <div class="abiz-field">
           <label class="abiz-label">Status</label>
           <select class="abiz-select" id="ab-status" onchange="if(this.value==='Competitor'){var ind=document.getElementById('ab-industry');if(ind&&!ind.value){ind.value='Energy';_abUpdateSubIndustry('Energy');}}">
