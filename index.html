@@ -870,6 +870,18 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
       <circle cx="12" cy="12" r="8" stroke-dasharray="2 2" opacity=".3"/>
     </svg>
   </button>
+
+  <!-- Map Legend -->
+  <div id="map-legend" style="position:fixed;bottom:calc(env(safe-area-inset-bottom,0px)+72px);left:12px;z-index:800;background:rgba(13,13,20,.82);border-radius:10px;padding:7px 10px;font-family:Inter,sans-serif;font-size:10px;font-weight:600;color:rgba(255,255,255,.75);backdrop-filter:blur(6px);display:none;">
+    <div style="display:flex;flex-direction:column;gap:4px;">
+      <div style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:#9b93d4;flex-shrink:0;display:inline-block;"></span>Untouched</div>
+      <div style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:#F59E0B;flex-shrink:0;display:inline-block;"></span>Visited</div>
+      <div style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:#F97316;flex-shrink:0;display:inline-block;"></span>Contacted</div>
+      <div style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:#10B981;flex-shrink:0;display:inline-block;"></span>Customer</div>
+      <div style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:#EF4444;flex-shrink:0;display:inline-block;"></span>Competitor</div>
+      <div style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:#374151;flex-shrink:0;display:inline-block;"></span>Dead Lead</div>
+    </div>
+  </div>
   <div id="overlay" onclick="closeSidebar();closeResults();"></div>
 
   <div id="sidebar">
@@ -2071,6 +2083,24 @@ function initMapHandlers() {
   map.on('mouseleave', 'biz-cl', function(){ map.getCanvas().style.cursor=''; });
 }
 
+function salesStatus(b) {
+  if (b.is_competitor)                              return 'competitor';  // red
+  if ((b.status||'') === 'Customer')                return 'customer';   // green
+  if ((b.status||'') === 'Lost Customer')           return 'dead';       // dark
+  if (b.visited)                                    return 'visited';    // yellow
+  if (b.last_contacted || (b.status||'') === 'Lead' && b.pipeline_stage && b.pipeline_stage !== 'Lead Captured') return 'contacted'; // orange
+  return 'untouched'; // gray
+}
+
+var STATUS_COLORS = {
+  untouched: '#9b93d4',   // soft purple-gray — not yet worked
+  visited:   '#F59E0B',   // amber — rep has been there
+  contacted: '#F97316',   // orange — phone/email contact made
+  customer:  '#10B981',   // green — won
+  dead:      '#374151',   // dark gray — lost/dead
+  competitor:'#EF4444',   // red — competitor
+};
+
 function renderPins() {
   if (!map.isStyleLoaded()) { map.once('load', renderPins); return; }
 
@@ -2084,7 +2114,7 @@ function renderPins() {
       type:'FeatureCollection',
       features: valid.map(function(b){
         return {type:'Feature', geometry:{type:'Point', coordinates:[b.lon,b.lat]},
-          properties:{_id:b._id, industry:b.industry||'', is_competitor:b.is_competitor||false, score:b.score||calcScore(b)}};
+          properties:{_id:b._id, industry:b.industry||'', is_competitor:b.is_competitor||false, score:b.score||calcScore(b), sales_status:salesStatus(b)}};
       })
     });
     document.getElementById('pcount').textContent = allData.length.toLocaleString();
@@ -2097,31 +2127,33 @@ function renderPins() {
   map.addSource('biz', { type:'geojson', cluster:true, clusterMaxZoom:13, clusterRadius:40,
     data:{ type:'FeatureCollection', features: valid.map(function(b){
       return {type:'Feature', geometry:{type:'Point', coordinates:[b.lon,b.lat]},
-        properties:{_id:b._id, industry:b.industry||'', is_competitor:b.is_competitor||false, score:b.score||calcScore(b)}};
+        properties:{_id:b._id, industry:b.industry||'', is_competitor:b.is_competitor||false, score:b.score||calcScore(b), sales_status:salesStatus(b)}};
     })}
   });
   map.addLayer({ id:'biz-cl', type:'circle', source:'biz', filter:['has','point_count'], paint:{'circle-color':'#4a36c8','circle-radius':['step',['get','point_count'],16,10,22,50,28],'circle-opacity':.85} });
   map.addLayer({ id:'biz-cn', type:'symbol', source:'biz', filter:['has','point_count'], layout:{'text-field':'{point_count_abbreviated}','text-size':12}, paint:{'text-color':'#fff'} });
   map.addLayer({ id:'biz', type:'circle', source:'biz', filter:['!',['has','point_count']],
     paint:{
-      'circle-radius':6,
+      'circle-radius':['case',
+        ['==',['get','sales_status'],'customer'], 8,
+        ['==',['get','sales_status'],'competitor'], 7,
+        6
+      ],
       'circle-color':['case',
-        ['==',['get','is_competitor'],true],'#EF4444',
-        ['==',['get','industry'],'Automotive'],'#3B82F6',
-        ['==',['get','industry'],'Agribusiness'],'#84CC16',
-        ['in',['get','industry'],['literal',['Transport','Transportation']]],'#F97316',
-        ['in',['get','industry'],['literal',['Construction','Infrastructure']]],'#D97706',
-        ['==',['get','industry'],'Industrial'],'#6B7280',
-        ['==',['get','industry'],'Services'],'#8B5CF6',
-        ['==',['get','industry'],'Hospitality'],'#EC4899',
-        ['==',['get','industry'],'Government'],'#0EA5E9',
-        ['in',['get','industry'],['literal',['Energy','Fuel Stations']]],'#EAB308',
-        ['==',['get','industry'],'RealEstate'],'#14B8A6',
-        '#9b93d4'
+        ['==',['get','sales_status'],'competitor'], '#EF4444',
+        ['==',['get','sales_status'],'customer'],   '#10B981',
+        ['==',['get','sales_status'],'dead'],        '#374151',
+        ['==',['get','sales_status'],'visited'],     '#F59E0B',
+        ['==',['get','sales_status'],'contacted'],   '#F97316',
+        '#9b93d4'  // untouched
       ],
       'circle-opacity':0.9,
-      'circle-stroke-width':0,
-      'circle-stroke-color':'#fff'
+      'circle-stroke-width':['case',
+        ['==',['get','sales_status'],'customer'], 2,
+        ['==',['get','sales_status'],'competitor'], 2,
+        1
+      ],
+      'circle-stroke-color':'rgba(255,255,255,0.6)'
     }
   });
 
@@ -2943,6 +2975,8 @@ function applyFilters() {
 
   filteredData = data;
   filtersApplied = true;
+  var leg = document.getElementById('map-legend');
+  if (leg) leg.style.display = 'block';
 
   // Update map pins to show only filtered results
   if (map && map.getSource('biz')) {
@@ -3351,6 +3385,63 @@ async function geocodeAddress(address) {
   return { lon: json.features[0].center[0], lat: json.features[0].center[1] };
 }
 
+// ── QUICK ACTIONS ──
+function _quickAddToRoute() {
+  var biz = lastSelectedBiz; if (!biz) return;
+  if (!biz.lat || !biz.lon) { _showToast('No coordinates for this business'); return; }
+  if (_routeSelected[biz._id]) {
+    _showToast('Already in route selection');
+  } else {
+    _routeSelected[biz._id] = biz;
+    updateRouteSelCount();
+    _showToast(biz.name + ' added to route selection');
+    // Show the view route button
+    var vrBtn = document.getElementById('view-route-btn');
+    if (vrBtn) vrBtn.style.display = 'block';
+  }
+  // If route already built, add directly to stops
+  if (_routeStops.length > 0) {
+    var alreadyIn = _routeStops.some(function(s){ return String(s.biz._id) === String(biz._id); });
+    if (!alreadyIn) {
+      _routeStops.push({biz:biz, done:false});
+      _saveRoute();
+      _drawRouteOnMap();
+      _renderRPStops();
+      _showToast(biz.name + ' added to route');
+    } else {
+      _showToast('Already in route');
+    }
+    return;
+  }
+}
+
+async function _quickMarkCustomer() {
+  var biz = lastSelectedBiz; if (!biz) return;
+  try {
+    await sb.from('businesses').update({status:'Customer', updated_at:new Date().toISOString()}).eq('id',biz.id||biz._id);
+    biz.status = 'Customer';
+    if (_bizById[biz._id]) _bizById[biz._id].status = 'Customer';
+    _logChange('Status → Customer', 'edit');
+    _showToast('Marked as Customer');
+    renderDetailPanel(biz);
+    renderPins();
+  } catch(e) { _showToast('Save failed'); }
+}
+
+async function _quickMarkDead() {
+  var biz = lastSelectedBiz; if (!biz) return;
+  if (!confirm('Mark "'+biz.name+'" as a dead lead?')) return;
+  try {
+    await sb.from('businesses').update({status:'Lost Customer', updated_at:new Date().toISOString()}).eq('id',biz.id||biz._id);
+    biz.status = 'Lost Customer';
+    if (_bizById[biz._id]) _bizById[biz._id].status = 'Lost Customer';
+    _logChange('Status → Dead Lead', 'edit');
+    _showToast('Marked as Dead Lead');
+    renderDetailPanel(biz);
+    renderPins();
+  } catch(e) { _showToast('Save failed'); }
+}
+
 async function saveNewBusiness() {
   var name     = document.getElementById('ab-name').value.trim();
   var phone    = document.getElementById('ab-phone').value.trim();
@@ -3379,6 +3470,36 @@ async function saveNewBusiness() {
     addrParts.push('USA');
     var fullAddress = addrParts.filter(Boolean).join(', ');
     var coords = await geocodeAddress(fullAddress);
+
+    statusEl.textContent = 'Checking for duplicates...';
+    btn.textContent = 'Checking...';
+
+    // Duplicate check — name similarity + proximity
+    var nameLower = name.toLowerCase();
+    var streetLower = street.toLowerCase();
+    var duplicates = allData.filter(function(b){
+      if (!b.lat || !b.lon) return false;
+      // Exact address match
+      var addrMatch = (b.street||'').toLowerCase() === streetLower && (b.locality||'').toLowerCase().indexOf(city.toLowerCase()) >= 0;
+      // Name similarity (contains or is contained)
+      var bName = (b.name||'').toLowerCase();
+      var nameMatch = bName === nameLower || bName.indexOf(nameLower) >= 0 || nameLower.indexOf(bName) >= 0;
+      // Proximity — within ~50 meters
+      var dist = Math.sqrt(Math.pow((b.lat-coords.lat)*111000,2)+Math.pow((b.lon-coords.lon)*85000,2));
+      var closeEnough = dist < 50;
+      return (addrMatch && nameMatch) || (nameMatch && closeEnough) || (addrMatch && closeEnough);
+    });
+
+    if (duplicates.length > 0) {
+      var dupNames = duplicates.slice(0,3).map(function(b){ return '"'+b.name+'"'; }).join(', ');
+      var proceed = confirm('Possible duplicate found:\n'+dupNames+'\n\nAdd anyway?');
+      if (!proceed) {
+        btn.disabled = false; btn.textContent = 'Add to Map';
+        statusEl.textContent = 'Cancelled — possible duplicate.';
+        statusEl.style.color = 'var(--red)';
+        return;
+      }
+    }
 
     statusEl.textContent = 'Saving...';
     btn.textContent = 'Saving...';
@@ -3810,7 +3931,7 @@ function renderDetailPanel(b) {
         '<span style="font-size:11px;font-weight:600;color:#fff;background:'+color+';padding:3px 10px;border-radius:100px;">'+
           (b.industry||'Business')+'</span>'+
       '</div>'+
-      // Quick action buttons
+      // Quick action buttons — Navigate + Call
       '<div style="display:flex;gap:8px;margin-top:10px;">'+
         '<button onclick="openNav(\''+addr.replace(/'/g,"\\'")+'\',' + (b.lat||null) + ',' + (b.lon||null) + ')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;background:var(--paper2);border:1px solid var(--border);border-radius:10px;font-size:13px;font-weight:600;color:var(--ink);cursor:pointer;font-family:Inter,sans-serif;">'+
           '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>'+
@@ -3825,7 +3946,26 @@ function renderDetailPanel(b) {
             'No Phone</button>'
         )+
       '</div>'+
-      // ── OPPORTUNITY PIPELINE SUMMARY ──
+      // ── QUICK ACTIONS ROW ──
+      '<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">'+
+        // Add to Route
+        '<button onclick="_quickAddToRoute()" style="flex:1;min-width:0;padding:7px 4px;background:var(--accent-light);border:1px solid var(--accent);border-radius:8px;font-size:11px;font-weight:700;color:var(--accent);cursor:pointer;font-family:Inter,sans-serif;display:flex;align-items:center;justify-content:center;gap:4px;" title="Add to route">'+
+          '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="3" cy="6" r="2"/><circle cx="21" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M5 6h6a4 4 0 0 1 4 4v4"/><path d="M19 6h-6"/></svg>'+
+          'Route'+
+        '</button>'+
+        // Mark Customer
+        (status !== 'Customer' ?
+          '<button onclick="_quickMarkCustomer()" style="flex:1;min-width:0;padding:7px 4px;background:#f0fdf4;border:1px solid #10B981;border-radius:8px;font-size:11px;font-weight:700;color:#059669;cursor:pointer;font-family:Inter,sans-serif;display:flex;align-items:center;justify-content:center;gap:4px;" title="Mark as customer">'+
+            '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'+
+            'Customer'+
+          '</button>' : '')+
+        // Mark Dead Lead
+        (status !== 'Lost Customer' ?
+          '<button onclick="_quickMarkDead()" style="flex:1;min-width:0;padding:7px 4px;background:#f9fafb;border:1px solid #9CA3AF;border-radius:8px;font-size:11px;font-weight:700;color:#6B7280;cursor:pointer;font-family:Inter,sans-serif;display:flex;align-items:center;justify-content:center;gap:4px;" title="Mark as dead lead">'+
+            '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'+
+            'Dead Lead'+
+          '</button>' : '')+
+      '</div>'+
       (function(){
         var opp = _oppCache[String(b.id||b._id)];
         if (!opp) return '';
@@ -4689,9 +4829,9 @@ async function _doLogActivity(type, outcome) {
       created_by: byName
     });
     _showToast(type === 'contacted' ? 'Logged: Contacted' : 'Logged: Visited');
-    // Refresh profile to update visited button state
     renderDetailPanel(biz);
     switchTab('profile');
+    renderPins(); // update pin color
     // Reload activity feed in background
     loadActivity(biz);
   } catch(e) { _showToast('Save failed'); }
@@ -4879,34 +5019,50 @@ function renderOpportunities(b, opp) {
           // Current Supplier — multi-select chips
           '<label class="opp-field-label">Current Supplier</label>'+
           (function(){
-            var SUPPLIERS = ['Shell','Chevron','Mobil','Valvoline','Castrol','Citgo','BP','Phillips 66','Sunoco','Local Co-op','Other'];
+            var BASE_SUPPLIERS = ['Shell','Chevron','Mobil','Valvoline','Castrol','Citgo','BP','Phillips 66','Sunoco','Local Co-op'];
+            var custom = _getCustomList('suppliers');
+            var SUPPLIERS = BASE_SUPPLIERS.concat(custom);
             var selected = supplier ? supplier.split(',').map(function(s){return s.trim();}).filter(Boolean) : [];
             var chips = selected.map(function(s){
               return '<span style="display:inline-flex;align-items:center;gap:3px;background:var(--accent-light);color:var(--accent);border-radius:100px;padding:3px 9px;font-size:11px;font-weight:600;white-space:nowrap;margin:2px;">'+
-                s+'<button type="button" onclick="_removeOppChip(\'sup\',\''+p.key+'\',\''+s.replace(/'/g,"\\'")+'\')" style="background:none;border:none;cursor:pointer;color:var(--accent);font-size:13px;line-height:1;padding:0 0 0 2px;">×</button></span>';
+                s+
+                '<button type="button" onclick="_editOppChip(\'sup\',\''+p.key+'\',\''+s.replace(/'/g,"\\'")+'\',\'suppliers\')" style="background:none;border:none;cursor:pointer;color:var(--accent);font-size:10px;line-height:1;padding:0 2px;" title="Edit">✎</button>'+
+                '<button type="button" onclick="_removeOppChip(\'sup\',\''+p.key+'\',\''+s.replace(/'/g,"\\'")+'\')" style="background:none;border:none;cursor:pointer;color:var(--accent);font-size:13px;line-height:1;padding:0 0 0 1px;">×</button>'+
+              '</span>';
             }).join('');
             var available = SUPPLIERS.filter(function(s){ return selected.indexOf(s)<0; });
-            return '<div id="opp-sup-chips-'+p.key+'" style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:6px;min-height:28px;">'+chips+'</div>'+
-              '<select onchange="_addOppChip(\'sup\',\''+p.key+'\',this)" style="width:100%;border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;font-family:Inter,sans-serif;color:var(--muted);background:#fff;cursor:pointer;margin-bottom:.75rem;" id="opp-sup-'+p.key+'">'+
+            return '<div id="opp-sup-chips-'+p.key+'" style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:6px;min-height:24px;">'+chips+'</div>'+
+              '<select onchange="_addOppChipOrCustom(\'sup\',\''+p.key+'\',\'suppliers\',this)" style="width:100%;border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;font-family:Inter,sans-serif;color:var(--muted);background:#fff;cursor:pointer;margin-bottom:.75rem;" id="opp-sup-'+p.key+'">'+
               '<option value="">+ Add supplier</option>'+
               available.map(function(s){ return '<option value="'+s+'">'+s+'</option>'; }).join('')+
+              '<option disabled style="border-top:1px solid #eee;">──────────</option>'+
+              '<option value="__custom__">+ Add new supplier...</option>'+
+              (custom.length ? '<option value="__edit__">Edit custom suppliers...</option>' : '')+
               '</select>';
           })()+
           // Brands Used — lubricants only
           (p.key === 'lubricants' ? (function(){
-            var BRANDS = ['Mobil 1','Castrol EDGE','Valvoline Full Synthetic','Shell Rotella','Pennzoil Platinum','Royal Purple','Amsoil','Delo','Rotella T6','Kendall','Other'];
+            var BASE_BRANDS = ['Mobil 1','Castrol EDGE','Valvoline Full Synthetic','Shell Rotella','Pennzoil Platinum','Royal Purple','Amsoil','Delo','Rotella T6','Kendall'];
+            var custom = _getCustomList('brands');
+            var BRANDS = BASE_BRANDS.concat(custom);
             var brandVal = opp['lube_brands'] || '';
             var selected = brandVal ? brandVal.split(',').map(function(s){return s.trim();}).filter(Boolean) : [];
             var chips = selected.map(function(s){
               return '<span style="display:inline-flex;align-items:center;gap:3px;background:#f0fdf4;color:#059669;border-radius:100px;padding:3px 9px;font-size:11px;font-weight:600;white-space:nowrap;margin:2px;">'+
-                s+'<button type="button" onclick="_removeOppChip(\'brand\',\'lubricants\',\''+s.replace(/'/g,"\\'")+'\')" style="background:none;border:none;cursor:pointer;color:#059669;font-size:13px;line-height:1;padding:0 0 0 2px;">×</button></span>';
+                s+
+                '<button type="button" onclick="_editOppChip(\'brand\',\'lubricants\',\''+s.replace(/'/g,"\\'")+'\',\'brands\')" style="background:none;border:none;cursor:pointer;color:#059669;font-size:10px;line-height:1;padding:0 2px;" title="Edit">✎</button>'+
+                '<button type="button" onclick="_removeOppChip(\'brand\',\'lubricants\',\''+s.replace(/'/g,"\\'")+'\',true)" style="background:none;border:none;cursor:pointer;color:#059669;font-size:13px;line-height:1;padding:0 0 0 1px;">×</button>'+
+              '</span>';
             }).join('');
             var available = BRANDS.filter(function(s){ return selected.indexOf(s)<0; });
             return '<label class="opp-field-label">Brands Used</label>'+
-              '<div id="opp-brand-chips-lubricants" style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:6px;min-height:28px;">'+chips+'</div>'+
-              '<select onchange="_addOppChip(\'brand\',\'lubricants\',this)" style="width:100%;border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;font-family:Inter,sans-serif;color:var(--muted);background:#fff;cursor:pointer;margin-bottom:.75rem;" id="opp-brand-lubricants">'+
+              '<div id="opp-brand-chips-lubricants" style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:6px;min-height:24px;">'+chips+'</div>'+
+              '<select onchange="_addOppChipOrCustom(\'brand\',\'lubricants\',\'brands\',this)" style="width:100%;border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;font-family:Inter,sans-serif;color:var(--muted);background:#fff;cursor:pointer;margin-bottom:.75rem;" id="opp-brand-lubricants">'+
               '<option value="">+ Add brand</option>'+
               available.map(function(s){ return '<option value="'+s+'">'+s+'</option>'; }).join('')+
+              '<option disabled style="border-top:1px solid #eee;">──────────</option>'+
+              '<option value="__custom__">+ Add new brand...</option>'+
+              (custom.length ? '<option value="__edit__">Edit custom brands...</option>' : '')+
               '</select>';
           })() : '')+
           '<label class="opp-field-label">Volume ('+p.unit+')</label>'+
@@ -4922,6 +5078,200 @@ function renderOpportunities(b, opp) {
   el.innerHTML = html;
 }
 
+// ── CUSTOM SUPPLIER / BRAND LISTS ──
+function _customListKey(listName) {
+  var cid = currentProfile ? (currentProfile.client_id || 'default') : 'default';
+  return 'vavan_custom_'+listName+'_'+cid;
+}
+function _getCustomList(listName) {
+  try {
+    var raw = localStorage.getItem(_customListKey(listName));
+    return raw ? JSON.parse(raw) : [];
+  } catch(e) { return []; }
+}
+function _saveCustomList(listName, arr) {
+  try { localStorage.setItem(_customListKey(listName), JSON.stringify(arr)); } catch(e) {}
+}
+
+function _addOppChipOrCustom(type, key, listName, sel) {
+  var val = sel.value;
+  sel.value = '';
+  if (!val) return;
+
+  if (val === '__custom__') {
+    // Prompt to add a new entry
+    var label = listName === 'brands' ? 'brand' : 'supplier';
+    var newVal = prompt('Enter new ' + label + ' name:');
+    if (!newVal || !newVal.trim()) return;
+    newVal = newVal.trim();
+    // Save to custom list
+    var list = _getCustomList(listName);
+    if (list.indexOf(newVal) < 0) {
+      list.push(newVal);
+      _saveCustomList(listName, list);
+    }
+    _addOppChipDirect(type, key, newVal);
+    // Refresh the whole opp panel so new entry appears in dropdown
+    var biz = lastSelectedBiz;
+    if (biz) loadOpportunities(biz);
+    return;
+  }
+
+  if (val === '__edit__') {
+    // Show edit modal for custom list
+    _openCustomListEditor(listName, type, key);
+    return;
+  }
+
+  _addOppChipDirect(type, key, val);
+}
+
+function _addOppChipDirect(type, key, val) {
+  var id = type === 'sup' ? 'opp-sup-chips-'+key : 'opp-brand-chips-'+key;
+  var color = type === 'sup' ? 'var(--accent)' : '#059669';
+  var bg    = type === 'sup' ? 'var(--accent-light)' : '#f0fdf4';
+  var listName = type === 'sup' ? 'suppliers' : 'brands';
+  var wrap  = document.getElementById(id);
+  if (!wrap) return;
+  var existing = Array.from(wrap.querySelectorAll('span')).map(function(s){
+    return s.childNodes[0] ? s.childNodes[0].textContent.trim() : '';
+  });
+  if (existing.indexOf(val) >= 0) return;
+  var chip = document.createElement('span');
+  chip.style.cssText = 'display:inline-flex;align-items:center;gap:3px;background:'+bg+';color:'+color+';border-radius:100px;padding:3px 9px;font-size:11px;font-weight:600;white-space:nowrap;margin:2px;';
+  chip.innerHTML =
+    val+
+    '<button type="button" onclick="_editOppChip(\''+type+'\',\''+key+'\',\''+val.replace(/'/g,"\\'")+'\',\''+listName+'\')" style="background:none;border:none;cursor:pointer;color:'+color+';font-size:10px;line-height:1;padding:0 2px;" title="Edit">✎</button>'+
+    '<button type="button" onclick="_removeOppChip(\''+type+'\',\''+key+'\',\''+val.replace(/'/g,"\\'")+'\',false)" style="background:none;border:none;cursor:pointer;color:'+color+';font-size:13px;line-height:1;padding:0 0 0 1px;">×</button>';
+  wrap.appendChild(chip);
+  // Remove from dropdown
+  var sel = document.getElementById(type === 'sup' ? 'opp-sup-'+key : 'opp-brand-'+key);
+  if (sel) Array.from(sel.options).forEach(function(o){ if(o.value===val) sel.removeChild(o); });
+}
+
+function _editOppChip(type, key, oldVal, listName) {
+  var label = listName === 'brands' ? 'brand' : 'supplier';
+  var newVal = prompt('Edit ' + label + ':', oldVal);
+  if (!newVal || !newVal.trim() || newVal.trim() === oldVal) return;
+  newVal = newVal.trim();
+  // Update in custom list if it was custom
+  var list = _getCustomList(listName);
+  var idx = list.indexOf(oldVal);
+  if (idx >= 0) { list[idx] = newVal; _saveCustomList(listName, list); }
+  // Update the chip in DOM
+  var id = type === 'sup' ? 'opp-sup-chips-'+key : 'opp-brand-chips-'+key;
+  var wrap = document.getElementById(id);
+  if (wrap) {
+    Array.from(wrap.querySelectorAll('span')).forEach(function(s){
+      if (s.childNodes[0] && s.childNodes[0].textContent.trim() === oldVal) {
+        s.childNodes[0].textContent = newVal;
+        // Update onclick attrs on edit/remove buttons
+        var btns = s.querySelectorAll('button');
+        if (btns[0]) btns[0].setAttribute('onclick', '_editOppChip(\''+type+'\',\''+key+'\',\''+newVal.replace(/'/g,"\\'")+'\',\''+listName+'\')');
+        if (btns[1]) btns[1].setAttribute('onclick', '_removeOppChip(\''+type+'\',\''+key+'\',\''+newVal.replace(/'/g,"\\'")+'\',false)');
+      }
+    });
+  }
+  _showToast(label.charAt(0).toUpperCase()+label.slice(1)+' updated');
+}
+
+function _removeOppChip(type, key, val) {
+  var id = type === 'sup' ? 'opp-sup-chips-'+key : 'opp-brand-chips-'+key;
+  var wrap = document.getElementById(id);
+  if (!wrap) return;
+  Array.from(wrap.querySelectorAll('span')).forEach(function(s){
+    if (s.childNodes[0] && s.childNodes[0].textContent.trim() === val) wrap.removeChild(s);
+  });
+  // Re-add to dropdown (only if it's not a custom item already in dropdown)
+  var selId = type === 'sup' ? 'opp-sup-'+key : 'opp-brand-'+key;
+  var sel = document.getElementById(selId);
+  if (sel) {
+    var alreadyThere = Array.from(sel.options).some(function(o){ return o.value === val; });
+    if (!alreadyThere) {
+      var opt = document.createElement('option');
+      opt.value = val; opt.textContent = val;
+      // Insert before the divider (second to last options)
+      var divider = Array.from(sel.options).find(function(o){ return o.disabled; });
+      if (divider) sel.insertBefore(opt, divider);
+      else sel.appendChild(opt);
+    }
+  }
+}
+
+function _openCustomListEditor(listName, type, key) {
+  var list = _getCustomList(listName);
+  var label = listName === 'brands' ? 'Brands' : 'Suppliers';
+  if (list.length === 0) {
+    alert('No custom '+label.toLowerCase()+' added yet.\nUse "+ Add new '+label.slice(0,-1).toLowerCase()+'..." to add one.');
+    return;
+  }
+
+  // Build modal
+  var existing = document.getElementById('custom-list-modal');
+  if (existing) existing.remove();
+
+  var modal = document.createElement('div');
+  modal.id = 'custom-list-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9900;display:flex;align-items:center;justify-content:center;font-family:Inter,sans-serif;padding:20px;';
+
+  var box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:14px;width:100%;max-width:360px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.2);';
+
+  function renderEditor() {
+    var list = _getCustomList(listName);
+    box.innerHTML =
+      '<div style="padding:16px 20px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;">'+
+        '<div style="font-size:16px;font-weight:700;color:#0d0d14;">Custom '+label+'</div>'+
+        '<button onclick="document.getElementById(\'custom-list-modal\').remove()" style="background:#f3f4f6;border:none;border-radius:50%;width:28px;height:28px;font-size:16px;cursor:pointer;color:#666;">×</button>'+
+      '</div>'+
+      '<div style="max-height:300px;overflow-y:auto;">'+
+        (list.length === 0 ? '<div style="padding:20px;text-align:center;color:#999;font-size:13px;">No custom entries yet</div>' :
+          list.map(function(item, i){
+            return '<div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid #f5f5f5;">'+
+              '<span style="flex:1;font-size:13px;font-weight:500;color:#0d0d14;">'+item+'</span>'+
+              '<button onclick="_clEditItem(\''+listName+'\','+i+',\''+item.replace(/'/g,"\\'")+'\',\''+type+'\',\''+key+'\')" style="padding:4px 10px;background:#f3f4f6;border:none;border-radius:6px;font-size:11px;font-weight:600;color:#555;cursor:pointer;">Edit</button>'+
+              '<button onclick="_clDeleteItem(\''+listName+'\','+i+')" style="padding:4px 8px;background:#fef2f2;border:none;border-radius:6px;font-size:11px;font-weight:600;color:#ef4444;cursor:pointer;">✕</button>'+
+            '</div>';
+          }).join('')
+        )+
+      '</div>'+
+      '<div style="padding:12px 16px;border-top:1px solid #f0f0f0;">'+
+        '<button onclick="_clAddItem(\''+listName+'\',\''+type+'\',\''+key+'\')" style="width:100%;padding:10px;background:var(--accent);border:none;border-radius:8px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;">+ Add New</button>'+
+      '</div>';
+  }
+
+  window._clEditItem = function(listName, idx, oldVal, type, key) {
+    var nv = prompt('Edit:', oldVal);
+    if (!nv || !nv.trim()) return;
+    var list = _getCustomList(listName);
+    list[idx] = nv.trim();
+    _saveCustomList(listName, list);
+    renderEditor();
+  };
+  window._clDeleteItem = function(listName, idx) {
+    var list = _getCustomList(listName);
+    list.splice(idx, 1);
+    _saveCustomList(listName, list);
+    renderEditor();
+  };
+  window._clAddItem = function(listName, type, key) {
+    var label = listName === 'brands' ? 'brand' : 'supplier';
+    var nv = prompt('New '+label+' name:');
+    if (!nv || !nv.trim()) return;
+    var list = _getCustomList(listName);
+    if (list.indexOf(nv.trim()) < 0) { list.push(nv.trim()); _saveCustomList(listName, list); }
+    renderEditor();
+    // Refresh opp panel
+    var biz = lastSelectedBiz;
+    if (biz) loadOpportunities(biz);
+  };
+
+  renderEditor();
+  modal.appendChild(box);
+  modal.addEventListener('click', function(e){ if(e.target===modal) modal.remove(); });
+  document.body.appendChild(modal);
+}
+
 // Read chip values from a chip container as comma-separated string
 function _getOppChips(type, key) {
   var id = type === 'sup' ? 'opp-sup-chips-'+key : 'opp-brand-chips-'+key;
@@ -4930,42 +5280,6 @@ function _getOppChips(type, key) {
   return Array.from(wrap.querySelectorAll('span')).map(function(s){
     return s.childNodes[0] ? s.childNodes[0].textContent.trim() : '';
   }).filter(Boolean).join(', ');
-}
-
-function _addOppChip(type, key, sel) {
-  var val = sel.value; if (!val) return;
-  sel.value = '';
-  var id = type === 'sup' ? 'opp-sup-chips-'+key : 'opp-brand-chips-'+key;
-  var color = type === 'sup' ? 'var(--accent)' : '#059669';
-  var bg    = type === 'sup' ? 'var(--accent-light)' : '#f0fdf4';
-  var wrap  = document.getElementById(id);
-  if (!wrap) return;
-  // Don't add duplicates
-  var existing = Array.from(wrap.querySelectorAll('span')).map(function(s){ return s.childNodes[0]?s.childNodes[0].textContent.trim():''; });
-  if (existing.indexOf(val) >= 0) return;
-  var chip = document.createElement('span');
-  chip.style.cssText = 'display:inline-flex;align-items:center;gap:3px;background:'+bg+';color:'+color+';border-radius:100px;padding:3px 9px;font-size:11px;font-weight:600;white-space:nowrap;margin:2px;';
-  chip.innerHTML = val+'<button type="button" onclick="_removeOppChip(\''+type+'\',\''+key+'\',\''+val.replace(/'/g,"\\'")+'\')" style="background:none;border:none;cursor:pointer;color:'+color+';font-size:13px;line-height:1;padding:0 0 0 2px;">×</button>';
-  wrap.appendChild(chip);
-  // Remove from dropdown
-  Array.from(sel.options).forEach(function(o){ if(o.value===val) sel.removeChild(o); });
-}
-
-function _removeOppChip(type, key, val) {
-  var id = type === 'sup' ? 'opp-sup-chips-'+key : 'opp-brand-chips-'+key;
-  var wrap = document.getElementById(id);
-  if (!wrap) return;
-  Array.from(wrap.querySelectorAll('span')).forEach(function(s){
-    if ((s.childNodes[0]?s.childNodes[0].textContent.trim():'') === val) wrap.removeChild(s);
-  });
-  // Re-add to dropdown
-  var selId = type === 'sup' ? 'opp-sup-'+key : 'opp-brand-'+key;
-  var sel = document.getElementById(selId);
-  if (sel) {
-    var opt = document.createElement('option');
-    opt.value = val; opt.textContent = val;
-    sel.appendChild(opt);
-  }
 }
 
 function setOppStage(key, stage) {
