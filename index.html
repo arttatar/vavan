@@ -1531,6 +1531,7 @@ function normalizeRecord(b) {
   b.street      = (b.street      || b.address || '').trim();
   b.locality    = (b.locality    || b.city    || '').trim();
   b.state       = (b.state       || '').trim();
+  b.zip         = (b.zip         || b.postal_code || b.zipcode || '').trim();
   b.full_address= (b.full_address|| '').trim() || [b.street, b.locality].filter(Boolean).join(', ');
   b.phone       = (b.phone       || '').trim();
   b.website     = (b.website     || '').trim();
@@ -3800,12 +3801,19 @@ function renderDetailPanel(b) {
     '<div id="det-profile" class="det-section active">'+
       // View mode
       '<div id="det-view" class="det-view-mode">'+
-        '<div class="det-field-row"><span class="det-field-label">Address</span>'+
-          '<span class="det-field-value" style="cursor:pointer" onclick="openNav('+JSON.stringify(addr)+','+( b.lat||null)+','+( b.lon||null)+')">'+
-            (b.street||'—')+'<br>'+(b.locality||'')+'</span></div>'+
+        // Google Maps link FIRST
         '<a href="https://www.google.com/maps/search/'+encodeURIComponent(b.name||'')+'/@'+b.lat+','+b.lon+',17z" '+
-          'target="_blank" style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#4285F4;text-decoration:none;padding:2px 0 10px;border-bottom:1px solid var(--border);margin-bottom:0;">'+
+          'target="_blank" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#4285F4;text-decoration:none;padding:10px 0 10px;border-bottom:1px solid var(--border);">'+
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4285F4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>'+
           'View on Google Maps &rarr;</a>'+
+        // Full address below
+        '<div class="det-field-row"><span class="det-field-label">Address</span>'+
+          '<span class="det-field-value" style="cursor:pointer;text-align:right;" onclick="openNav('+JSON.stringify(addr)+','+( b.lat||null)+','+( b.lon||null)+')">'+
+            (b.street||'—')+
+            (b.locality ? '<br>'+b.locality : '')+
+            ((b.state && !b.locality) ? '<br>'+b.state : (b.state && b.locality && !b.locality.includes(b.state) ? ', '+b.state : ''))+
+            (b.zip ? ' '+b.zip : '')+
+          '</span></div>'+
         '<div class="det-field-row"><span class="det-field-label">Location Type</span>'+
           '<span class="det-field-value">'+
             (b.location_type || '<span style="color:var(--muted);">Not set</span>')+
