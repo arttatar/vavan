@@ -6850,19 +6850,18 @@ function onMapClick(e) {
 
 <!-- ROUTE PANEL -->
 <div id="route-panel">
-  <div class="rp-header">
-    <div class="sheet-handle-wrap"><div class="sheet-handle" style="background:rgba(255,255,255,.3);"></div></div>
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:4px 16px 8px;flex-shrink:0;">
+  <div id="rp-header" style="background:var(--ink);flex:0 0 auto;padding:14px 14px 10px;">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;">
       <div style="flex:1;min-width:0;">
-        <div style="font-size:16px;font-weight:700;color:#fff;font-family:'Syne',sans-serif;">Route</div>
-        <div id="rp-subtitle" style="font-size:11px;color:rgba(255,255,255,.65);margin-top:3px;line-height:1.4;">Select businesses from the list to build a route</div>
+        <div style="font-size:17px;font-weight:700;color:#fff;font-family:'Syne',sans-serif;line-height:1.2;">Route</div>
+        <div id="rp-subtitle" style="font-size:12px;color:rgba(255,255,255,.7);margin-top:4px;line-height:1.4;">Select businesses from the list to build a route</div>
       </div>
-      <button onclick="closeRoutePanel()" style="background:rgba(255,255,255,.12);border:none;border-radius:50%;width:28px;height:28px;color:rgba(255,255,255,.8);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:8px;">✕</button>
+      <button onclick="closeRoutePanel()" style="background:rgba(255,255,255,.15);border:none;border-radius:50%;width:30px;height:30px;color:#fff;font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:10px;line-height:1;">✕</button>
     </div>
-    <div class="rp-actions">
-      <button class="rp-action-btn blue" onclick="reoptimizeRoute()">Re-Optimize</button>
-      <button class="rp-action-btn blue" onclick="changeRouteStart()">Start Point</button>
-      <button class="rp-action-btn red" onclick="clearRoute()">Clear</button>
+    <div style="display:flex;gap:8px;">
+      <button class="rp-action-btn blue" onclick="reoptimizeRoute()" style="flex:1;">Re-Optimize</button>
+      <button class="rp-action-btn blue" onclick="changeRouteStart()" style="flex:1;">Start Point</button>
+      <button class="rp-action-btn red" onclick="clearRoute()" style="flex:1;">Clear</button>
     </div>
   </div>
   <div class="rp-stops" id="rp-stops-list">
