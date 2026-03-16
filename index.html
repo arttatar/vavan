@@ -905,13 +905,13 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
           <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:8px;">Click map to place circle · drag slider to resize</div>
           <div style="display:flex;align-items:center;gap:10px;">
             <span style="font-size:10px;color:var(--muted);white-space:nowrap;">0.5 mi</span>
-            <input type="range" min="1" max="40" step="1" value="10" id="rad-slider"
+            <input type="range" min="1" max="40" step="1" value="2" id="rad-slider"
               style="flex:1;accent-color:var(--accent);cursor:pointer;"
               oninput="_onRadSlider(this.value)">
             <span style="font-size:10px;color:var(--muted);white-space:nowrap;">20 mi</span>
           </div>
           <div style="text-align:center;margin-top:6px;">
-            <span id="rad-lbl" style="font-size:13px;font-weight:700;color:var(--accent);">5 mi</span>
+            <span id="rad-lbl" style="font-size:13px;font-weight:700;color:var(--accent);">1 mi</span>
             <span style="font-size:11px;color:var(--muted);"> radius</span>
           </div>
           <div style="display:flex;justify-content:space-between;padding:0 2px;margin-top:2px;">
@@ -1229,7 +1229,7 @@ var filters = {
   opp_lube_stage:'all', opp_fuel_stage:'all', opp_cardlock_stage:'all',
   opp_propane_stage:'all', opp_uco_stage:'all'
 };
-var activeTool = null, selPoly = null, radMiles = 5;
+var activeTool = null, selPoly = null, radMiles = 1;
 
 // ── LOGIN ──
 document.getElementById('lbtn').onclick = doLogin;
