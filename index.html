@@ -697,7 +697,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
     top:auto !important;bottom:60px !important;
     left:0 !important;right:0 !important;
     width:100% !important;height:88vh !important;
-    border-radius:20px 20px 0 0 !important;
+    border-radius:0 !important;
     transform:translateY(110%) !important;
     transition:transform .3s cubic-bezier(.4,0,.2,1) !important;
     box-shadow:0 -4px 32px rgba(0,0,0,.22) !important;
@@ -6851,6 +6851,8 @@ function onMapClick(e) {
 <!-- ROUTE PANEL -->
 <div id="route-panel">
   <div id="rp-header" style="background:var(--ink);flex:0 0 auto;padding:14px 14px 10px;">
+    <!-- drag handle -->
+    <div style="width:36px;height:4px;background:rgba(255,255,255,.3);border-radius:2px;margin:0 auto 12px;"></div>
     <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;">
       <div style="flex:1;min-width:0;">
         <div style="font-size:17px;font-weight:700;color:#fff;font-family:'Syne',sans-serif;line-height:1.2;">Route</div>
