@@ -4310,6 +4310,7 @@ function buildRouteFromSelection() {
   var selected = Object.values(_routeSelected);
   if (selected.length < 1) { alert('Select at least 1 business to build a route.'); return; }
   if (selected.length > 50) { alert('Maximum 50 stops per route. Please narrow your selection.'); return; }
+  // Show start point modal
   document.getElementById('route-start-modal').classList.add('open');
 }
 
@@ -4337,6 +4338,7 @@ async function confirmRouteStart() {
       alert('GPS not available. Please use a custom address.');
       return;
     }
+    var btn = document.querySelector('#route-start-modal .route-start-box button:last-child');
     navigator.geolocation.getCurrentPosition(function(pos){
       _routeStartPoint = { lat: pos.coords.latitude, lon: pos.coords.longitude, label: 'My Location' };
       _generateRoute();
@@ -4346,8 +4348,10 @@ async function confirmRouteStart() {
   } else {
     var addr = document.getElementById('route-custom-addr').value.trim();
     if (!addr) { alert('Please enter a starting address.'); return; }
+    // Geocode using Mapbox
     try {
-      var url = 'https://api.mapbox.com/geocoding/v5/mapbox.places/'+encodeURIComponent(addr)+'.json?access_token='+MBOX+'&limit=1';
+      var token = 'pk.eyJ1IjoiYXJ0dGF0YXIiLCJhIjoiY21pdWppYThlMjEzcjNxb3JjaDZkdWs4dyJ9.d-lDV_T6-_T2_10CHxfvVg';
+      var url = 'https://api.mapbox.com/geocoding/v5/mapbox.places/'+encodeURIComponent(addr)+'.json?access_token='+token+'&limit=1';
       var r = await fetch(url);
       var data = await r.json();
       if (data.features && data.features.length) {
@@ -4363,149 +4367,106 @@ async function confirmRouteStart() {
   }
 }
 
-// ── REAL ROAD ROUTING ──
-// ≤ 11 stops  → Mapbox Optimization API v1 (auto-orders + real geometry)
-// > 11 stops  → Mapbox Directions API in 25-waypoint chunks (preserves order)
-// Both produce solid road-following lines with per-leg drive times.
-
-var _routeTotalDuration = 0;  // seconds
-var _routeTotalDistance = 0;  // meters
-var _routeGeomCache = null;   // last drawn geometry coords — reused on style reload
+// ── ROUTE HELPERS ──
+var _routeGeomCache  = null;
+var _routeTotalDur   = 0;
+var _routeTotalDist  = 0;
 
 function _fmtDur(sec) {
   if (!sec) return '';
-  var h = Math.floor(sec / 3600);
-  var m = Math.round((sec % 3600) / 60);
-  if (h > 0) return h + 'h ' + m + 'm';
-  return m + ' min';
+  var h = Math.floor(sec/3600), m = Math.round((sec%3600)/60);
+  return h > 0 ? h+'h '+m+'m' : m+' min';
 }
 function _fmtDist(m) {
   if (!m) return '';
-  var mi = m / 1609.34;
-  return mi < 10 ? mi.toFixed(1) + ' mi' : Math.round(mi) + ' mi';
+  var mi = m/1609.34;
+  return (mi < 10 ? mi.toFixed(1) : Math.round(mi))+' mi';
 }
 
-// ── OPTIMIZATION API (≤11 waypoint stops, start fixed) ──
-async function _optimizeRoute(startPt, stops) {
-  // Build coordinate string: start ; stop1 ; stop2 ; ...
-  var coords = [startPt.lon+','+startPt.lat];
-  stops.forEach(function(s){ coords.push(s.biz.lon+','+s.biz.lat); });
+// Straight-line nearest-neighbor fallback
+function _distNearestNeighbor(start, stops) {
+  var rem = stops.slice(), ordered = [], cur = start;
+  while (rem.length) {
+    var bi = 0, bd = Infinity;
+    rem.forEach(function(s,i){
+      var d = Math.pow(s.biz.lat-cur.lat,2)+Math.pow(s.biz.lon-cur.lon,2);
+      if (d < bd) { bd=d; bi=i; }
+    });
+    ordered.push(rem[bi]);
+    cur = {lat:rem[bi].biz.lat, lon:rem[bi].biz.lon};
+    rem.splice(bi,1);
+  }
+  return ordered;
+}
 
-  // Distributions: first coord is the fixed source (index 0)
-  var n = stops.length;
-  var distributions = stops.map(function(_, i){ return (i+1)+':'; }).join(';'); // not used — just source
-
-  var url = 'https://api.mapbox.com/optimized-trips/v1/mapbox/driving-traffic/' +
-    coords.join(';') +
-    '?roundtrip=false' +
-    '&source=first' +
-    '&destination=last' +
-    '&overview=full' +
-    '&geometries=geojson' +
-    '&steps=false' +
-    '&annotations=duration,distance' +
-    '&access_token=' + MBOX;
-
+// Mapbox Optimization API — up to 11 stops, auto-orders, returns road geometry
+async function _optimizeAPI(startPt, stops) {
+  var coords = [startPt.lon+','+startPt.lat]
+    .concat(stops.map(function(s){ return s.biz.lon+','+s.biz.lat; }))
+    .join(';');
+  var url = 'https://api.mapbox.com/optimized-trips/v1/mapbox/driving-traffic/'+coords
+    +'?roundtrip=false&source=first&destination=last'
+    +'&overview=full&geometries=geojson&steps=false'
+    +'&access_token='+MBOX;
   var res = await fetch(url);
   var data = await res.json();
-
-  if (!data.trips || !data.trips[0]) throw new Error('Optimization API returned no trips');
-
+  if (!data.trips || !data.trips[0]) throw new Error('No trip returned');
   var trip = data.trips[0];
-  // waypoints array tells us the optimized visit order
-  var waypointOrder = data.waypoints
-    .filter(function(w){ return w.waypoint_index > 0; }) // exclude start (index 0)
+  // Re-order stops by trip_index
+  var ordered = data.waypoints
+    .filter(function(w){ return w.waypoint_index > 0; })
     .sort(function(a,b){ return a.trip_index - b.trip_index; })
-    .map(function(w){ return w.waypoint_index - 1; }); // convert back to stops[] index
-
-  var orderedStops = waypointOrder.map(function(i){ return stops[i]; });
-
+    .map(function(w){ return stops[w.waypoint_index-1]; });
   // Tag per-leg stats
   var cumDur = 0;
-  if (trip.legs) {
-    trip.legs.forEach(function(leg, i){
-      if (orderedStops[i]) {
-        orderedStops[i]._legDuration = leg.duration;
-        orderedStops[i]._legDistance = leg.distance;
-        cumDur += leg.duration;
-        orderedStops[i]._eta = cumDur;
+  if (trip.legs) trip.legs.forEach(function(leg,i){
+    if (ordered[i]) {
+      ordered[i]._legDur  = leg.duration;
+      ordered[i]._legDist = leg.distance;
+      cumDur += leg.duration;
+      ordered[i]._eta = cumDur;
+    }
+  });
+  return { ordered:ordered, geom:trip.geometry.coordinates, dur:trip.duration, dist:trip.distance };
+}
+
+// Mapbox Directions API — any size, chunked at 25, keeps order
+async function _directionsAPI(waypoints) {
+  var allCoords=[], totalDur=0, totalDist=0, CHUNK=25;
+  for (var i=0; i<waypoints.length-1; i+=CHUNK-1) {
+    var chunk = waypoints.slice(i, Math.min(i+CHUNK, waypoints.length));
+    if (chunk.length < 2) break;
+    var coordStr = chunk.map(function(p){ return p.lon+','+p.lat; }).join(';');
+    var url = 'https://api.mapbox.com/directions/v5/mapbox/driving-traffic/'+coordStr
+      +'?access_token='+MBOX+'&overview=full&geometries=geojson&steps=false';
+    var res = await fetch(url);
+    var d = await res.json();
+    if (!d.routes || !d.routes[0]) continue;
+    var route = d.routes[0];
+    totalDur  += route.duration||0;
+    totalDist += route.distance||0;
+    var coords = route.geometry.coordinates;
+    if (allCoords.length) coords = coords.slice(1);
+    allCoords = allCoords.concat(coords);
+    if (route.legs) route.legs.forEach(function(leg,li){
+      var si = i+li; // stop index (0-based, stop 0 = first stop after start)
+      if (_routeStops[si]) {
+        _routeStops[si]._legDur  = leg.duration;
+        _routeStops[si]._legDist = leg.distance;
       }
     });
   }
-
-  return {
-    orderedStops: orderedStops,
-    geometry: trip.geometry.coordinates,
-    duration: trip.duration,
-    distance: trip.distance
-  };
-}
-
-// ── DIRECTIONS API (any number of stops, chunked 25 at a time) ──
-async function _routeByDirections(waypoints) {
-  // waypoints = array of {lat, lon} starting with start point
-  var allCoords = [];
-  var totalDur = 0, totalDist = 0;
-  var CHUNK = 25;
-
-  for (var i = 0; i < waypoints.length - 1; i += CHUNK - 1) {
-    var chunk = waypoints.slice(i, Math.min(i + CHUNK, waypoints.length));
-    if (chunk.length < 2) break;
-
-    var coordStr = chunk.map(function(p){ return p.lon+','+p.lat; }).join(';');
-    var url = 'https://api.mapbox.com/directions/v5/mapbox/driving-traffic/' + coordStr +
-      '?access_token=' + MBOX +
-      '&overview=full&geometries=geojson&steps=false&annotations=duration,distance';
-
-    var res = await fetch(url);
-    var d   = await res.json();
-    if (!d.routes || !d.routes[0]) continue;
-
-    var route = d.routes[0];
-    totalDur  += route.duration  || 0;
-    totalDist += route.distance  || 0;
-
-    var coords = route.geometry.coordinates;
-    if (allCoords.length > 0) coords = coords.slice(1); // avoid duplicate join point
-    allCoords = allCoords.concat(coords);
-
-    // Tag per-leg duration/distance onto stops
-    if (route.legs) {
-      route.legs.forEach(function(leg, li){
-        var stopIdx = i + li; // _routeStops index (0-based, excludes start)
-        if (_routeStops[stopIdx]) {
-          _routeStops[stopIdx]._legDuration = leg.duration;
-          _routeStops[stopIdx]._legDistance = leg.distance;
-        }
-      });
-    }
-  }
-
-  return { coords: allCoords, duration: totalDur, distance: totalDist };
+  return { geom:allCoords, dur:totalDur, dist:totalDist };
 }
 
 async function _generateRoute() {
   var selected = Object.values(_routeSelected);
   var stops = selected
-    .filter(function(b){ return b.lat && b.lon; })
-    .map(function(b){ return { biz: b, status: 'pending' }; });
-
+    .filter(function(b){ return b.lat&&b.lon; })
+    .map(function(b){ return {biz:b, status:'pending'}; });
   if (!stops.length) { alert('Selected businesses have no coordinates.'); return; }
 
-  // Show loading state in panel
-  _routeStops = stops;
-  _routeActive = false;
-  _routeCurrentStop = 0;
-  openRoutePanel();
-  var subEl = document.getElementById('route-panel-subtitle');
-  if (subEl) subEl.textContent = 'Calculating optimal route…';
-  var listEl = document.getElementById('route-stops-list');
-  if (listEl) listEl.innerHTML = '<div class="route-empty" style="padding:2rem;text-align:center;">'+
-    '<div style="font-size:24px;margin-bottom:.5rem;">🗺</div>'+
-    '<div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:.25rem;">Optimizing route…</div>'+
-    '<div style="font-size:11px;color:var(--muted);">Checking real driving times & traffic</div></div>';
-
-  // Exit selection mode immediately so UI feels fast
+  // Exit selection mode immediately
   _routeMode = false;
   _routeSelected = {};
   var btn = document.getElementById('route-btn');
@@ -4514,301 +4475,289 @@ async function _generateRoute() {
   if (bar) bar.classList.remove('active');
   renderList();
 
+  // Set stops and open panel with loading state
+  _routeStops = stops;
+  _routeActive = false;
+  _routeCurrentStop = 0;
+  _routeGeomCache = null;
+  openRoutePanel();
+
+  var subEl = document.getElementById('route-panel-subtitle');
+  var listEl = document.getElementById('route-stops-list');
+  if (subEl) subEl.textContent = 'Calculating optimal route…';
+  if (listEl) listEl.innerHTML =
+    '<div style="padding:2rem;text-align:center;">'+
+    '<div style="font-size:28px;margin-bottom:.75rem;">🗺</div>'+
+    '<div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:.25rem;">Optimizing route…</div>'+
+    '<div style="font-size:11px;color:var(--muted);">Checking real roads &amp; traffic</div></div>';
+
   try {
-    var routeGeometry = [];
-
+    var geom;
     if (stops.length <= 11) {
-      // ── Optimization API path ──
-      var result = await _optimizeRoute(_routeStartPoint, stops);
-      _routeStops = result.orderedStops;
-      routeGeometry = result.geometry;
-      _routeTotalDuration = result.duration;
-      _routeTotalDistance = result.distance;
+      var r = await _optimizeAPI(_routeStartPoint, stops);
+      _routeStops = r.ordered;
+      geom = r.geom;
+      _routeTotalDur  = r.dur;
+      _routeTotalDist = r.dist;
     } else {
-      // ── Directions API path (large routes) ──
-      // First do a distance-based nearest-neighbor pre-sort to keep API calls sane
-      _routeStops = _distanceNearestNeighbor(_routeStartPoint, stops);
-      var waypoints = [_routeStartPoint].concat(
-        _routeStops.map(function(s){ return { lat: s.biz.lat, lon: s.biz.lon }; })
-      );
-      var result = await _routeByDirections(waypoints);
-      routeGeometry = result.coords;
-      _routeTotalDuration = result.duration;
-      _routeTotalDistance = result.distance;
+      _routeStops = _distNearestNeighbor(_routeStartPoint, stops);
+      var wpts = [{lat:_routeStartPoint.lat,lon:_routeStartPoint.lon}]
+        .concat(_routeStops.map(function(s){ return {lat:s.biz.lat,lon:s.biz.lon}; }));
+      var r2 = await _directionsAPI(wpts);
+      geom = r2.geom;
+      _routeTotalDur  = r2.dur;
+      _routeTotalDist = r2.dist;
     }
-
+    _routeGeomCache = geom;
     _saveRouteSession();
-    _drawRouteOnMap(routeGeometry);
-
-    // Update subtitle with total stats
-    if (subEl) {
-      subEl.textContent = _routeStops.length + ' stops · ' +
-        _fmtDur(_routeTotalDuration) + ' · ' +
-        _fmtDist(_routeTotalDistance) +
-        (_routeStartPoint ? ' · from ' + _routeStartPoint.label : '');
-    }
-
+    _drawRouteOnMap();
+    if (subEl) subEl.textContent =
+      _routeStops.length+' stops · '+_fmtDur(_routeTotalDur)+' · '+_fmtDist(_routeTotalDist)+
+      (_routeStartPoint?' · from '+_routeStartPoint.label:'');
   } catch(e) {
-    console.error('Route error:', e);
-    // Graceful fallback to straight-line if API fails
-    _routeStops = _distanceNearestNeighbor(_routeStartPoint, stops);
-    _drawRouteOnMap(null);
-    if (subEl) subEl.textContent = _routeStops.length + ' stops (offline mode)';
-    var listEl2 = document.getElementById('route-stops-list');
-    if (listEl2) {
-      var warn = '<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:.75rem;margin:.5rem 1rem;font-size:12px;color:#c2410c;">⚠️ Could not fetch real road data. Showing straight-line order. Check your connection.</div>';
-      listEl2.innerHTML = warn;
-    }
-    renderRouteStops();
+    console.error('Route error:',e);
+    _routeStops = _distNearestNeighbor(_routeStartPoint, stops);
+    _routeGeomCache = null;
+    _saveRouteSession();
+    _drawRouteOnMap();
+    if (subEl) subEl.textContent = _routeStops.length+' stops (offline — no road data)';
   }
 }
 
-// Fallback: straight-line distance nearest-neighbor (no API)
-function _distanceNearestNeighbor(start, stops) {
-  var remaining = stops.slice();
-  var ordered = [];
-  var cur = start;
-  while (remaining.length) {
-    var bestIdx = 0, bestDist = Infinity;
-    remaining.forEach(function(s, i){
-      var d = Math.pow(s.biz.lat - cur.lat, 2) + Math.pow(s.biz.lon - cur.lon, 2);
-      if (d < bestDist) { bestDist = d; bestIdx = i; }
-    });
-    ordered.push(remaining[bestIdx]);
-    cur = { lat: remaining[bestIdx].biz.lat, lon: remaining[bestIdx].biz.lon };
-    remaining.splice(bestIdx, 1);
-  }
-  return ordered;
-}
-
-function _drawRouteOnMap(geometry) {
-  // Cache geometry so style reloads can redraw without re-fetching
-  if (geometry !== undefined) _routeGeomCache = geometry;
-  else geometry = _routeGeomCache;
+function _drawRouteOnMap() {
+  // Clear old markers
   _routeMarkers.forEach(function(m){ m.remove(); });
   _routeMarkers = [];
-  ['route-line', 'route-line-casing'].forEach(function(id){
-    if (map.getLayer(id)) { try { map.removeLayer(id); } catch(e){} }
+  // Clear old line layers safely
+  ['route-line-casing','route-line'].forEach(function(id){
+    if (map.getLayer(id)) { try{map.removeLayer(id);}catch(e){} }
   });
-  ['route-line-src'].forEach(function(id){
-    if (map.getSource(id)) { try { map.removeSource(id); } catch(e){} }
-  });
+  if (map.getSource('route-line-src')) { try{map.removeSource('route-line-src');}catch(e){} }
   _routeLine = null;
 
-  if (!_routeStops.length) return;
+  if (!_routeStops.length) { renderRouteStops(); return; }
 
-  // ── Draw road geometry ──
-  var coords = geometry;
-  if (!coords || !coords.length) {
-    // Fallback: straight lines
-    coords = [];
-    if (_routeStartPoint) coords.push([_routeStartPoint.lon, _routeStartPoint.lat]);
-    _routeStops.forEach(function(s){ if (s.biz.lon && s.biz.lat) coords.push([s.biz.lon, s.biz.lat]); });
+  // Build line geometry
+  var geom = _routeGeomCache;
+  if (!geom || !geom.length) {
+    // Fallback straight lines
+    geom = [];
+    if (_routeStartPoint) geom.push([_routeStartPoint.lon, _routeStartPoint.lat]);
+    _routeStops.forEach(function(s){ if(s.biz.lon&&s.biz.lat) geom.push([s.biz.lon,s.biz.lat]); });
   }
 
-  if (coords.length > 1) {
+  if (geom.length > 1) {
     try {
-      map.addSource('route-line-src', {
-        type: 'geojson',
-        data: { type: 'Feature', geometry: { type: 'LineString', coordinates: coords } }
-      });
-      // White casing underneath for contrast on dark map
-      map.addLayer({
-        id: 'route-line-casing', type: 'line', source: 'route-line-src',
-        paint: { 'line-color': '#ffffff', 'line-width': 6, 'line-opacity': 0.25 }
-      });
-      // Solid accent line on top
-      map.addLayer({
-        id: 'route-line', type: 'line', source: 'route-line-src',
-        paint: { 'line-color': '#4a36c8', 'line-width': 4, 'line-opacity': 0.9,
-          'line-gradient': ['interpolate', ['linear'], ['line-progress'], 0, '#7c68e0', 1, '#4a36c8']
-        }
-      });
+      map.addSource('route-line-src', {type:'geojson', data:{type:'Feature',geometry:{type:'LineString',coordinates:geom}}});
+      map.addLayer({id:'route-line-casing', type:'line', source:'route-line-src',
+        paint:{'line-color':'#fff','line-width':7,'line-opacity':0.2}});
+      map.addLayer({id:'route-line', type:'line', source:'route-line-src',
+        paint:{'line-color':'#6c5ce7','line-width':4,'line-opacity':0.95}});
       _routeLine = true;
-    } catch(e) { console.warn('Route line draw error:', e); }
+    } catch(e){ console.warn('line draw err',e); }
   }
 
-  // ── Draw numbered stop markers ──
-  _routeStops.forEach(function(stop, i){
-    if (!stop.biz.lat || !stop.biz.lon) return;
-    var isDone    = stop.status === 'completed';
-    var isSkipped = stop.status === 'skipped';
-    var isActive  = _routeActive && i === _routeCurrentStop;
-    var bg     = isDone ? '#059669' : isSkipped ? '#9ca3af' : isActive ? '#ffffff' : '#4a36c8';
-    var fg     = isActive ? '#4a36c8' : '#ffffff';
-    var border = isActive ? '3px solid #4a36c8' : '2px solid #ffffff';
-    var shadow = isActive ? '0 0 0 4px rgba(74,54,200,.35), 0 3px 10px rgba(0,0,0,.4)' : '0 2px 8px rgba(0,0,0,.35)';
-    var label  = isDone ? '✓' : isSkipped ? '–' : (i + 1);
-    var size   = isActive ? '34px' : '28px';
-    var dur    = stop._legDuration ? _fmtDur(stop._legDuration) : '';
-    var dist   = stop._legDistance ? _fmtDist(stop._legDistance) : '';
-    var badge  = (dur || dist) ? '<div style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.75);color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:100px;white-space:nowrap;">'+(dur+(dist?' · '+dist:''))+'</div>' : '';
-
+  // Draw stop markers — NO floating badge (it breaks layout), show drive time inline in list instead
+  _routeStops.forEach(function(stop,i){
+    if (!stop.biz.lat||!stop.biz.lon) return;
+    var isDone    = stop.status==='completed';
+    var isSkipped = stop.status==='skipped';
+    var isActive  = _routeActive && i===_routeCurrentStop;
+    var bg = isDone?'#059669':isSkipped?'#9ca3af':isActive?'#fff':'#4a36c8';
+    var fg = isActive?'#4a36c8':'#fff';
+    var sz = isActive?'36px':'28px';
+    var border = isActive?'3px solid #4a36c8':'2px solid rgba(255,255,255,.8)';
+    var shadow = isActive
+      ?'0 0 0 5px rgba(74,54,200,.3),0 3px 12px rgba(0,0,0,.5)'
+      :'0 2px 8px rgba(0,0,0,.4)';
+    var label = isDone?'✓':isSkipped?'–':(i+1);
     var el = document.createElement('div');
-    el.style.cssText = 'position:relative;cursor:pointer;';
-    el.innerHTML = badge +
-      '<div style="width:'+size+';height:'+size+';border-radius:50%;background:'+bg+';color:'+fg+';font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;border:'+border+';box-shadow:'+shadow+';transition:all .2s;">'+label+'</div>';
-
-    var marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
-      .setLngLat([stop.biz.lon, stop.biz.lat])
-      .addTo(map);
-    _routeMarkers.push(marker);
+    el.innerHTML =
+      '<div style="width:'+sz+';height:'+sz+';border-radius:50%;background:'+bg+
+      ';color:'+fg+';font-size:12px;font-weight:800;display:flex;align-items:center;'+
+      'justify-content:center;border:'+border+';box-shadow:'+shadow+';transition:all .2s;">'+
+      label+'</div>';
+    var m = new mapboxgl.Marker({element:el,anchor:'center'})
+      .setLngLat([stop.biz.lon,stop.biz.lat]).addTo(map);
+    _routeMarkers.push(m);
   });
 
   renderRouteStops();
 }
 
 function getRouteMapStyle() {
-  var hour = new Date().getHours();
-  return (hour >= 6 && hour < 20)
+  var h = new Date().getHours();
+  return (h>=6&&h<20)
     ? 'mapbox://styles/mapbox/navigation-day-v1'
     : 'mapbox://styles/mapbox/navigation-night-v1';
 }
 
 function openRoutePanel() {
-  // Switch to navigation map style
   map.setStyle(getRouteMapStyle());
   map.once('styledata', function(){ _drawRouteOnMap(); });
   document.getElementById('route-panel').classList.add('open');
+  _removeRouteHUD();
   if (_routeStops.length) {
     var bounds = new mapboxgl.LngLatBounds();
     if (_routeStartPoint) bounds.extend([_routeStartPoint.lon, _routeStartPoint.lat]);
-    _routeStops.forEach(function(s){ if (s.biz.lon && s.biz.lat) bounds.extend([s.biz.lon, s.biz.lat]); });
-    map.fitBounds(bounds, { padding: 80, maxZoom: 14 });
+    _routeStops.forEach(function(s){
+      if (s.biz.lon&&s.biz.lat) bounds.extend([s.biz.lon,s.biz.lat]);
+    });
+    if (!bounds.isEmpty()) map.fitBounds(bounds, {padding:60, maxZoom:14});
   }
   renderRouteStops();
 }
 
 function closeRoutePanel() {
   document.getElementById('route-panel').classList.remove('open');
-  // Restore dark map style
   map.setStyle('mapbox://styles/mapbox/dark-v11');
   map.once('styledata', function(){ _drawRouteOnMap(); });
+  if (_routeActive) _showRouteHUD();
 }
 
 function renderRouteStops() {
-  var el = document.getElementById('route-stops-list');
+  var el  = document.getElementById('route-stops-list');
   var sub = document.getElementById('route-panel-subtitle');
   if (!el) return;
-  if (!_routeStops.length) { el.innerHTML = '<div class="route-empty">No stops. Select businesses from the list.</div>'; return; }
-
-  var done = _routeStops.filter(function(s){ return s.status==='completed'; }).length;
-  if (sub && _routeTotalDuration) {
-    sub.textContent = _routeStops.length + ' stops · ' +
-      _fmtDur(_routeTotalDuration) + ' · ' + _fmtDist(_routeTotalDistance) +
-      (_routeStartPoint ? ' · from ' + _routeStartPoint.label : '');
-  } else if (sub) {
-    sub.textContent = _routeStops.length + ' stops · ' + done + ' done' +
-      (_routeStartPoint ? ' · from ' + _routeStartPoint.label : '');
+  if (!_routeStops.length) {
+    el.innerHTML = '<div class="route-empty">No stops. Select businesses from the list.</div>';
+    return;
   }
-
-  el.innerHTML = _routeStops.map(function(stop, i){
-    var isActive  = _routeActive && i === _routeCurrentStop;
-    var isDone    = stop.status === 'completed';
-    var isSkipped = stop.status === 'skipped';
-    var cls = 'route-stop' + (isActive?' active-stop':'') + (isDone?' completed':'') + (isSkipped?' skipped':'');
-    var numCls = 'route-stop-num' + (isDone?' completed':isSkipped?' skipped':isActive?' active':'');
-    var numIcon = isDone ? '✓' : isSkipped ? '↷' : (i + 1);
-    var statusColor = isDone ? 'color:#059669' : isSkipped ? 'color:#9ca3af' : 'color:var(--accent)';
-    var statusText  = isDone ? '✓ Completed'  : isSkipped ? '↷ Skipped' : '⏳ Pending';
-
-    // Drive time badge for this leg
-    var legInfo = '';
-    if (stop._legDuration || stop._legDistance) {
-      var parts = [];
-      if (stop._legDuration) parts.push(_fmtDur(stop._legDuration));
-      if (stop._legDistance) parts.push(_fmtDist(stop._legDistance));
-      legInfo = '<span style="display:inline-block;background:var(--accent-light);color:var(--accent);font-size:10px;font-weight:700;padding:2px 7px;border-radius:100px;margin-left:6px;">🚗 '+parts.join(' · ')+'</span>';
+  var done = _routeStops.filter(function(s){ return s.status==='completed'; }).length;
+  if (sub && _routeTotalDur) {
+    sub.textContent = _routeStops.length+' stops · '+_fmtDur(_routeTotalDur)+' · '+
+      _fmtDist(_routeTotalDist)+(_routeStartPoint?' · from '+_routeStartPoint.label:'');
+  } else if (sub) {
+    sub.textContent = _routeStops.length+' stops · '+done+' done'+
+      (_routeStartPoint?' · from '+_routeStartPoint.label:'');
+  }
+  el.innerHTML = _routeStops.map(function(stop,i){
+    var isActive  = _routeActive && i===_routeCurrentStop;
+    var isDone    = stop.status==='completed';
+    var isSkipped = stop.status==='skipped';
+    var cls = 'route-stop'+(isActive?' active-stop':'')+(isDone?' completed':'')+(isSkipped?' skipped':'');
+    var numCls = 'route-stop-num'+(isDone?' completed':isSkipped?' skipped':isActive?' active':'');
+    var numIcon = isDone?'✓':isSkipped?'–':(i+1);
+    var statusColor = isDone?'#059669':isSkipped?'#9ca3af':'var(--accent)';
+    var statusText  = isDone?'✓ Completed':isSkipped?'↷ Skipped':'⏳ Pending';
+    // Drive time for this leg (shown inline, not as floating badge)
+    var leg = '';
+    if (stop._legDur||stop._legDist) {
+      var parts=[];
+      if (stop._legDur)  parts.push(_fmtDur(stop._legDur));
+      if (stop._legDist) parts.push(_fmtDist(stop._legDist));
+      leg = '<span style="background:var(--accent-light);color:var(--accent);font-size:10px;font-weight:700;padding:2px 8px;border-radius:100px;white-space:nowrap;">🚗 '+parts.join(' · ')+'</span>';
     }
-
     return '<div class="'+cls+'" id="rstop-'+i+'">'+
       '<div class="'+numCls+'">'+numIcon+'</div>'+
       '<div class="route-stop-info">'+
-        '<div class="route-stop-name" style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;">'+
-          stop.biz.name + legInfo +
+        '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:2px;">'+
+          '<span class="route-stop-name" style="margin:0;">'+stop.biz.name+'</span>'+leg+
         '</div>'+
         '<div class="route-stop-addr">'+(stop.biz.street||stop.biz.full_address||'')+'</div>'+
-        '<div class="route-stop-status" style="'+statusColor+'">'+statusText+'</div>'+
+        '<div class="route-stop-status" style="color:'+statusColor+';">'+statusText+'</div>'+
         '<div class="route-stop-actions">'+
           '<button class="route-stop-btn nav" onclick="navigateToStop('+i+')">Navigate</button>'+
-          (isDone ? '' : '<button class="route-stop-btn done" onclick="completeStop('+i+')">✓ Done</button>')+
-          (stop.status==='pending' ? '<button class="route-stop-btn skip" onclick="skipStop('+i+')">Skip</button>' : '')+
+          (isDone?'':'<button class="route-stop-btn done" onclick="completeStop('+i+')">✓ Done</button>')+
+          (stop.status==='pending'?'<button class="route-stop-btn skip" onclick="skipStop('+i+')">Skip</button>':'')+
           '<button class="route-stop-btn remove" onclick="removeStop('+i+')">Remove</button>'+
         '</div>'+
       '</div>'+
     '</div>';
   }).join('');
-
   if (_routeActive) {
-    var activeEl = document.getElementById('rstop-'+_routeCurrentStop);
-    if (activeEl) activeEl.scrollIntoView({ behavior:'smooth', block:'nearest' });
+    var a = document.getElementById('rstop-'+_routeCurrentStop);
+    if (a) a.scrollIntoView({behavior:'smooth',block:'nearest'});
   }
 }
 
 function startRoute() {
   if (!_routeStops.length) return;
   _routeActive = true;
-  // Find first pending stop
   _routeCurrentStop = _routeStops.findIndex(function(s){ return s.status==='pending'; });
   if (_routeCurrentStop < 0) _routeCurrentStop = 0;
+  _saveRouteSession();
+  _drawRouteOnMap();
   renderRouteStops();
-  // Fly to first stop
+  // Close panel → show map + HUD
+  document.getElementById('route-panel').classList.remove('open');
+  _showRouteHUD();
   var stop = _routeStops[_routeCurrentStop];
-  if (stop && stop.biz.lat) map.flyTo({ center:[stop.biz.lon, stop.biz.lat], zoom:15, speed:1.5 });
+  if (stop&&stop.biz.lat) map.flyTo({center:[stop.biz.lon,stop.biz.lat],zoom:15,speed:1.5});
 }
 
-function completeStop(idx) {
-  _routeStops[idx].status = 'completed';
-  // Log visited activity
-  var b = _routeStops[idx].biz;
-  sb.from('activity').insert({
-    business_id: String(b.id||b._id),
-    type: 'visited',
-    note: 'Visited during route',
-    client_id: currentProfile ? currentProfile.client_id : null,
-    created_by: currentProfile ? (currentProfile.full_name||'') : ''
-  }).then(function(){});
-  _saveRouteSession();
-  _drawRouteOnMap();
-  // Auto advance to next pending
-  if (_routeActive) {
-    var next = _routeStops.findIndex(function(s, i){ return i > idx && s.status==='pending'; });
-    if (next >= 0) {
-      _routeCurrentStop = next;
-      var stop = _routeStops[next];
-      map.flyTo({ center:[stop.biz.lon, stop.biz.lat], zoom:15, speed:1.5 });
-    }
-  }
-  renderRouteStops();
-  // Check if all done
-  var allDone = _routeStops.every(function(s){ return s.status!=='pending'; });
-  if (allDone) { _routeActive = false; renderRouteStops(); setTimeout(function(){ alert('🎉 Route complete! All stops visited.'); }, 300); }
+// ── ACTIVE ROUTE HUD (bottom of screen, over map) ──
+function _showRouteHUD() {
+  _removeRouteHUD();
+  var stop = _routeStops[_routeCurrentStop];
+  if (!stop) return;
+  var total = _routeStops.length;
+  var done  = _routeStops.filter(function(s){ return s.status==='completed'; }).length;
+  var legParts = [];
+  if (stop._legDur)  legParts.push(_fmtDur(stop._legDur));
+  if (stop._legDist) legParts.push(_fmtDist(stop._legDist));
+  var legTxt = legParts.length ? '🚗 '+legParts.join(' · ') : '';
+
+  var hud = document.createElement('div');
+  hud.id = 'route-hud';
+  hud.style.cssText =
+    'position:fixed;bottom:calc(env(safe-area-inset-bottom,0px)+68px);'+
+    'left:10px;right:10px;background:#1a1830;'+
+    'border:1px solid rgba(108,92,231,.5);border-radius:16px;'+
+    'padding:12px 14px;z-index:1500;'+
+    'box-shadow:0 8px 32px rgba(0,0,0,.6);'+
+    'display:flex;align-items:center;gap:12px;';
+
+  hud.innerHTML =
+    '<div style="width:40px;height:40px;border-radius:50%;background:#4a36c8;color:#fff;'+
+      'font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;'+
+      'flex-shrink:0;box-shadow:0 0 0 4px rgba(74,54,200,.3);">'+
+      (_routeCurrentStop+1)+
+    '</div>'+
+    '<div style="flex:1;min-width:0;">'+
+      '<div style="font-size:13px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+
+        stop.biz.name+
+      '</div>'+
+      '<div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+
+        (stop.biz.street||stop.biz.full_address||'')+
+      '</div>'+
+      (legTxt?'<div style="font-size:11px;color:#a89fe8;margin-top:3px;">'+legTxt+'</div>':'')+
+    '</div>'+
+    '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">'+
+      '<div style="font-size:10px;color:rgba(255,255,255,.35);font-weight:600;">'+done+'/'+total+' done</div>'+
+      '<div style="display:flex;gap:5px;">'+
+        '<button onclick="navigateToStop('+_routeCurrentStop+')" '+
+          'style="background:#0ea5e9;border:none;border-radius:8px;padding:7px 10px;'+
+          'font-size:11px;font-weight:700;color:#fff;cursor:pointer;font-family:Inter,sans-serif;">'+
+          '↗ Nav</button>'+
+        '<button onclick="_hudDone('+_routeCurrentStop+')" '+
+          'style="background:#059669;border:none;border-radius:8px;padding:7px 10px;'+
+          'font-size:11px;font-weight:700;color:#fff;cursor:pointer;font-family:Inter,sans-serif;">'+
+          '✓ Done</button>'+
+        '<button onclick="openRoutePanel()" '+
+          'style="background:rgba(255,255,255,.1);border:none;border-radius:8px;padding:7px 10px;'+
+          'font-size:11px;font-weight:600;color:rgba(255,255,255,.6);cursor:pointer;font-family:Inter,sans-serif;">'+
+          '☰</button>'+
+      '</div>'+
+    '</div>';
+  document.body.appendChild(hud);
 }
 
-function skipStop(idx) {
-  _routeStops[idx].status = 'skipped';
-  _saveRouteSession();
-  _drawRouteOnMap();
-  if (_routeActive) {
-    var next = _routeStops.findIndex(function(s, i){ return i > idx && s.status==='pending'; });
-    if (next >= 0) { _routeCurrentStop = next; map.flyTo({ center:[_routeStops[next].biz.lon, _routeStops[next].biz.lat], zoom:15, speed:1.5 }); }
-  }
-  renderRouteStops();
+function _removeRouteHUD() {
+  var h = document.getElementById('route-hud');
+  if (h) h.remove();
 }
 
-function removeStop(idx) {
-  _routeStops.splice(idx, 1);
-  if (_routeCurrentStop >= _routeStops.length) _routeCurrentStop = Math.max(0, _routeStops.length-1);
-  _saveRouteSession();
-  _drawRouteOnMap();
+function _hudDone(idx) {
+  completeStop(idx);
+  if (_routeActive) _showRouteHUD();
+  else _removeRouteHUD();
 }
 
 function navigateToStop(idx) {
   var stop = _routeStops[idx];
   if (!stop) return;
-  var addr = encodeURIComponent(stop.biz.full_address || stop.biz.street || stop.biz.name);
   var lat = stop.biz.lat, lon = stop.biz.lon;
-  // Try Apple Maps on iOS, Google Maps elsewhere
   var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
   var url = isIOS
     ? 'maps://maps.apple.com/?daddr='+lat+','+lon
@@ -4816,76 +4765,120 @@ function navigateToStop(idx) {
   window.open(url, '_blank');
 }
 
+function completeStop(idx) {
+  _routeStops[idx].status = 'completed';
+  var b = _routeStops[idx].biz;
+  sb.from('activity').insert({
+    business_id:String(b.id||b._id), type:'visited',
+    note:'Visited during route',
+    client_id: currentProfile?currentProfile.client_id:null,
+    created_by: currentProfile?(currentProfile.full_name||''):''
+  }).then(function(){});
+  if (_routeActive) {
+    var next = _routeStops.findIndex(function(s,i){ return i>idx&&s.status==='pending'; });
+    if (next >= 0) {
+      _routeCurrentStop = next;
+      map.flyTo({center:[_routeStops[next].biz.lon,_routeStops[next].biz.lat],zoom:15,speed:1.5});
+    } else {
+      _routeActive = false;
+      _removeRouteHUD();
+      setTimeout(function(){ alert('🎉 Route complete! All stops visited.'); }, 300);
+    }
+  }
+  _saveRouteSession();
+  _drawRouteOnMap();
+  renderRouteStops();
+}
+
+function skipStop(idx) {
+  _routeStops[idx].status = 'skipped';
+  if (_routeActive) {
+    var next = _routeStops.findIndex(function(s,i){ return i>idx&&s.status==='pending'; });
+    if (next >= 0) {
+      _routeCurrentStop = next;
+      map.flyTo({center:[_routeStops[next].biz.lon,_routeStops[next].biz.lat],zoom:15,speed:1.5});
+      _showRouteHUD();
+    }
+  }
+  _saveRouteSession();
+  _drawRouteOnMap();
+  renderRouteStops();
+}
+
+function removeStop(idx) {
+  _routeStops.splice(idx,1);
+  if (_routeCurrentStop >= _routeStops.length) _routeCurrentStop = Math.max(0,_routeStops.length-1);
+  _saveRouteSession();
+  _drawRouteOnMap();
+}
+
 async function reoptimizeRoute() {
-  if (!_routeStartPoint || !_routeStops.length) return;
+  if (!_routeStartPoint||!_routeStops.length) return;
   var pending = _routeStops.filter(function(s){ return s.status==='pending'; });
   var done    = _routeStops.filter(function(s){ return s.status!=='pending'; });
   if (!pending.length) return;
-
   var subEl = document.getElementById('route-panel-subtitle');
   if (subEl) subEl.textContent = 'Re-optimizing…';
-
   try {
-    var result;
+    var geom;
     if (pending.length <= 11) {
-      result = await _optimizeRoute(_routeStartPoint, pending);
-      pending = result.orderedStops;
-      _routeTotalDuration = result.duration;
-      _routeTotalDistance = result.distance;
-      _routeStops = done.concat(pending);
-      _routeCurrentStop = done.length;
-      _saveRouteSession();
-      _drawRouteOnMap(result.geometry);
+      var r = await _optimizeAPI(_routeStartPoint, pending);
+      pending = r.ordered;
+      _routeTotalDur  = r.dur;
+      _routeTotalDist = r.dist;
+      geom = r.geom;
     } else {
-      pending = _distanceNearestNeighbor(_routeStartPoint, pending);
-      _routeStops = done.concat(pending);
-      _routeCurrentStop = done.length;
-      var waypoints = [_routeStartPoint].concat(pending.map(function(s){ return {lat:s.biz.lat,lon:s.biz.lon}; }));
-      var r2 = await _routeByDirections(waypoints);
-      _routeTotalDuration = r2.duration;
-      _routeTotalDistance = r2.distance;
-      _saveRouteSession();
-      _drawRouteOnMap(r2.coords);
+      pending = _distNearestNeighbor(_routeStartPoint, pending);
+      var wpts = [{lat:_routeStartPoint.lat,lon:_routeStartPoint.lon}]
+        .concat(pending.map(function(s){ return {lat:s.biz.lat,lon:s.biz.lon}; }));
+      var r2 = await _directionsAPI(wpts);
+      geom = r2.geom; _routeTotalDur=r2.dur; _routeTotalDist=r2.dist;
     }
-    if (subEl) {
-      subEl.textContent = _routeStops.length + ' stops · ' +
-        _fmtDur(_routeTotalDuration) + ' · ' + _fmtDist(_routeTotalDistance) +
-        (_routeStartPoint ? ' · from ' + _routeStartPoint.label : '');
-    }
+    _routeStops = done.concat(pending);
+    _routeCurrentStop = done.length;
+    _routeGeomCache = geom;
+    _saveRouteSession();
+    _drawRouteOnMap();
+    if (subEl) subEl.textContent = _routeStops.length+' stops · '+_fmtDur(_routeTotalDur)+' · '+_fmtDist(_routeTotalDist);
   } catch(e) {
-    console.error('Re-optimize error:', e);
-    _drawRouteOnMap(null);
-    if (subEl) subEl.textContent = _routeStops.length + ' stops';
+    pending = _distNearestNeighbor(_routeStartPoint, pending);
+    _routeStops = done.concat(pending);
+    _routeCurrentStop = done.length;
+    _routeGeomCache = null;
+    _saveRouteSession();
+    _drawRouteOnMap();
   }
 }
 
 function clearRoute() {
   if (_routeStops.length && !confirm('Clear the current route?')) return;
-  _routeStops = [];
-  _routeActive = false;
-  _routeCurrentStop = 0;
-  _routeTotalDuration = 0;
-  _routeTotalDistance = 0;
-  _routeGeomCache = null;
+  _routeStops=[];_routeActive=false;_routeCurrentStop=0;
+  _routeTotalDur=0;_routeTotalDist=0;_routeGeomCache=null;
+  _removeRouteHUD();
   _routeMarkers.forEach(function(m){ m.remove(); });
-  _routeMarkers = [];
-  ['route-line','route-line-casing'].forEach(function(id){ if(map.getLayer(id)) { try{map.removeLayer(id);}catch(e){} } });
-  if(map.getSource('route-line-src')) { try{map.removeSource('route-line-src');}catch(e){} }
-  _routeLine = null;
+  _routeMarkers=[];
+  ['route-line-casing','route-line'].forEach(function(id){
+    if(map.getLayer(id)){ try{map.removeLayer(id);}catch(e){} }
+  });
+  if(map.getSource('route-line-src')){ try{map.removeSource('route-line-src');}catch(e){} }
+  _routeLine=null;
   localStorage.removeItem('vavan_route');
   renderRouteStops();
-  closeRoutePanel();
-  var btn = document.getElementById('route-btn');
-  if (btn) btn.textContent = '🗺 Route';
+  document.getElementById('route-panel').classList.remove('open');
+  map.setStyle('mapbox://styles/mapbox/dark-v11');
+  var btn=document.getElementById('route-btn');
+  if(btn) btn.textContent='🗺 Route';
 }
 
 function _saveRouteSession() {
   try {
     localStorage.setItem('vavan_route', JSON.stringify({
-      stops: _routeStops.map(function(s){ return { bizId: String(s.biz._id||s.biz.id), status: s.status }; }),
+      stops: _routeStops.map(function(s){ return {bizId:String(s.biz._id||s.biz.id),status:s.status}; }),
       startPoint: _routeStartPoint,
       currentStop: _routeCurrentStop,
-      active: _routeActive
+      active: _routeActive,
+      totalDur: _routeTotalDur,
+      totalDist: _routeTotalDist
     }));
   } catch(e) {}
 }
@@ -4895,21 +4888,22 @@ function _restoreRouteSession() {
     var saved = localStorage.getItem('vavan_route');
     if (!saved) return;
     var data = JSON.parse(saved);
-    if (!data.stops || !data.stops.length) return;
-    var stops = [];
+    if (!data.stops||!data.stops.length) return;
+    var stops=[];
     data.stops.forEach(function(s){
-      var b = _bizById[s.bizId] || allData.find(function(x){ return String(x._id||x.id)===s.bizId; });
-      if (b) stops.push({ biz: b, status: s.status });
+      var b = _bizById[s.bizId]||allData.find(function(x){ return String(x._id||x.id)===s.bizId; });
+      if(b) stops.push({biz:b,status:s.status});
     });
     if (!stops.length) return;
-    _routeStops = stops;
-    _routeStartPoint = data.startPoint;
-    _routeCurrentStop = data.currentStop || 0;
-    _routeActive = data.active || false;
-    _drawRouteOnMap();
-    // Show route button as active
-    var btn = document.getElementById('route-btn');
-    if (btn) btn.style.display = '';
+    _routeStops=stops;
+    _routeStartPoint=data.startPoint;
+    _routeCurrentStop=data.currentStop||0;
+    _routeActive=data.active||false;
+    _routeTotalDur=data.totalDur||0;
+    _routeTotalDist=data.totalDist||0;
+    _routeGeomCache=null; // can't restore geometry, will draw straight lines
+    var btn=document.getElementById('route-btn');
+    if(btn) btn.style.display='';
     openRoutePanel();
   } catch(e) {}
 }
