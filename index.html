@@ -2149,13 +2149,10 @@ function _renderRepChips() {
 function filterMyAccounts() {
   if (!currentProfile) return;
 
-  // Find the best matching rep name from ALL_REPS that matches this user's profile
   var profileName = (currentProfile.full_name || '').trim().toLowerCase();
   var matchedRep = ALL_REPS.find(function(r){
     return r.toLowerCase() === profileName;
   });
-
-  // Fallback: try partial match (first name or last name)
   if (!matchedRep && profileName) {
     matchedRep = ALL_REPS.find(function(r){
       var parts = r.toLowerCase().split(' ');
@@ -2163,11 +2160,22 @@ function filterMyAccounts() {
       return parts.some(function(p){ return profileParts.indexOf(p) > -1; });
     });
   }
-
   if (!matchedRep) {
     alert('No rep name found matching your profile ("'+currentProfile.full_name+'").\nGo to Admin Settings → Reps & Markets and make sure your Full Name matches exactly.');
     return;
   }
+
+  // Clear stale map state FIRST — eliminates ghost pins immediately
+  if (map && map.getSource('biz')) {
+    map.getSource('biz').setData({type:'FeatureCollection',features:[]});
+  }
+  if (map && map.getSource('biz-selected')) {
+    map.getSource('biz-selected').setData({type:'FeatureCollection',features:[]});
+  }
+  if (map && map.getSource('biz-hover')) {
+    map.getSource('biz-hover').setData({type:'FeatureCollection',features:[]});
+  }
+  lastSelectedBiz = null;
 
   clearFilters();
   filters.reps = [matchedRep];
@@ -3180,25 +3188,20 @@ var STATUS_COLORS = {
 function renderPins() {
   if (!map.isStyleLoaded()) { map.once('load', renderPins); return; }
 
-  // Blank map unless filters are applied
+  // Start with empty source — map shows blank until filters applied
   var source = filtersApplied ? filteredData : [];
-  var valid = source.filter(function(b){ return b.lat && b.lon; });
+  var valid = source.filter(function(b){ return b.lat && b.lon && !isNaN(b.lat) && !isNaN(b.lon); });
 
-  // If source already exists just update data
+  // If source already exists just refresh via authoritative helper
   if (map.getSource('biz')) {
-    map.getSource('biz').setData({
-      type:'FeatureCollection',
-      features: valid.map(function(b){
-        return {type:'Feature', geometry:{type:'Point', coordinates:[b.lon,b.lat]},
-          properties:{_id:b._id, industry:b.industry||'', is_competitor:b.is_competitor||false, score:b.score||calcScore(b), sales_status:salesStatus(b)}};
-      })
-    });
+    _refreshMapSource(valid.length ? source : []);
     var _pc=document.getElementById('pcount');if(_pc)_pc.textContent=allData.length.toLocaleString();
     updateFabCount();
     return;
   }
 
-  // First render only — create source and layers
+  // First render — create source and layers with EMPTY data
+  // Data will be filled when applyFilters() is called
   ['biz','biz-cl','biz-cn'].forEach(function(id){ if(map.getLayer(id)) map.removeLayer(id); });
   map.addSource('biz', { type:'geojson', cluster:true, clusterMaxZoom:13, clusterRadius:40,
     data:{ type:'FeatureCollection', features: valid.map(function(b){
@@ -4160,16 +4163,50 @@ function applyFilters() {
   var leg = document.getElementById('map-legend');
   if (leg) leg.style.display = 'block';
 
-  // Update map pins — only valid coordinates
-  if (map && map.getSource('biz')) {
-    var validData = data.filter(function(b){ return b.lat && b.lon && !isNaN(b.lat) && !isNaN(b.lon); });
-    map.getSource('biz').setData({ type:'FeatureCollection', features: validData.map(function(b){
-      return {type:'Feature',geometry:{type:'Point',coordinates:[b.lon,b.lat]},properties:{_id:b._id, industry:b.industry||'', is_competitor:b.is_competitor||false, score:b.score||calcScore(b)}};
-    }) });
-  }
+  // Single authoritative map source update — clears stale clusters and ghost pins
+  _refreshMapSource(data);
+
   var _pc=document.getElementById('pcount');if(_pc)_pc.textContent=data.length.toLocaleString() + ' matched';
   updateFabCount();
   updateFilterBadge();
+}
+
+// ── AUTHORITATIVE MAP SOURCE REFRESH ──
+// All filter changes must go through here. Clears selected/hover state,
+// rebuilds cluster source from scratch so no ghost pins remain.
+function _refreshMapSource(data) {
+  if (!map || !map.getSource('biz')) return;
+
+  var validData = (data || filteredData || []).filter(function(b){
+    return b.lat && b.lon && !isNaN(b.lat) && !isNaN(b.lon);
+  });
+
+  // Clear selected highlight — prevents ghost selected pins
+  if (map.getSource('biz-selected')) {
+    map.getSource('biz-selected').setData({type:'FeatureCollection',features:[]});
+  }
+  // Clear hover highlight
+  if (map.getSource('biz-hover')) {
+    map.getSource('biz-hover').setData({type:'FeatureCollection',features:[]});
+  }
+
+  // Push fresh feature collection — Mapbox rebuilds clusters from this
+  map.getSource('biz').setData({
+    type: 'FeatureCollection',
+    features: validData.map(function(b){
+      return {
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [b.lon, b.lat] },
+        properties: {
+          _id: b._id,
+          industry: b.industry || '',
+          is_competitor: b.is_competitor || false,
+          score: b.score || calcScore(b),
+          sales_status: salesStatus(b)
+        }
+      };
+    })
+  });
 }
 
 // ── LIST ──
@@ -4924,23 +4961,13 @@ async function saveNewBusiness() {
 
     closeAddBusiness();
 
-    // Show pin on map immediately
+    // Show pin on map immediately via authoritative refresh
     if (map && map.getSource('biz') && newBiz.lat && newBiz.lon) {
       if (filtersApplied) {
-        applyFilters();
-        var inFiltered = filteredData.some(function(x){ return x._id === newBiz._id; });
-        if (!inFiltered) {
-          filteredData.unshift(newBiz);
-          map.getSource('biz').setData({ type:'FeatureCollection', features: filteredData.filter(function(b){ return b.lat&&b.lon; }).map(function(b){
-            return {type:'Feature',geometry:{type:'Point',coordinates:[b.lon,b.lat]},
-              properties:{_id:b._id,industry:b.industry||'',is_competitor:b.is_competitor||false,score:b.score||calcScore(b)}};
-          })});
-        }
+        applyFilters(); // rebuilds filteredData including new biz if it matches
       } else {
-        map.getSource('biz').setData({ type:'FeatureCollection', features: [{
-          type:'Feature', geometry:{type:'Point',coordinates:[newBiz.lon,newBiz.lat]},
-          properties:{_id:newBiz._id,industry:newBiz.industry||'',is_competitor:newBiz.is_competitor||false,score:newBiz.score||calcScore(newBiz)}
-        }]});
+        // Show just the new pin alone on an otherwise blank map
+        _refreshMapSource([newBiz]);
       }
     }
 
@@ -7871,7 +7898,10 @@ function clearFilters() {
   filtersApplied = false;
   filteredData = [];
   if (map && map.getSource('biz')) {
-    map.getSource('biz').setData({ type:'FeatureCollection', features: [] }); // cleared
+    map.getSource('biz').setData({ type:'FeatureCollection', features: [] });
+    if (map.getSource('biz-selected')) map.getSource('biz-selected').setData({type:'FeatureCollection',features:[]});
+    if (map.getSource('biz-hover')) map.getSource('biz-hover').setData({type:'FeatureCollection',features:[]});
+    lastSelectedBiz = null;
   }
   updateFabCount();
 }
