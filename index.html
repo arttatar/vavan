@@ -3140,26 +3140,13 @@ function navTo(tab) {
     var fs = document.getElementById('filter-scroll');
     if (fs) fs.scrollTop = 0;
     _initTagFilterDropdown();
-    if (window.innerWidth <= 768) {
-      _bsOpen('sidebar', BS.FULL, closeSidebar);
-    } else {
-      sidebar.classList.add('open');
-      overlay.classList.add('show');
-    }
+    _bsOpen('sidebar', BS.FULL, closeSidebar);
   } else if (tab === 'list') {
     renderList();
-    if (window.innerWidth <= 768) {
-      _bsOpen('results-panel', BS.WORK, closeResults);
-    } else {
-      results.classList.add('open');
-    }
+    _bsOpen('results-panel', BS.WORK, closeResults);
   } else if (tab === 'contacts') {
     loadAllContacts();
-    if (window.innerWidth <= 768) {
-      _bsOpen('contacts-panel', BS.WORK, function(){ navTo('map'); });
-    } else {
-      contacts.classList.add('open');
-    }
+    _bsOpen('contacts-panel', BS.WORK, function(){ navTo('map'); });
   }
 }
 
