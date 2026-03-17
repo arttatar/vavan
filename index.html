@@ -2212,9 +2212,12 @@ function filterMyAccounts() {
   if (!currentProfile) return;
 
   var profileName = (currentProfile.full_name || '').trim().toLowerCase();
+
+  // Super admins can still use My Accounts — match by name
   var matchedRep = ALL_REPS.find(function(r){
     return r.toLowerCase() === profileName;
   });
+  // Partial match fallback
   if (!matchedRep && profileName) {
     matchedRep = ALL_REPS.find(function(r){
       var parts = r.toLowerCase().split(' ');
@@ -2222,12 +2225,16 @@ function filterMyAccounts() {
       return parts.some(function(p){ return profileParts.indexOf(p) > -1; });
     });
   }
+  // Last resort — use full_name directly even if not in ALL_REPS list
+  if (!matchedRep && currentProfile.full_name) {
+    matchedRep = currentProfile.full_name;
+  }
   if (!matchedRep) {
-    alert('No rep name found matching your profile ("'+currentProfile.full_name+'").\nGo to Admin Settings → Reps & Markets and make sure your Full Name matches exactly.');
+    alert('No rep name found for your profile. Go to Admin Settings and make sure your Full Name is set.');
     return;
   }
 
-  // Clear stale map state FIRST — eliminates ghost pins immediately
+  // Clear stale map state FIRST
   if (map && map.getSource('biz')) {
     map.getSource('biz').setData({type:'FeatureCollection',features:[]});
   }
@@ -2246,7 +2253,20 @@ function filterMyAccounts() {
   _renderRepChips();
   applyFilters();
   updateFilterBadge();
-  setTimeout(function(){ navTo('list'); }, 300);
+
+  // Set My Accounts button active
+  var dskBtn = document.getElementById('dskm-accounts');
+  if (dskBtn) {
+    document.querySelectorAll('.dsk-mode-btn').forEach(function(b){ b.classList.remove('active'); });
+    dskBtn.classList.add('active');
+  }
+
+  // Open list to show results
+  if (window.innerWidth > 768) {
+    setTimeout(function(){ openDesktopSection('list'); }, 200);
+  } else {
+    setTimeout(function(){ navTo('list'); }, 300);
+  }
 }
 
 var _appStarted = false;
