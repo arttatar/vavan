@@ -1055,6 +1055,13 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
 
 
   <div id="map"></div>
+  <!-- Hidden stubs for JS references -->
+  <span id="pcount" style="display:none;"></span>
+  <span id="pcount-wrap" style="display:none;"></span>
+  <span id="filter-badge" style="display:none;"></span>
+  <button id="my-accounts-btn" style="display:none;" onclick="filterMyAccounts()"></button>
+  <button id="route-btn" style="display:none;" onclick="toggleRouteMode()"></button>
+  <button id="header-add-btn" style="display:none;" onclick="openAddBusiness()"></button>
   <button id="locate-btn" onclick="locateMe()" title="Go to my location">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="12" r="3"/>
