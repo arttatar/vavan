@@ -33,15 +33,14 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
   #map { top: 0; bottom: 60px; }
 
   /* ── BOTTOM SHEET ENGINE — all panels ── */
-  /* Panels start off-screen, BS engine controls height dynamically */
   #sidebar, #results-panel, #detail, #contacts-panel, #route-panel {
     position: fixed !important;
     left: 0 !important; right: 0 !important;
     bottom: 0 !important; top: auto !important;
     width: 100% !important;
-    height: 80vh !important;           /* default — overridden by BS engine */
-    min-height: 80px !important;
-    max-height: 100vh !important;
+    height: 80vh !important;
+    min-height: 60px !important;
+    max-height: 100dvh !important;
     border-radius: 20px 20px 0 0 !important;
     transform: translateY(100%) !important;
     transition: transform .35s cubic-bezier(.2,.8,.3,1) !important;
@@ -56,7 +55,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
   #contacts-panel { z-index: 3150 !important; }
   #route-panel    { z-index: 3050 !important; }
 
-  /* Open state — BS engine will set height, just need transform reset */
+  /* Open — transform reset only, height set by JS */
   #sidebar.open, #results-panel.open, #detail.open,
   #contacts-panel.open, #route-panel.open {
     transform: translateY(0) !important;
@@ -2491,7 +2490,6 @@ function _bsClose(panelId, closeFn) {
 }
 
 function _bsOpen(panelId, pct, closeFn) {
-  // Close any other active sheet first
   if (_bsActive && _bsActive !== panelId) {
     var prev = document.getElementById(_bsActive);
     if (prev) {
@@ -2504,18 +2502,13 @@ function _bsOpen(panelId, pct, closeFn) {
 
   var el = document.getElementById(panelId);
   if (!el) return;
-  var targetH = window.innerHeight - _bsPx(pct);
+
+  // Use innerHeight for true full-screen on mobile
+  var vh = window.innerHeight;
+  var targetH = Math.round(vh * pct / 100);
 
   el.classList.add('open');
-  el.style.transition = 'none';
-  el.style.height = targetH + 'px';
-  el.style.transform = 'translateY(100%)';
-  el.style.top = 'auto';
-  el.style.bottom = '0';
-  el.style.left = '0';
-  el.style.right = '0';
-  el.style.width = '100%';
-  el.style.borderRadius = '20px 20px 0 0';
+  el.style.cssText += ';position:fixed!important;bottom:0!important;top:auto!important;left:0!important;right:0!important;width:100%!important;border-radius:20px 20px 0 0!important;transform:translateY(100%);transition:none;height:' + targetH + 'px!important;';
 
   requestAnimationFrame(function() {
     requestAnimationFrame(function() {
