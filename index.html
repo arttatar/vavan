@@ -797,53 +797,70 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
 #locate-btn{
   position:fixed;
   right:10px;
-  bottom:calc(env(safe-area-inset-bottom,0px) + 120px);
-  width:36px; height:36px;
+  width:29px; height:29px;
   background:#fff;
   border:none;
-  border-radius:6px;
-  box-shadow:0 1px 4px rgba(0,0,0,0.3);
+  border-radius:4px;
+  box-shadow:0 0 0 2px rgba(0,0,0,0.1);
   cursor:pointer;
   display:flex; align-items:center; justify-content:center;
   z-index:800;
   padding:0;
   transition:background .15s;
 }
-#locate-btn svg{ width:20px; height:20px; stroke:#333; }
+#locate-btn svg{ width:18px; height:18px; stroke:#333; }
 #locate-btn:hover{ background:#f0f0f0; }
 #locate-btn.locating svg{ stroke:var(--accent); }
 
-/* ── MOBILE: zoom+compass above locate ── */
-.mapboxgl-ctrl-bottom-right{
-  bottom:calc(env(safe-area-inset-bottom,0px) + 164px) !important;
-  right:10px !important;
-}
+/* ── MOBILE ── */
 @media(max-width:768px){
-  #locate-btn{ right:10px; bottom:calc(env(safe-area-inset-bottom,0px) + 120px); }
+  /* Nav control (zoom + compass) */
+  .mapboxgl-ctrl-bottom-right{
+    bottom:calc(env(safe-area-inset-bottom,0px) + 72px) !important;
+    right:10px !important;
+  }
+  /* Locate sits just below nav control */
+  #locate-btn{
+    bottom:calc(env(safe-area-inset-bottom,0px) + 36px);
+    right:10px;
+  }
 }
 
-/* ── DESKTOP: clean right rail — zoom, compass, locate ── */
+/* ── DESKTOP ── */
 @media(min-width:769px){
-  /* Right rail: zoom + compass sit at bottom-right with clean spacing */
+  /* Entire bottom-right control area */
   .mapboxgl-ctrl-bottom-right{
-    bottom:88px !important;
-    right:16px !important;
+    bottom:10px !important;
+    right:10px !important;
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:flex-end !important;
+    gap:0 !important;
   }
-  /* Locate sits just below zoom/compass rail */
-  #locate-btn{
-    right:16px;
-    bottom:44px;
-    width:36px; height:36px;
-    border-radius:6px;
+  /* Nav group (zoom + compass) — Mapbox renders these as one block */
+  .mapboxgl-ctrl-bottom-right .mapboxgl-ctrl-group{
+    margin:0 0 6px 0 !important;
+    box-shadow:0 0 0 2px rgba(0,0,0,0.1) !important;
+    border-radius:4px !important;
   }
-  /* Attribution moves to bottom-left — away from action controls */
-  .mapboxgl-ctrl-bottom-left{
-    bottom:8px !important;
-    left:8px !important;
-  }
-  /* Hide default bottom-right attribution on desktop */
+  /* Compact attribution — small, sits below nav group */
   .mapboxgl-ctrl-bottom-right .mapboxgl-ctrl-attrib{
-    display:none !important;
+    font-size:10px !important;
+    opacity:0.75;
+    margin:0 !important;
+    background:rgba(255,255,255,0.85) !important;
+    border-radius:3px !important;
+    padding:2px 5px !important;
+  }
+  /* Hide the "i" expand button — we only want the compact text */
+  .mapboxgl-ctrl-attrib-button{ display:none !important; }
+  /* Locate button aligns with nav rail */
+  #locate-btn{
+    bottom:72px;
+    right:10px;
+    width:29px; height:29px;
+    border-radius:4px;
+    box-shadow:0 0 0 2px rgba(0,0,0,0.1);
   }
 }
 
@@ -3047,15 +3064,14 @@ function initAllSnapPanels() {
 
 function initMap() {
   // Start at user location if available, otherwise Las Vegas
-map = new mapboxgl.Map({ container:'map', style:'mapbox://styles/mapbox/dark-v11', center:[-115.1398, 36.1899], zoom:11 });
+map = new mapboxgl.Map({ container:'map', style:'mapbox://styles/mapbox/dark-v11', center:[-115.1398, 36.1899], zoom:11, attributionControl: false });
 if (navigator.geolocation) {
   navigator.geolocation.getCurrentPosition(function(pos) {
     map.flyTo({ center:[pos.coords.longitude, pos.coords.latitude], zoom:12, speed:1.5 });
   }, null, { enableHighAccuracy:true, timeout:5000 });
 }
-  map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
-  // Attribution anchored bottom-left on desktop, away from action controls
-  map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-left');
+  map.addControl(new mapboxgl.NavigationControl({ showCompass: true }), 'bottom-right');
+  map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right');
   draw = new MapboxDraw({ displayControlsDefault:false });
   map.addControl(draw);
   map.on('draw.create', onDraw);
