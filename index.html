@@ -2817,6 +2817,7 @@ map.on('movestart', function(){ mapIsMoving = true; clearTimeout(_moveTimer); })
 map.on('zoomstart', function(){ mapIsMoving = true; clearTimeout(_moveTimer); });
 map.on('dragstart', function(){ mapIsMoving = true; clearTimeout(_moveTimer); });
 
+}
 
 function addHQMarker() {
   var el = document.createElement('div');
@@ -2863,10 +2864,6 @@ function addHQMarker() {
   new mapboxgl.Marker({element: el, anchor:'center'})
     .setLngLat([-115.124750, 36.229203])
     .addTo(map);
-}
-
-
-  initAllSnapPanels();
 }
 
 function startLocationTracking() {
@@ -3143,13 +3140,26 @@ function navTo(tab) {
     var fs = document.getElementById('filter-scroll');
     if (fs) fs.scrollTop = 0;
     _initTagFilterDropdown();
-    _bsOpen('sidebar', BS.FULL, closeSidebar);
+    if (window.innerWidth <= 768) {
+      _bsOpen('sidebar', BS.FULL, closeSidebar);
+    } else {
+      sidebar.classList.add('open');
+      overlay.classList.add('show');
+    }
   } else if (tab === 'list') {
     renderList();
-    _bsOpen('results-panel', BS.WORK, closeResults);
+    if (window.innerWidth <= 768) {
+      _bsOpen('results-panel', BS.WORK, closeResults);
+    } else {
+      results.classList.add('open');
+    }
   } else if (tab === 'contacts') {
     loadAllContacts();
-    _bsOpen('contacts-panel', BS.WORK, function(){ navTo('map'); });
+    if (window.innerWidth <= 768) {
+      _bsOpen('contacts-panel', BS.WORK, function(){ navTo('map'); });
+    } else {
+      contacts.classList.add('open');
+    }
   }
 }
 
@@ -3919,9 +3929,10 @@ function applyFilters() {
   var leg = document.getElementById('map-legend');
   if (leg) leg.style.display = 'block';
 
-  // Update map pins to show only filtered results
+  // Update map pins — only valid coordinates
   if (map && map.getSource('biz')) {
-    map.getSource('biz').setData({ type:'FeatureCollection', features: data.map(function(b){
+    var validData = data.filter(function(b){ return b.lat && b.lon && !isNaN(b.lat) && !isNaN(b.lon); });
+    map.getSource('biz').setData({ type:'FeatureCollection', features: validData.map(function(b){
       return {type:'Feature',geometry:{type:'Point',coordinates:[b.lon,b.lat]},properties:{_id:b._id, industry:b.industry||'', is_competitor:b.is_competitor||false, score:b.score||calcScore(b)}};
     }) });
   }
@@ -5056,7 +5067,7 @@ function selectBiz(id) {
   renderDetailPanel(b);
   var det = document.getElementById('detail');
   if (window.innerWidth <= 768) {
-    _bsOpen('detail', BS.WORK, closeDetail);
+    _bsOpen('detail', BS.FULL, closeDetail);
   } else {
     det.classList.add('open');
   }
@@ -7601,7 +7612,7 @@ function clearFilters() {
   filtersApplied = false;
   filteredData = [];
   if (map && map.getSource('biz')) {
-    map.getSource('biz').setData({ type:'FeatureCollection', features: [] });
+    map.getSource('biz').setData({ type:'FeatureCollection', features: [] }); // cleared
   }
   updateFabCount();
 }
