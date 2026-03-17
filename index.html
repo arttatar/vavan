@@ -552,8 +552,19 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
 }
 #add-biz-modal.open{ display:flex; }
 @media(max-width:768px){
-  #add-biz-modal{ bottom:60px !important; align-items:flex-end; }
-  #add-biz-inner{ border-radius:20px 20px 0 0 !important; max-height:calc(88vh - 60px); }
+  #sidebar{
+    left:0 !important;
+    right:0 !important;
+    top:auto !important;
+    bottom:60px !important;
+    width:100% !important;
+    height:92vh !important;
+    border-radius:20px 20px 0 0 !important;
+    transform:translateY(110%) !important;
+    transition:transform .3s cubic-bezier(.4,0,.2,1) !important;
+    box-shadow:0 -4px 32px rgba(0,0,0,.22) !important;
+  }
+  #sidebar.open{ transform:translateY(0) !important; }
 }
 @media(min-width:769px){
   #add-biz-modal{ align-items:center; }
@@ -565,9 +576,10 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
   overflow-y:auto; padding:0 0 env(safe-area-inset-bottom,0px);
 }
 .abiz-header{
-  padding:14px 16px 10px; border-bottom:1px solid var(--border);
+  padding:22px 16px 10px; border-bottom:1px solid var(--border);
   display:flex; align-items:center; justify-content:space-between;
   position:sticky; top:0; background:#fff; z-index:1;
+  position:relative;
 }
 .abiz-title{ font-size:16px; font-weight:700; color:var(--ink); }
 .abiz-body{ padding:1rem 1.25rem 1.5rem; }
@@ -2677,7 +2689,7 @@ function navTo(tab) {
   }
   currentNav = tab;
 
-  // Update nav button active states — no button active when map
+  // Update nav button active states
   ['filters','list','contacts'].forEach(function(t){
     var m = document.getElementById('nm-'+t);
     var d = document.getElementById('nd-'+t);
@@ -2691,26 +2703,31 @@ function navTo(tab) {
   var detail   = document.getElementById('detail');
   var overlay  = document.getElementById('overlay');
 
-  // Close all panels first
+  // Close ALL panels on every navigation
   sidebar.classList.remove('open');
   results.classList.remove('open');
   contacts.classList.remove('open');
   overlay.classList.remove('show');
   if (detail) detail.classList.remove('open');
 
-  if (tab === 'map') {
-    // Close route panel too
+  // Always close add-biz modal when navigating
+  var abiz = document.getElementById('add-biz-modal');
+  if (abiz) abiz.style.display = 'none';
+
+  // Always close route panel when navigating (except when explicitly going to route)
+  if (tab !== 'route') {
     var rp = document.getElementById('route-panel');
     if (rp) rp.classList.remove('open');
+  }
+
+  if (tab === 'map') {
     var vrBtn = document.getElementById('view-route-btn');
     if (vrBtn) vrBtn.style.display = _routeStops && _routeStops.length > 0 ? 'block' : 'none';
   } else if (tab === 'filters') {
     sidebar.classList.add('open');
     overlay.classList.add('show');
-    // Always reset scroll to top when opening filters
     var fs = document.getElementById('filter-scroll');
     if (fs) fs.scrollTop = 0;
-    // Refresh tag dropdown in case new tags were created
     _initTagFilterDropdown();
   } else if (tab === 'list') {
     renderList();
@@ -3911,15 +3928,36 @@ function renderMarketsTab(body) {
 
 // ── ADD BUSINESS ──
 function openAddBusiness() {
-  // Pre-fill city from profile territory if available
+  // Close all other panels first
+  var sidebar = document.getElementById('sidebar');
+  var results = document.getElementById('results-panel');
+  var contacts = document.getElementById('contacts-panel');
+  var overlay = document.getElementById('overlay');
+  if (sidebar) sidebar.classList.remove('open');
+  if (results) results.classList.remove('open');
+  if (contacts) contacts.classList.remove('open');
+  if (overlay) overlay.classList.remove('show');
+  var rp = document.getElementById('route-panel');
+  if (rp) rp.classList.remove('open');
+  // Update nav — none active
+  ['filters','list','contacts'].forEach(function(t){
+    var m = document.getElementById('nm-'+t);
+    var d = document.getElementById('nd-'+t);
+    if (m) m.classList.remove('active');
+    if (d) d.classList.remove('active');
+  });
+
   var modal = document.getElementById('add-biz-modal');
-  modal.classList.add('open');
+  modal.style.display = 'flex';
+  setTimeout(function(){ modal.classList.add('open'); }, 10);
   document.getElementById('ab-name').focus();
   document.getElementById('ab-status-msg').textContent = '';
 }
 
 function closeAddBusiness() {
-  document.getElementById('add-biz-modal').classList.remove('open');
+  var modal = document.getElementById('add-biz-modal');
+  modal.classList.remove('open');
+  setTimeout(function(){ modal.style.display = 'none'; }, 300);
   ['ab-name','ab-phone','ab-website','ab-street','ab-zip'].forEach(function(id){
     var el = document.getElementById(id); if(el) el.value = '';
   });
@@ -7224,9 +7262,10 @@ function onMapClick(e) {
 </div>
 
 <!-- ADD BUSINESS MODAL -->
-<div id="add-biz-modal">
+<div id="add-biz-modal" onclick="if(event.target===this)closeAddBusiness()">
   <div id="add-biz-inner">
     <div class="abiz-header">
+      <div style="width:36px;height:4px;background:#ddd;border-radius:2px;margin:0 auto 2px;position:absolute;left:50%;transform:translateX(-50%);top:10px;"></div>
       <div class="abiz-title">Add Business</div>
       <button class="sheet-close" onclick="closeAddBusiness()">✕</button>
     </div>
