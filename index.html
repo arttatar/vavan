@@ -1,20 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <link rel="manifest" href="/manifest.json">
-<link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<link rel="icon" href="/favicon.ico">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Vavan">
-<meta name="theme-color" content="#4a36c8">
-  <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Vavan">
-<link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#4a36c8">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Vavan — Market Intelligence</title>
@@ -1955,7 +1941,8 @@ async function loadProfile() {
       var pendingName = userMeta.full_name || '';
       var pendingTerr = userMeta.territory_code || 'LAS-ALL';
       var pendingTerrName = userMeta.territory_name || 'Las Vegas';
-      var pendingRole = userMeta.role || 'rep';
+      // Only allow admin role if explicitly set — never default to admin
+      var pendingRole = (userMeta.role === 'admin') ? 'admin' : 'rep';
       var pendingClientId = userMeta.client_id || null;
 
       // Check pending_invites table as fallback
@@ -4511,8 +4498,7 @@ function renderInviteTab(body) {
             '<input class="settings-input" id="inv-name" placeholder="First Last" style="margin:0;"></div>'+
           '<div><label class="abiz-label">Role</label>'+
             '<select class="settings-select" id="inv-role" style="margin:0;">'+
-              '<option value="rep">Rep</option>'+
-              '<option value="admin">Admin</option>'+
+              '<option value="rep" selected>Rep</option>'+
             '</select></div>'+
         '</div>'+
         '<label class="abiz-label">Email Address *</label>'+
