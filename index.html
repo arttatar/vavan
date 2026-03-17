@@ -1055,9 +1055,9 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
         style="width:44px;height:44px;border-radius:50%;background:#fff;border:none;box-shadow:0 2px 8px rgba(0,0,0,.2);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;touch-action:manipulation;pointer-events:all;">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4a36c8" stroke-width="2.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
-      <button id="account-btn" type="button" onclick="toggleAccountMenu()"
+      <button id="mobile-account-btn" type="button" onclick="toggleAccountMenu()"
         style="width:44px;height:44px;border-radius:50%;background:var(--accent);border:none;box-shadow:0 2px 8px rgba(0,0,0,.2);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:700;color:#fff;font-family:Inter,sans-serif;touch-action:manipulation;pointer-events:all;">
-        <span id="account-initials">?</span>
+        <span id="mobile-account-initials">?</span>
       </button>
     </div>
     <!-- Row 2: quick chips -->
@@ -1836,33 +1836,25 @@ function _getInitials(name) {
   return (parts[0][0] + parts[parts.length-1][0]).toUpperCase();
 }
 
+function _setAllInitials(initials) {
+  ['account-initials','mobile-account-initials','account-menu-avatar'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.textContent = initials;
+  });
+}
+
 function _updateAccountEmail(email) {
   var el = document.getElementById('account-menu-email');
   if (el) el.textContent = email || '';
-  // Set initials from email if no profile yet
   var initials = email ? email[0].toUpperCase() : '?';
-  var btn = document.getElementById('account-initials');
-  if (btn) btn.textContent = initials;
-  var av = document.getElementById('account-menu-avatar');
-  if (av) av.textContent = initials;
-  // nd-account-avatar removed
-  
+  _setAllInitials(initials);
 }
 
 function _updateAccountUI(fullName, isAdmin) {
   var initials = _getInitials(fullName);
-  // Header avatar button
-  var btn = document.getElementById('account-initials');
-  if (btn) btn.textContent = initials;
-  // Desktop nav avatar
-  // nd-account-avatar removed
-  
-  // Menu avatar + name
-  var menuAv = document.getElementById('account-menu-avatar');
-  if (menuAv) menuAv.textContent = initials;
+  _setAllInitials(initials);
   var menuName = document.getElementById('account-menu-name');
   if (menuName) menuName.textContent = fullName || '—';
-  // Show admin settings option
   var settingsRow = document.getElementById('account-menu-settings');
   if (settingsRow) settingsRow.style.display = isAdmin ? 'flex' : 'none';
 }
@@ -1874,12 +1866,16 @@ function toggleAccountMenu() {
   if (isOpen) {
     closeAccountMenu();
   } else {
-    // Position relative to avatar button
-    var btn = document.getElementById('account-btn');
+    // Find whichever avatar button is currently visible
+    var btn = document.getElementById('mobile-account-btn');
+    if (!btn || btn.offsetParent === null) {
+      btn = document.getElementById('account-btn'); // desktop
+    }
     if (btn) {
       var rect = btn.getBoundingClientRect();
       menu.style.top = (rect.bottom + 8) + 'px';
       menu.style.right = (window.innerWidth - rect.right) + 'px';
+      menu.style.left = 'auto';
     }
     menu.style.display = 'block';
     setTimeout(function(){
@@ -1895,9 +1891,9 @@ function closeAccountMenu() {
 
 function _closeMenuOutside(e) {
   var menu = document.getElementById('account-menu');
-  var btn  = document.getElementById('account-btn');
-  var ndBtn = document.getElementById('nd-account');
-  if (menu && !menu.contains(e.target) && e.target !== btn) {
+  var btnD = document.getElementById('account-btn');
+  var btnM = document.getElementById('mobile-account-btn');
+  if (menu && !menu.contains(e.target) && e.target !== btnD && e.target !== btnM) {
     closeAccountMenu();
   }
 }
