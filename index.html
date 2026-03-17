@@ -4490,18 +4490,32 @@ async function renderUsersTab(body) {
     if (r.error) throw r.error;
     _allProfiles = r.data || [];
 
+    // Load this week's activity counts per rep
+    var weekAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString();
+    var actR = await sb.from('activity').select('created_by, type').gte('created_at', weekAgo);
+    var actThisWeek = actR.data || [];
+
     if (!_allProfiles.length) {
       body.innerHTML = '<div class="det-empty">No users yet. Use Invite Rep to add someone.</div>';
       return;
     }
 
     body.innerHTML = '<div class="settings-section">'+
-      '<div class="settings-section-title">All Users ('+_allProfiles.length+')</div>'+
+      '<div class="settings-section-title" style="display:flex;justify-content:space-between;align-items:center;">'+
+        '<span>All Users ('+_allProfiles.length+')</span>'+
+        '<span style="font-size:10px;color:var(--muted);">Activity this week</span>'+
+      '</div>'+
       _allProfiles.map(function(p){
         var markets = (p.territory_name||'').split(',').map(function(s){ return s.trim(); }).filter(Boolean);
-        return '<div id="user-row-'+p.id+'" style="border:1px solid var(--border);border-radius:10px;padding:.875rem;margin-bottom:.75rem;background:#fff;">'+
-          // View mode
-          '<div id="user-view-'+p.id+'">'+
+        var acts = actThisWeek.filter(function(a){ return a.created_by === p.full_name; });
+        var visits = acts.filter(function(a){ return a.type==='visited'; }).length;
+        var contacts = acts.filter(function(a){ return a.type==='contacted'; }).length;
+        var perms = p.permissions ? (typeof p.permissions==='object' ? p.permissions : {}) : {};
+
+        return '<div id="user-row-'+p.id+'" style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:.75rem;background:#fff;">'+
+
+          // ── VIEW MODE ──
+          '<div id="user-view-'+p.id+'" style="padding:.875rem;">'+
             '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'+
               '<div style="display:flex;align-items:center;gap:10px;">'+
                 '<div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;">'+_getInitials(p.full_name)+'</div>'+
@@ -4510,40 +4524,81 @@ async function renderUsersTab(body) {
                   '<div style="font-size:11px;color:var(--muted);">'+(p.email||'No email')+'</div>'+
                 '</div>'+
               '</div>'+
-              '<div style="display:flex;gap:6px;align-items:center;">'+
+              '<div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">'+
                 '<span style="font-size:10px;background:'+(p.role==='admin'?'var(--accent-light)':'var(--paper2)')+';color:'+(p.role==='admin'?'var(--accent)':'var(--muted)')+';padding:3px 8px;border-radius:100px;font-weight:600;">'+(p.role||'rep')+'</span>'+
                 '<button onclick="editUserInline(\''+p.id+'\')" style="background:var(--paper);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;color:var(--ink);">Edit</button>'+
-                '<button onclick="deleteUser(\''+p.id+'\',\''+p.user_id+'\',\''+((p.full_name||'').replace(/'/g,"\\'"))+'\')" style="background:#fff5f5;border:1px solid #fca5a5;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;color:#dc2626;">Delete</button>'+
+                '<button onclick="deleteUser(\''+p.id+'\',\''+p.user_id+'\',\''+((p.full_name||'').replace(/'/g,"\\'"))+'\')" style="background:#fff5f5;border:1px solid #fca5a5;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;color:#dc2626;">Remove</button>'+
               '</div>'+
             '</div>'+
-            '<div style="font-size:11px;color:var(--muted);">'+
-              (markets.length ? '📍 '+markets.join(' · ') : 'No markets assigned')+
+            '<div style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'+
+              '<span>📍 '+(markets.length ? markets.join(' · ') : 'No markets')+'</span>'+
+              (acts.length ? '<span style="color:var(--muted);">·</span>'+
+                (visits ? '<span style="color:#d97706;">'+visits+' visits</span>' : '')+
+                (contacts ? '<span style="color:#059669;">'+contacts+' calls</span>' : '') : '')+
             '</div>'+
           '</div>'+
-          // Edit mode
-          '<div id="user-edit-'+p.id+'" style="display:none;">'+
-            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.5rem;">'+
-              '<div><label class="abiz-label">Full Name</label>'+
-                '<input class="settings-input" id="ue-name-'+p.id+'" value="'+(p.full_name||'')+'" style="margin:0;"></div>'+
-              '<div><label class="abiz-label">Role</label>'+
-                '<select class="settings-select" id="ue-role-'+p.id+'" style="margin:0;">'+
-                  '<option value="rep"'+(p.role==='rep'?' selected':'')+'>Rep</option>'+
-                  '<option value="admin"'+(p.role==='admin'?' selected':'')+'>Admin</option>'+
-                '</select></div>'+
-            '</div>'+
-            '<label class="abiz-label">Markets Assigned</label>'+
-            '<div style="display:flex;flex-wrap:wrap;gap:6px;padding:.5rem;background:#fff;border:1px solid var(--border);border-radius:8px;margin-bottom:.5rem;" id="ue-markets-'+p.id+'">'+
-              VAVAN_MARKETS.map(function(m){
-                var checked = markets.indexOf(m.name) > -1;
-                return '<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;white-space:nowrap;">'+
-                  '<input type="checkbox" value="'+m.name+'" '+(checked?'checked':'')+' style="accent-color:var(--accent);">'+
-                  m.name+' <span style="color:var(--muted);font-size:10px;">('+m.state+')</span></label>';
-              }).join('')+
-            '</div>'+
-            '<div id="ue-status-'+p.id+'" style="font-size:12px;color:var(--muted);min-height:16px;margin-bottom:.4rem;"></div>'+
-            '<div class="settings-btn-row">'+
-              '<button class="settings-save-btn" onclick="saveUserEdit(\''+p.id+'\')">Save</button>'+
-              '<button class="settings-cancel-btn" onclick="cancelUserEdit(\''+p.id+'\')">Cancel</button>'+
+
+          // ── EDIT MODE ──
+          '<div id="user-edit-'+p.id+'" style="display:none;border-top:2px solid var(--accent);background:var(--paper);">'+
+            '<div style="padding:.875rem;display:flex;flex-direction:column;gap:.75rem;">'+
+
+              // Name + Role row
+              '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;">'+
+                '<div><label class="abiz-label">Full Name</label>'+
+                  '<input class="settings-input" id="ue-name-'+p.id+'" value="'+(p.full_name||'')+'" style="margin:0;"></div>'+
+                '<div><label class="abiz-label">Role</label>'+
+                  '<select class="settings-select" id="ue-role-'+p.id+'" style="margin:0;">'+
+                    '<option value="rep"'+(p.role==='rep'?' selected':'')+'>Rep</option>'+
+                    '<option value="admin"'+(p.role==='admin'?' selected':'')+'>Admin</option>'+
+                  '</select></div>'+
+              '</div>'+
+
+              // Email + Reset Password
+              '<div style="display:grid;grid-template-columns:1fr auto;gap:.5rem;align-items:end;">'+
+                '<div><label class="abiz-label">Email Address</label>'+
+                  '<input class="settings-input" id="ue-email-'+p.id+'" value="'+(p.email||'')+'" type="email" style="margin:0;" placeholder="rep@company.com"></div>'+
+                '<button onclick="sendPasswordReset(\''+p.id+'\')" style="padding:9px 12px;background:var(--paper2);border:1px solid var(--border);border-radius:8px;font-size:11px;font-weight:600;color:var(--ink);cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;margin-bottom:0;">Send Login Link</button>'+
+              '</div>'+
+
+              // Markets
+              '<div>'+
+                '<label class="abiz-label">Markets Assigned</label>'+
+                '<div style="display:flex;flex-wrap:wrap;gap:6px;padding:.5rem;background:#fff;border:1px solid var(--border);border-radius:8px;" id="ue-markets-'+p.id+'">'+
+                  VAVAN_MARKETS.map(function(m){
+                    var checked = markets.indexOf(m.name) > -1;
+                    return '<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;white-space:nowrap;">'+
+                      '<input type="checkbox" value="'+m.name+'" '+(checked?'checked':'')+' style="accent-color:var(--accent);">'+
+                      m.name+' <span style="font-size:10px;color:var(--muted);">('+m.state+')</span></label>';
+                  }).join('')+
+                '</div>'+
+              '</div>'+
+
+              // Permissions
+              '<div>'+
+                '<label class="abiz-label">Feature Permissions</label>'+
+                '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:.625rem;background:#fff;border:1px solid var(--border);border-radius:8px;">'+
+                  [
+                    {key:'can_add_business',    label:'Add Businesses',    default:true},
+                    {key:'can_edit_business',   label:'Edit Businesses',   default:true},
+                    {key:'can_log_activity',    label:'Log Activity',      default:true},
+                    {key:'can_manage_contacts', label:'Manage Contacts',   default:true},
+                    {key:'can_view_all_reps',   label:'See All Reps',      default:false},
+                    {key:'can_export',          label:'Export Data',       default:false},
+                  ].map(function(perm){
+                    var val = perms[perm.key] !== undefined ? perms[perm.key] : perm.default;
+                    return '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">'+
+                      '<input type="checkbox" id="ue-perm-'+perm.key+'-'+p.id+'" '+(val?'checked':'')+' style="accent-color:var(--accent);">'+
+                      perm.label+'</label>';
+                  }).join('')+
+                '</div>'+
+              '</div>'+
+
+              // Status message + buttons
+              '<div id="ue-status-'+p.id+'" style="font-size:12px;color:var(--muted);min-height:16px;"></div>'+
+              '<div style="display:flex;gap:8px;">'+
+                '<button class="settings-save-btn" onclick="saveUserEdit(\''+p.id+'\')" style="flex:1;">Save Changes</button>'+
+                '<button class="settings-cancel-btn" onclick="cancelUserEdit(\''+p.id+'\')">Cancel</button>'+
+              '</div>'+
             '</div>'+
           '</div>'+
         '</div>';
@@ -4562,23 +4617,64 @@ function cancelUserEdit(id) {
   document.getElementById('user-view-'+id).style.display = 'block';
   document.getElementById('user-edit-'+id).style.display = 'none';
 }
+
 async function saveUserEdit(id) {
-  var name = document.getElementById('ue-name-'+id).value.trim();
-  var role = document.getElementById('ue-role-'+id).value;
+  var name  = (document.getElementById('ue-name-'+id)||{}).value || '';
+  var email = (document.getElementById('ue-email-'+id)||{}).value || '';
+  var role  = (document.getElementById('ue-role-'+id)||{}).value || 'rep';
   var marketsWrap = document.getElementById('ue-markets-'+id);
   var checked = marketsWrap ? Array.from(marketsWrap.querySelectorAll('input:checked')).map(function(cb){ return cb.value; }) : [];
   var tname = checked.join(', ');
   var tcode = checked.length ? checked[0].toUpperCase().replace(/ /g,'-')+'-ALL' : 'LAS-ALL';
   var statusEl = document.getElementById('ue-status-'+id);
+
+  // Collect permissions
+  var permKeys = ['can_add_business','can_edit_business','can_log_activity','can_manage_contacts','can_view_all_reps','can_export'];
+  var perms = {};
+  permKeys.forEach(function(k){
+    var el = document.getElementById('ue-perm-'+k+'-'+id);
+    if (el) perms[k] = el.checked;
+  });
+
+  statusEl.style.color = 'var(--muted)';
   statusEl.textContent = 'Saving...';
+
   try {
-    var r = await sb.from('sales_profiles').update({
-      full_name: name, role: role,
-      territory_name: tname, territory_code: tcode
-    }).eq('id', id);
+    var updates = {
+      full_name: name.trim(),
+      role: role,
+      territory_name: tname,
+      territory_code: tcode,
+      permissions: perms
+    };
+    // Only update email if it changed and is set
+    if (email.trim()) updates.email = email.trim();
+
+    var r = await sb.from('sales_profiles').update(updates).eq('id', id);
     if (r.error) throw r.error;
+
+    statusEl.style.color = '#059669';
     statusEl.textContent = '✓ Saved';
     setTimeout(function(){ renderUsersTab(document.getElementById('settings-body')); }, 800);
+  } catch(e) {
+    statusEl.style.color = '#dc2626';
+    statusEl.textContent = 'Error: '+e.message;
+  }
+}
+
+async function sendPasswordReset(profileId) {
+  // Find email for this profile
+  var profile = _allProfiles.find(function(p){ return p.id === profileId; });
+  var emailEl = document.getElementById('ue-email-'+profileId);
+  var email = emailEl ? emailEl.value.trim() : (profile ? profile.email : '');
+  if (!email) { alert('No email address set for this user.'); return; }
+  var statusEl = document.getElementById('ue-status-'+profileId);
+  statusEl.style.color = 'var(--muted)'; statusEl.textContent = 'Sending login link...';
+  try {
+    var r = await sb.auth.signInWithOtp({ email: email, options: { shouldCreateUser: false } });
+    if (r.error) throw r.error;
+    statusEl.style.color = '#059669';
+    statusEl.textContent = '✓ Login link sent to ' + email;
   } catch(e) {
     statusEl.style.color = '#dc2626';
     statusEl.textContent = 'Error: '+e.message;
@@ -4588,133 +4684,11 @@ async function saveUserEdit(id) {
 async function deleteUser(profileId, userId, name) {
   if (!confirm('Delete user "'+name+'"? This cannot be undone.')) return;
   try {
-    // Delete profile first
     var r = await sb.from('sales_profiles').delete().eq('id', profileId);
     if (r.error) throw r.error;
-    // Refresh list
     renderUsersTab(document.getElementById('settings-body'));
   } catch(e) {
     alert('Delete failed: '+e.message);
-  }
-}
-  try {
-    var r = await sb.from('sales_profiles').select('*').order('full_name', {ascending:true});
-    if (r.error) throw r.error;
-    _allProfiles = r.data || [];
-
-    // Load this week's activity counts per rep
-    var weekAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString();
-    var actR = await sb.from('activity').select('created_by, type').gte('created_at', weekAgo);
-    var actThisWeek = actR.data || [];
-
-    function repStats(repName) {
-      var acts = actThisWeek.filter(function(a){ return a.created_by === repName; });
-      var visits    = acts.filter(function(a){ return a.type === 'visited'; }).length;
-      var contacts  = acts.filter(function(a){ return a.type === 'contacted'; }).length;
-      var notes     = acts.filter(function(a){ return a.type === 'note'; }).length;
-      return { total: acts.length, visits: visits, contacts: contacts, notes: notes };
-    }
-
-    if (!_allProfiles.length) {
-      body.innerHTML = '<div class="det-empty">No rep profiles found.</div>';
-      return;
-    }
-
-    body.innerHTML =
-      '<div class="settings-section">'+
-        '<div class="settings-section-title" style="display:flex;justify-content:space-between;align-items:center;">'+
-          '<span>All Reps ('+_allProfiles.length+')</span>'+
-          '<span style="font-size:10px;font-weight:500;color:var(--muted);">Activity this week</span>'+
-        '</div>'+
-        _allProfiles.map(function(p){
-          var stats = repStats(p.full_name || '');
-          return '<div class="rep-row" id="rep-row-'+p.id+'">'+
-            '<div style="flex:1;">'+
-              '<div class="rep-row-name">'+(p.full_name||'Unnamed Rep')+'</div>'+
-              '<div style="font-size:11px;color:var(--muted);margin-top:1px;">'+
-                (p.territory_name||p.territory_code||'No territory')+
-                ' · <span style="color:'+(p.role==='admin'?'var(--accent)':'var(--muted)')+'">'+
-                (p.role||'rep')+'</span>'+
-              '</div>'+
-              // Activity stats bar
-              (stats.total > 0 ?
-                '<div style="display:flex;gap:8px;margin-top:5px;">'+
-                  (stats.visits  ? '<span style="font-size:10px;background:#fff7e6;color:#d97706;border-radius:100px;padding:1px 7px;font-weight:600;">'+stats.visits+'V</span>' : '')+
-                  (stats.contacts? '<span style="font-size:10px;background:#f0fdf4;color:#059669;border-radius:100px;padding:1px 7px;font-weight:600;">'+stats.contacts+'C</span>' : '')+
-                  (stats.notes   ? '<span style="font-size:10px;background:var(--paper2);color:var(--muted);border-radius:100px;padding:1px 7px;font-weight:600;">'+stats.notes+'N</span>' : '')+
-                '</div>'
-              : '<div style="font-size:10px;color:var(--muted);margin-top:4px;">No activity this week</div>')+
-            '</div>'+
-            '<div class="rep-row-actions">'+
-              '<button class="rep-edit-btn" onclick="editRepInline(\''+p.id+'\')">Edit</button>'+
-            '</div>'+
-          '</div>'+
-          '<div id="rep-edit-'+p.id+'" style="display:none;border:1px solid var(--accent);border-radius:10px;padding:.875rem;margin-bottom:.5rem;background:var(--accent-light);">'+
-            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.5rem;">'+
-              '<div><label class="abiz-label">Full Name</label>'+
-                '<input class="settings-input" id="re-name-'+p.id+'" value="'+(p.full_name||'')+'" style="margin:0"></div>'+
-              '<div><label class="abiz-label">Role</label>'+
-                '<select class="settings-select" id="re-role-'+p.id+'">'+
-                  '<option value="rep"'+(p.role==='rep'?' selected':'')+'>Rep</option>'+
-                  '<option value="admin"'+(p.role==='admin'?' selected':'')+'>Admin</option>'+
-                '</select></div>'+
-            '</div>'+
-            '<div style="margin-bottom:.5rem;">'+
-              '<label class="abiz-label">Markets Serviced</label>'+
-              '<div style="display:flex;flex-wrap:wrap;gap:6px;padding:.5rem;background:#fff;border:1px solid var(--border);border-radius:8px;" id="re-markets-'+p.id+'">'+
-                (function(){
-                  var repMarkets = (p.territory_name||'').split(',').map(function(s){ return s.trim(); }).filter(Boolean);
-                  return VAVAN_MARKETS.map(function(m){
-                    var checked = repMarkets.indexOf(m.name) > -1;
-                    return '<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;white-space:nowrap;">'+
-                      '<input type="checkbox" value="'+m.name+'" '+(checked?'checked':'')+' style="accent-color:var(--accent);">'+
-                      m.name+'</label>';
-                  }).join('');
-                })()+
-              '</div>'+
-            '</div>'+
-            '<div class="settings-btn-row">'+
-              '<button class="settings-save-btn" onclick="saveRepEdit(\''+p.id+'\')">Save</button>'+
-              '<button class="settings-cancel-btn" onclick="cancelRepEdit(\''+p.id+'\')">Cancel</button>'+
-            '</div>'+
-          '</div>';
-        }).join('')+
-      '</div>';
-  } catch(e) {
-    body.innerHTML = '<div class="det-empty">Error loading reps: '+e.message+'</div>';
-  }
-}
-
-function editRepInline(id) {
-  document.getElementById('rep-row-'+id).style.display = 'none';
-  document.getElementById('rep-edit-'+id).style.display = 'block';
-}
-function cancelRepEdit(id) {
-  document.getElementById('rep-row-'+id).style.display = 'flex';
-  document.getElementById('rep-edit-'+id).style.display = 'none';
-}
-async function saveRepEdit(id) {
-  var name  = document.getElementById('re-name-'+id).value.trim();
-  var role  = document.getElementById('re-role-'+id).value;
-  // Collect checked markets
-  var marketsWrap = document.getElementById('re-markets-'+id);
-  var checked = marketsWrap ? Array.from(marketsWrap.querySelectorAll('input[type=checkbox]:checked')).map(function(cb){ return cb.value; }) : [];
-  var tname = checked.join(', ');
-  var tcode = checked.length ? checked[0].toUpperCase().replace(/ /g,'-').replace('LAS-VEGAS','LAS').replace('NORTH-LAS-VEGAS','NLV').replace('HENDERSON','HEN').replace('SUMMERLIN','SUM').replace('SACRAMENTO','SAC').replace('RENO','REN').replace('PHOENIX','PHX').replace('LOS-ANGELES','LAX').replace('SAN-DIEGO','SAN') + '-ALL' : 'LAS-ALL';
-
-  var btn = document.querySelector('#rep-edit-'+id+' .settings-save-btn');
-  btn.textContent = 'Saving...'; btn.disabled = true;
-  try {
-    var r = await sb.from('sales_profiles').update({
-      full_name: name, role: role,
-      territory_name: tname,
-      territory_code: tcode
-    }).eq('id', id);
-    if (r.error) throw r.error;
-    await renderUsersTab(document.getElementById('settings-body'));
-  } catch(e) {
-    alert('Save failed: '+e.message);
-    btn.textContent = 'Save'; btn.disabled = false;
   }
 }
 
