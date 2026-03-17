@@ -2496,14 +2496,14 @@ async function loadData() {
     // No data returned — show clear message instead of hiding the problem
     prog(100, 'No businesses found for your account');
     document.getElementById('loader').classList.add('hidden');
-    document.getElementById('pcount').textContent = '0';
+    var _pc=document.getElementById('pcount');if(_pc)_pc.textContent='0';
     console.warn('No businesses returned — check RLS policies and client_markets assignment');
 
   } catch(e) {
     console.error('loadData error:', e);
     prog(100, 'Failed to load data');
     document.getElementById('loader').classList.add('hidden');
-    document.getElementById('pcount').textContent = 'Error';
+    var _pc=document.getElementById('pcount');if(_pc)_pc.textContent='Error';
     // Show error in UI so rep knows something is wrong
     setTimeout(function(){
       var msg = 'Could not load businesses.\n\nCheck your connection and try refreshing.\n\nError: ' + e.message;
@@ -3009,7 +3009,7 @@ function renderPins() {
           properties:{_id:b._id, industry:b.industry||'', is_competitor:b.is_competitor||false, score:b.score||calcScore(b), sales_status:salesStatus(b)}};
       })
     });
-    document.getElementById('pcount').textContent = allData.length.toLocaleString();
+    var _pc=document.getElementById('pcount');if(_pc)_pc.textContent=allData.length.toLocaleString();
     updateFabCount();
     return;
   }
@@ -3112,7 +3112,7 @@ function renderPins() {
   // Attach handlers once — guarded by _mapHandlersAttached flag
   initMapHandlers();
 
-  document.getElementById('pcount').textContent = allData.length.toLocaleString();
+  var _pc=document.getElementById('pcount');if(_pc)_pc.textContent=allData.length.toLocaleString();
   updateFabCount();
 }
 
@@ -3949,7 +3949,7 @@ function applyFilters() {
       return {type:'Feature',geometry:{type:'Point',coordinates:[b.lon,b.lat]},properties:{_id:b._id, industry:b.industry||'', is_competitor:b.is_competitor||false, score:b.score||calcScore(b)}};
     }) });
   }
-  document.getElementById('pcount').textContent = data.length.toLocaleString() + ' matched';
+  var _pc=document.getElementById('pcount');if(_pc)_pc.textContent=data.length.toLocaleString() + ' matched';
   updateFabCount();
   updateFilterBadge();
 }
@@ -7614,7 +7614,7 @@ function clearFilters() {
   document.getElementById('s-state').value='';
   clearArea();
   document.getElementById('filter-badge').classList.remove('visible');
-  document.getElementById('pcount').textContent = allData.length.toLocaleString();
+  var _pc=document.getElementById('pcount');if(_pc)_pc.textContent=allData.length.toLocaleString();
   // Reset to blank map
   filtersApplied = false;
   filteredData = [];
