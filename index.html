@@ -121,10 +121,10 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
   -webkit-tap-highlight-color:rgba(0,0,0,.05);
   user-select:none;
 }
-/* Desktop — constrain to 25% width */
+/* Desktop — constrain search bar area to 25% */
 @media(min-width:769px){
-  #header-row{ max-width:calc(25% + 96px); min-width:320px; }
-  #filter-chips-bar{ max-width:calc(25% + 96px); min-width:320px; }
+  #header-row{ max-width:calc(25vw + 96px) !important; min-width:320px; }
+  #filter-chips-bar{ max-width:calc(25vw + 96px) !important; min-width:320px; }
 }
 #search-bar-text{
   flex:1;font-size:15px;color:#9ca3af;font-weight:400;
@@ -971,7 +971,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
   <!-- GOOGLE MAPS STYLE HEADER -->
   <div id="header">
     <!-- Row 1: search + buttons — desktop constrained to 25% -->
-    <div id="header-row" style="display:flex;align-items:center;gap:8px;width:100%;max-width:100%;pointer-events:all;">
+    <div id="header-row" style="display:flex;align-items:center;gap:8px;width:100%;pointer-events:all;">
       <button id="search-bar" type="button" onclick="navTo('filters')"
         style="flex:1;max-width:100%;display:flex;align-items:center;gap:10px;background:#fff;border:none;border-radius:24px;box-shadow:0 2px 12px rgba(0,0,0,.25);padding:0 10px 0 16px;height:48px;cursor:pointer;font-family:Inter,sans-serif;text-align:left;touch-action:manipulation;min-width:0;">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
