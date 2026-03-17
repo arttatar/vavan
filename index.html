@@ -527,6 +527,10 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
 /* DETAIL PANEL */
 #detail{position:fixed;top:var(--header);right:0;bottom:0;width:360px;z-index:960;background:#fff;border-left:1px solid var(--border);transform:translateX(100%);transition:transform .25s ease;display:flex;flex-direction:column;overflow:hidden;}
 #detail.open{transform:translateX(0);}
+/* Desktop — detail panel never opens on right; business view lives in left panel host */
+@media(min-width:769px){
+  #detail{ display:none !important; }
+}
 #det-x{flex-shrink:0;width:100%;background:#fff;border-bottom:1px solid var(--border);display:flex;flex-direction:column;}
 #det-body{overflow-y:auto;flex:1;min-height:0;display:flex;flex-direction:column;}
 
@@ -2927,16 +2931,18 @@ function _soApply() {
 
 // ── DESKTOP CONTROL STACK ──
 var _desktopSection = null;
+var _deskStack = []; // [{type:'list'|'filters'|'contacts'|'business', biz:obj}]
 
 function openDesktopSection(section) {
   if (window.innerWidth <= 768) { navTo(section); return; }
 
-  // Toggle: same section = close
-  if (_desktopSection === section) {
+  // Toggle: same section = close (only if not in a business view)
+  if (_desktopSection === section && !_deskStack.length) {
     closeDesktopSection();
     return;
   }
   _desktopSection = section;
+  _deskStack = [{ type: section }]; // reset stack on new root view
 
   var topControls = document.getElementById('desktop-top-controls');
   var host = document.getElementById('desktop-panel-host');
@@ -2947,7 +2953,7 @@ function openDesktopSection(section) {
 
   // Active state on mode buttons
   document.querySelectorAll('.dsk-mode-btn').forEach(function(b){ b.classList.remove('active'); });
-  var activeBtn = document.getElementById('dskm-' + (section === 'filters' ? 'filters' : section === 'list' ? 'list' : section === 'contacts' ? 'contacts' : section));
+  var activeBtn = document.getElementById('dskm-' + (section === 'list' ? 'list' : section === 'contacts' ? 'contacts' : section));
   if (activeBtn) activeBtn.classList.add('active');
 
   // Update search btn text
@@ -2970,6 +2976,7 @@ function openDesktopSection(section) {
 
 function closeDesktopSection() {
   _desktopSection = null;
+  _deskStack = [];
   var topControls = document.getElementById('desktop-top-controls');
   var host = document.getElementById('desktop-panel-host');
   if (topControls) topControls.classList.remove('panel-open');
@@ -5087,8 +5094,8 @@ function _showNavSheet() {
   overlay.id = 'nav-sheet-overlay';
 
   if (isDesktop) {
-    var det = document.getElementById('detail');
-    var rect = det ? det.getBoundingClientRect() : {left:0,top:0,width:360,bottom:window.innerHeight};
+    var det = document.getElementById('desktop-panel-host') || document.getElementById('detail');
+    var rect = det ? det.getBoundingClientRect() : {left:0,top:0,width:400,bottom:window.innerHeight};
     overlay.style.cssText = 'position:fixed;top:'+rect.top+'px;left:'+rect.left+'px;width:'+rect.width+'px;height:'+(rect.bottom-rect.top)+'px;background:rgba(13,13,20,.4);z-index:9800;display:flex;align-items:flex-end;justify-content:stretch;font-family:Inter,sans-serif;overflow:hidden;';
   } else {
     overlay.style.cssText = 'position:fixed;inset:0;bottom:60px;background:rgba(0,0,0,.45);z-index:8000;display:flex;align-items:flex-end;justify-content:center;';
@@ -5378,16 +5385,13 @@ function bizColor(b) {
 }
 
 function selectBiz(id) {
-  // Try direct lookup first, then string/number coercion
   var b = _bizById[id] || _bizById[String(id)] || _bizById[Number(id)];
-  if (!b) {
-    // Last resort: scan allData
-    b = allData.find(function(x){ return x._id == id; });
-  }
+  if (!b) b = allData.find(function(x){ return x._id == id; });
   if (!b) return;
   lastSelectedBiz = b;
-  if (b.lat&&b.lon) {
-    map.flyTo({center:[b.lon,b.lat],zoom:16,speed:1.4});
+
+  if (b.lat && b.lon) {
+    map.flyTo({center:[b.lon,b.lat], zoom:16, speed:1.4});
     if (map.getSource('biz-selected')) {
       map.getSource('biz-selected').setData({
         type:'FeatureCollection',
@@ -5396,19 +5400,84 @@ function selectBiz(id) {
       });
     }
   }
-  
-  var titleEl = document.getElementById('det-x-title');
-  if (titleEl) titleEl.textContent = b.name||'';
-  renderDetailPanel(b);
-  var det = document.getElementById('detail');
-  if (window.innerWidth <= 768) {
-    _bsOpen('detail', BS.FULL, closeDetail);
+
+  if (window.innerWidth > 768) {
+    // ── DESKTOP: push business view into left panel host ──
+    _deskPanelPush('business', b);
   } else {
-    det.classList.add('open');
+    // ── MOBILE: bottom sheet as before ──
+    var titleEl = document.getElementById('det-x-title');
+    if (titleEl) titleEl.textContent = b.name || '';
+    renderDetailPanel(b);
+    _bsOpen('detail', BS.FULL, closeDetail);
+    closeSidebar();
+    closeResults();
   }
-  closeSidebar();
-  closeResults();
-  if (window.innerWidth > 768) closeDesktopSection();
+}
+
+// ── DESKTOP PANEL STACK ──
+var _deskStack = []; // [{type:'list'|'filters'|'contacts'|'business', biz:obj}]
+
+function _deskPanelPush(type, biz) {
+  // Record what was open before as the back target
+  if (_desktopSection) {
+    _deskStack = [{ type: _desktopSection }];
+  } else if (!_deskStack.length) {
+    _deskStack = [{ type: 'list' }];
+  }
+  _deskStack.push({ type: 'business', biz: biz });
+  _deskRender();
+}
+
+function _deskPanelBack() {
+  if (_deskStack.length > 1) {
+    _deskStack.pop();
+    var prev = _deskStack[_deskStack.length - 1];
+    if (prev.type === 'business') {
+      _deskRender();
+    } else {
+      openDesktopSection(prev.type);
+      _deskStack = [];
+    }
+  } else {
+    closeDesktopSection();
+    _deskStack = [];
+  }
+}
+
+function _deskRender() {
+  var state = _deskStack[_deskStack.length - 1];
+  if (!state) return;
+
+  var host = document.getElementById('desktop-panel-host');
+  var topControls = document.getElementById('desktop-top-controls');
+  if (!host) return;
+
+  if (topControls) topControls.classList.add('panel-open');
+  host.classList.add('open');
+
+  if (state.type === 'business') {
+    var b = state.biz;
+    var backLabel = _deskStack.length > 1
+      ? '← Back to ' + (_deskStack[_deskStack.length-2].type === 'list' ? 'List'
+        : _deskStack[_deskStack.length-2].type === 'filters' ? 'Filters'
+        : _deskStack[_deskStack.length-2].type === 'contacts' ? 'Contacts' : 'Results')
+      : '← Back';
+
+    host.innerHTML =
+      '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px 8px;border-bottom:1px solid var(--border);flex-shrink:0;">'+
+        '<button onclick="_deskPanelBack()" style="background:none;border:none;cursor:pointer;font-size:13px;font-weight:600;color:var(--accent);font-family:Inter,sans-serif;padding:4px 0;white-space:nowrap;">'+backLabel+'</button>'+
+      '</div>'+
+      '<div id="det-body" style="flex:1;overflow-y:auto;padding-bottom:2rem;"></div>';
+
+    // Render the full detail content into #det-body inside the host
+    renderDetailPanel(b);
+
+    // Deactivate mode buttons
+    document.querySelectorAll('.dsk-mode-btn').forEach(function(btn){ btn.classList.remove('active'); });
+    var txt = document.getElementById('desktop-topbar-text');
+    if (txt) { txt.textContent = b.name || 'Business'; txt.classList.add('has-filters'); }
+  }
 }
 
 function closeDetail() {
@@ -6268,9 +6337,9 @@ var VISITED_OPTIONS = [
 function _activitySheetStyles() {
   var isDesktop = window.innerWidth > 768;
   if (isDesktop) {
-    // On desktop — get detail panel position and anchor popup inside it
-    var det = document.getElementById('detail');
-    var rect = det ? det.getBoundingClientRect() : {left:0,top:0,width:360,bottom:window.innerHeight};
+    // On desktop — anchor popup inside left panel host
+    var det = document.getElementById('desktop-panel-host') || document.getElementById('detail');
+    var rect = det ? det.getBoundingClientRect() : {left:0,top:0,width:400,bottom:window.innerHeight};
     return {
       overlay: 'position:fixed;top:'+rect.top+'px;left:'+rect.left+'px;width:'+rect.width+'px;height:'+(rect.bottom-rect.top)+'px;background:rgba(13,13,20,.4);z-index:9800;display:flex;align-items:flex-end;justify-content:stretch;font-family:Inter,sans-serif;border-radius:0 0 16px 16px;overflow:hidden;',
       sheet: 'background:#fff;width:100%;border-radius:12px 12px 0 0;overflow:hidden;box-shadow:0 -4px 24px rgba(0,0,0,.15);max-height:90%;overflow-y:auto;',
