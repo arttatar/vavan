@@ -298,18 +298,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
 }
 
 /* Desktop left nav */
-#nav-desktop{
-  display:none;
-  position:fixed; top:calc(var(--header) + env(safe-area-inset-top,0px));
-  left:0; bottom:0; width:64px;
-  background:var(--ink);
-  border-right:1px solid rgba(255,255,255,0.08);
-  flex-direction:column;
-  align-items:center;
-  padding-top:8px;
-  padding-bottom:8px;
-  z-index:900;
-}
+#nav-desktop{ display:none !important; }
 .nav-item-desk{
   width:52px; display:flex; flex-direction:column;
   align-items:center; justify-content:center;
@@ -351,37 +340,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
 
 @media (min-width:769px){
   #nav{ display:none; }
-  #nav-desktop{ display:flex; }
-  #header-add-btn{ display:none; } /* hidden on desktop — use left nav Add button */
-  #map{ left:64px; }
-  /* Panels start at 64px left edge, slide in from there */
-  #sidebar{
-    left:64px !important;
-    top:var(--header) !important;
-    bottom:0 !important;
-    transform:translateX(-100%) !important;
-  }
-  #sidebar.open{ transform:translateX(0) !important; }
-  #results-panel{
-    left:64px !important;
-    top:var(--header) !important;
-    bottom:0 !important;
-    transform:translateX(-100%) !important;
-  }
-  #results-panel.open{ transform:translateX(0) !important; }
-  #contacts-panel{
-    left:64px !important;
-    top:var(--header) !important;
-    bottom:0 !important;
-    transform:translateX(-100%) !important;
-    border-radius:0 !important;
-    height:auto !important;
-    width:var(--sidebar) !important;
-  }
-  #contacts-panel.open{ transform:translateX(0) !important; }
-  #detail{
-    /* detail slides from right — no change needed */
-  }
+  #header-add-btn{ display:none; }
 }
 @media (max-width:768px){
   #nav-desktop{ display:none; }
@@ -2579,14 +2538,18 @@ function _bsOpen(panelId, pct, closeFn) {
 
   var el = document.getElementById(panelId);
   if (!el) return;
-  var targetPx = _bsPx(pct);
+  var targetH = window.innerHeight - _bsPx(pct);
 
   el.classList.add('open');
   el.style.transition = 'none';
+  el.style.height = targetH + 'px';
   el.style.transform = 'translateY(100%)';
-  el.style.height = (window.innerHeight - targetPx) + 'px';
   el.style.top = 'auto';
   el.style.bottom = '0';
+  el.style.left = '0';
+  el.style.right = '0';
+  el.style.width = '100%';
+  el.style.borderRadius = '20px 20px 0 0';
 
   requestAnimationFrame(function() {
     requestAnimationFrame(function() {
@@ -3174,20 +3137,29 @@ function navTo(tab) {
     var vrBtn = document.getElementById('view-route-btn');
     if (vrBtn) vrBtn.style.display = _routeStops && _routeStops.length > 0 ? 'block' : 'none';
   } else if (tab === 'filters') {
-    sidebar.classList.add('open');
-    overlay.classList.add('show');
     var fs = document.getElementById('filter-scroll');
     if (fs) fs.scrollTop = 0;
     _initTagFilterDropdown();
-    _bsOpen("sidebar", BS.WORK, closeSidebar);
+    if (window.innerWidth <= 768) {
+      _bsOpen('sidebar', BS.WORK, closeSidebar);
+    } else {
+      sidebar.classList.add('open');
+      overlay.classList.add('show');
+    }
   } else if (tab === 'list') {
     renderList();
-    results.classList.add('open');
-    _bsOpen("results-panel", BS.WORK, closeResults);
+    if (window.innerWidth <= 768) {
+      _bsOpen('results-panel', BS.WORK, closeResults);
+    } else {
+      results.classList.add('open');
+    }
   } else if (tab === 'contacts') {
     loadAllContacts();
-    contacts.classList.add('open');
-    if (window.innerWidth <= 768) _bsOpen('contacts-panel', BS.WORK, function(){ navTo('map'); });
+    if (window.innerWidth <= 768) {
+      _bsOpen('contacts-panel', BS.WORK, function(){ navTo('map'); });
+    } else {
+      contacts.classList.add('open');
+    }
   }
 }
 
@@ -5093,8 +5065,11 @@ function selectBiz(id) {
   if (titleEl) titleEl.textContent = b.name||'';
   renderDetailPanel(b);
   var det = document.getElementById('detail');
-  det.classList.add('open');
-  if (window.innerWidth <= 768) _bsOpen("detail", BS.FULL, closeDetail);
+  if (window.innerWidth <= 768) {
+    _bsOpen('detail', BS.WORK, closeDetail);
+  } else {
+    det.classList.add('open');
+  }
   closeSidebar();
   closeResults();
 }
@@ -7325,8 +7300,11 @@ function _drawRouteOnMap() {
 // ── ROUTE PANEL ──
 function openRoutePanel() {
   var rp = document.getElementById('route-panel');
-  rp.classList.add('open');
-  if (window.innerWidth <= 768) _bsOpen("route-panel", BS.WORK, closeRoutePanel);
+  if (window.innerWidth <= 768) {
+    _bsOpen('route-panel', BS.WORK, closeRoutePanel);
+  } else {
+    rp.classList.add('open');
+  }
   var vrBtn = document.getElementById('view-route-btn');
   if (vrBtn) vrBtn.style.display = 'none';
   if (_routeStops.length) {
