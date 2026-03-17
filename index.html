@@ -92,7 +92,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
   display:none;
   position:fixed;
   top:0; left:0; bottom:0;
-  width:380px;
+  width:400px;
   z-index:1000;
   flex-direction:column;
   pointer-events:none;
@@ -106,51 +106,83 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
   #header{ display:flex !important; }
 }
 
-/* Desktop topbar — sits at top of the stack with padding */
-#desktop-topbar{
+/* The top card — one white box containing search row + mode row */
+#desktop-top-controls{
   pointer-events:all;
-  display:flex;align-items:center;gap:8px;
-  background:#fff;
-  border-radius:12px;
-  box-shadow:0 2px 12px rgba(0,0,0,.25);
-  padding:0 6px 0 16px;
-  height:48px;
   margin:12px 12px 0;
+  background:#fff;
+  border-radius:16px;
+  box-shadow:0 4px 20px rgba(0,0,0,.18);
+  padding:10px;
   flex-shrink:0;
-  transition:border-radius .15s, margin-bottom .15s;
+  transition:border-radius .15s;
 }
-#desktop-topbar.panel-open{
-  border-radius:12px 12px 0 0;
-  margin-bottom:0;
+#desktop-top-controls.panel-open{
+  border-radius:16px 16px 0 0;
 }
+
+/* Search row — primary */
+#desktop-search-row{
+  display:flex;align-items:center;gap:8px;
+}
+#desktop-search-btn{
+  flex:1;display:flex;align-items:center;gap:10px;
+  background:#f3f4f6;border:none;border-radius:10px;
+  padding:0 12px;height:42px;cursor:pointer;
+  font-family:Inter,sans-serif;text-align:left;
+  transition:background .1s;
+  min-width:0;
+}
+#desktop-search-btn:hover{ background:#e9eaf0; }
 #desktop-topbar-text{
-  flex:1;font-size:15px;color:#9ca3af;font-weight:400;
+  flex:1;font-size:14px;color:#9ca3af;font-weight:400;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  cursor:pointer;
 }
-#desktop-topbar-text.has-filters{color:#0d0d14;font-weight:500;}
-
-/* Desktop chip row */
-#desktop-chips{
-  pointer-events:all;
-  display:flex;gap:6px;overflow-x:auto;
-  padding:6px 12px 0;
-  scrollbar-width:none;
-  flex-shrink:0;
+#desktop-topbar-text.has-filters{ color:#0d0d14;font-weight:500; }
+#desktop-add-btn{
+  width:38px;height:38px;border-radius:10px;
+  background:#f0eeff;border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;transition:background .1s;
 }
-#desktop-chips::-webkit-scrollbar{display:none;}
+#desktop-add-btn:hover{ background:#e2deff; }
+#account-btn{
+  width:38px;height:38px;border-radius:10px;
+  background:var(--accent);border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;font-size:12px;font-weight:700;
+  color:#fff;font-family:Inter,sans-serif;
+  transition:opacity .1s;
+}
+#account-btn:hover{ opacity:.88; }
 
-/* Desktop panel host — solid white, full height from below topbar */
+/* Mode row — secondary, below search, inside same card */
+#desktop-mode-row{
+  display:flex;gap:6px;
+  margin-top:8px;padding-top:8px;
+  border-top:1px solid #f0f0f4;
+}
+.dsk-mode-btn{
+  flex:1;padding:6px 4px;border-radius:8px;
+  background:transparent;border:none;cursor:pointer;
+  font-size:12px;font-weight:500;color:#6b7280;
+  font-family:Inter,sans-serif;
+  white-space:nowrap;transition:background .1s,color .1s;
+}
+.dsk-mode-btn:hover{ background:#f3f4f6;color:#0d0d14; }
+.dsk-mode-btn.active{
+  background:var(--accent-light);color:var(--accent);font-weight:700;
+}
+
+/* Panel host — solid white full-height column below the card */
 #desktop-panel-host{
   pointer-events:all;
   display:none;
   background:#fff;
-  flex:1;
-  overflow:hidden;
+  flex:1;overflow:hidden;
   flex-direction:column;
   margin:0 12px;
-  border-radius:0 0 0 0;
-  box-shadow:2px 0 16px rgba(0,0,0,.12);
+  box-shadow:4px 0 24px rgba(0,0,0,.14);
 }
 #desktop-panel-host.open{
   display:flex;
@@ -974,44 +1006,29 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
 
   <!-- ── DESKTOP CONTROL STACK (hidden on mobile) ── -->
   <div id="desktop-control-stack">
-    <!-- Topbar: search + add + avatar -->
-    <div id="desktop-topbar">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;cursor:pointer;" onclick="openDesktopSection('filters')"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <span id="desktop-topbar-text" onclick="openDesktopSection('filters')">Search &amp; Filter...</span>
-      <!-- + Add -->
-      <button type="button" onclick="openAddBusiness()" style="width:36px;height:36px;border-radius:50%;background:#f3f4f6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;" title="Add Business">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4a36c8" stroke-width="2.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </button>
-      <div style="width:1px;height:24px;background:#e5e7eb;margin:0 2px;flex-shrink:0;"></div>
-      <!-- Avatar -->
-      <button id="account-btn" type="button" onclick="toggleAccountMenu()" style="width:36px;height:36px;border-radius:50%;background:var(--accent);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;color:#fff;font-family:Inter,sans-serif;">
-        <span id="account-initials">?</span>
-      </button>
+    <div id="desktop-top-controls">
+      <!-- Search row: filter entry + add + avatar -->
+      <div id="desktop-search-row">
+        <button id="desktop-search-btn" type="button" onclick="openDesktopSection('filters')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <span id="desktop-topbar-text">Search &amp; Filter...</span>
+        </button>
+        <button type="button" onclick="openAddBusiness()" id="desktop-add-btn" title="Add Business">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4a36c8" stroke-width="2.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <button id="account-btn" type="button" onclick="toggleAccountMenu()">
+          <span id="account-initials">?</span>
+        </button>
+      </div>
+      <!-- Mode row: secondary actions — no Filters (search bar handles that) -->
+      <div id="desktop-mode-row">
+        <button class="dsk-mode-btn" id="dskm-accounts" onclick="filterMyAccounts()">My Accounts</button>
+        <button class="dsk-mode-btn" id="dskm-list" onclick="openDesktopSection('list')">List</button>
+        <button class="dsk-mode-btn" id="dskm-contacts" onclick="openDesktopSection('contacts')">Contacts</button>
+        <button class="dsk-mode-btn" id="dskm-route" onclick="toggleRouteNav()">Route</button>
+      </div>
     </div>
-    <!-- Quick chips -->
-    <div id="desktop-chips">
-      <button class="fchip" onclick="openDesktopSection('filters')">
-        <svg viewBox="0 0 24 24"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
-        Filters
-      </button>
-      <button class="fchip" onclick="filterMyAccounts()">
-        <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        My Accounts
-      </button>
-      <button class="fchip" onclick="openDesktopSection('list')">
-        <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/></svg>
-        List
-      </button>
-      <button class="fchip" onclick="openDesktopSection('contacts')">
-        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        Contacts
-      </button>
-      <button class="fchip" onclick="toggleRouteNav()">
-        <svg viewBox="0 0 24 24"><circle cx="3" cy="6" r="2"/><circle cx="21" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M5 6h6a4 4 0 0 1 4 4v4"/><path d="M19 6h-6"/></svg>
-        Route
-      </button>
-    </div>
-    <!-- Panel host: content swaps here -->
+    <!-- Panel host: content swaps here, attached below the card -->
     <div id="desktop-panel-host"></div>
   </div>
   <!-- GOOGLE MAPS STYLE HEADER -->
@@ -2880,19 +2897,24 @@ function openDesktopSection(section) {
   }
   _desktopSection = section;
 
-  var topbar = document.getElementById('desktop-topbar');
+  var topControls = document.getElementById('desktop-top-controls');
   var host = document.getElementById('desktop-panel-host');
-  if (!topbar || !host) return;
+  if (!host) return;
 
-  topbar.classList.add('panel-open');
+  if (topControls) topControls.classList.add('panel-open');
   host.classList.add('open');
 
-  // Update topbar text
+  // Active state on mode buttons
+  document.querySelectorAll('.dsk-mode-btn').forEach(function(b){ b.classList.remove('active'); });
+  var activeBtn = document.getElementById('dskm-' + (section === 'filters' ? 'filters' : section === 'list' ? 'list' : section === 'contacts' ? 'contacts' : section));
+  if (activeBtn) activeBtn.classList.add('active');
+
+  // Update search btn text
   var txt = document.getElementById('desktop-topbar-text');
-  var labels = {filters:'Filters', list:'List', contacts:'Contacts', route:'Route'};
   if (txt) {
+    var labels = {filters:'Filters', list:'List', contacts:'Contacts'};
     txt.textContent = labels[section] || 'Search & Filter...';
-    txt.classList.toggle('has-filters', section !== 'filters' || filtersApplied);
+    txt.classList.toggle('has-filters', filtersApplied);
   }
 
   // Render content into host
@@ -2907,12 +2929,13 @@ function openDesktopSection(section) {
 
 function closeDesktopSection() {
   _desktopSection = null;
-  var topbar = document.getElementById('desktop-topbar');
+  var topControls = document.getElementById('desktop-top-controls');
   var host = document.getElementById('desktop-panel-host');
-  if (topbar) topbar.classList.remove('panel-open');
+  if (topControls) topControls.classList.remove('panel-open');
   if (host) { host.classList.remove('open'); host.innerHTML = ''; }
+  document.querySelectorAll('.dsk-mode-btn').forEach(function(b){ b.classList.remove('active'); });
   var txt = document.getElementById('desktop-topbar-text');
-  if (txt) { txt.textContent = 'Search & Filter...'; txt.classList.remove('has-filters'); }
+  if (txt) { txt.textContent = 'Search & Filter...'; txt.classList.toggle('has-filters', filtersApplied); }
 }
 
 function _renderDesktopFilters(host) {
@@ -3635,22 +3658,28 @@ document.addEventListener('click', function(e) {
   }
 });
 
-document.querySelectorAll('.ind-opt').forEach(function(opt) {
-  opt.addEventListener('click', function() {
-    var val = this.dataset.val;
-    if (val === 'all') {
-      // Select all industries
-      selectedIndustries = Object.keys(IND_LABELS);
-      document.querySelectorAll('.ind-opt').forEach(function(o){ o.classList.add('on'); });
+// Industry opt clicks — delegated on document so it works in BOTH sidebar and desktop clone
+document.addEventListener('click', function(e) {
+  var opt = e.target.closest('.ind-opt');
+  if (!opt) return;
+  var val = opt.dataset.val;
+  if (!val) return;
+  if (val === 'all') {
+    selectedIndustries = Object.keys(IND_LABELS);
+    document.querySelectorAll('.ind-opt').forEach(function(o){ o.classList.add('on'); });
+  } else {
+    document.querySelectorAll('.ind-opt[data-val="all"]').forEach(function(o){ o.classList.remove('on'); });
+    var idx = selectedIndustries.indexOf(val);
+    if (idx > -1) {
+      selectedIndustries.splice(idx, 1);
+      document.querySelectorAll('.ind-opt[data-val="'+val+'"]').forEach(function(o){ o.classList.remove('on'); });
     } else {
-      document.querySelector('.ind-opt[data-val="all"]').classList.remove('on');
-      var idx = selectedIndustries.indexOf(val);
-      if (idx > -1) { selectedIndustries.splice(idx, 1); this.classList.remove('on'); }
-      else { selectedIndustries.push(val); this.classList.add('on'); }
+      selectedIndustries.push(val);
+      document.querySelectorAll('.ind-opt[data-val="'+val+'"]').forEach(function(o){ o.classList.add('on'); });
     }
-    filters.industry = selectedIndustries.length ? selectedIndustries : 'all';
-    renderIndTags();
-  });
+  }
+  filters.industry = selectedIndustries.length ? selectedIndustries : 'all';
+  renderIndTags();
 });
 
 // Industry label map — clean names without dot spans
@@ -3713,8 +3742,8 @@ function renderIndTags() {
 function removeInd(e, val) {
   e.stopPropagation();
   selectedIndustries = selectedIndustries.filter(function(v){ return v !== val; });
-  var opt = document.querySelector('.ind-opt[data-val="'+val+'"]');
-  if (opt) opt.classList.remove('on');
+  // Update ALL copies of the opt (sidebar + desktop panel clone)
+  document.querySelectorAll('.ind-opt[data-val="'+val+'"]').forEach(function(o){ o.classList.remove('on'); });
   filters.industry = selectedIndustries.length ? selectedIndustries : 'all';
   renderIndTags();
   // Remove any sub-industries that no longer have a parent selected
@@ -3990,16 +4019,13 @@ document.addEventListener('click', function(e) {
   }
 });
 
-// When industries change, rebuild sub dropdown
-var _origRenderIndTags = renderIndTags;
-// Patch industry toggle to also update subs
-document.querySelectorAll('.ind-opt').forEach(function(opt) {
-  opt.addEventListener('click', function() {
-    setTimeout(function() {
-      renderSubDropdown();
-      renderSubTags();
-    }, 0);
-  });
+// When industries change, rebuild sub dropdown — delegated so desktop clone works too
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.ind-opt')) return;
+  setTimeout(function() {
+    renderSubDropdown();
+    renderSubTags();
+  }, 0);
 });
 
 // ── APPLY FILTERS ──
