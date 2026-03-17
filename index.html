@@ -2956,11 +2956,10 @@ function openDesktopSection(section) {
   var activeBtn = document.getElementById('dskm-' + (section === 'list' ? 'list' : section === 'contacts' ? 'contacts' : section));
   if (activeBtn) activeBtn.classList.add('active');
 
-  // Update search btn text
+  // Update search btn text — always stays as Search & Filter
   var txt = document.getElementById('desktop-topbar-text');
   if (txt) {
-    var labels = {filters:'Filters', list:'List', contacts:'Contacts'};
-    txt.textContent = labels[section] || 'Search & Filter...';
+    txt.textContent = 'Search & Filter...';
     txt.classList.toggle('has-filters', filtersApplied);
   }
 
