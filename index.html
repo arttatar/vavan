@@ -3437,8 +3437,7 @@ function _renderDesktopList(host) {
   var wrap = host.querySelector('#dsk-list-body');
   if (!wrap) return;
   if (!filtersApplied && !_routeMode) {
-    wrap.innerHTML = '<div style="padding:1.5rem;font-size:13px;color:var(--muted);text-align:center;">Apply filters to see businesses</div>';
-    return;
+    // Show all visible businesses — don't block on filters
   }
   var raw = getVisibleData().filter(function(b){ return b.lat&&b.lon; });
   if (!raw.length) {
@@ -4746,11 +4745,16 @@ function renderList() {
   if (vrBtn) vrBtn.style.display = (_routeStops.length > 0 && !_routeMode) ? 'block' : 'none';
 
   if (!filtersApplied && !_routeMode) {
-    document.getElementById('rcount').textContent = 'Apply filters to see businesses';
-    document.getElementById('biz-list').innerHTML =
-      '<div style="padding:1.5rem;font-size:12px;color:var(--muted);text-align:center;">'+
-      'Use Filters to find businesses,<br>then zoom the map to your area.</div>';
-    return;
+    // Show all businesses visible in current map viewport
+    var count = raw.length;
+    var total = allData.length;
+    document.getElementById('rcount').textContent = count.toLocaleString() + ' business' + (count !== 1 ? 'es' : '') + ' in view' + (total > count ? ' ('+total.toLocaleString()+' total)' : '');
+    if (!raw.length) {
+      document.getElementById('biz-list').innerHTML =
+        '<div style="padding:1.5rem;font-size:12px;color:var(--muted);text-align:center;">No businesses in current view.<br>Zoom or pan the map.</div>';
+      return;
+    }
+    // Fall through to render the list below
   }
 
   if (!filtersApplied && _routeMode) {
