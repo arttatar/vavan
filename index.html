@@ -8422,11 +8422,13 @@ function setMapLayer(layer) {
   map.setStyle(MAP_STYLES[layer]);
   map.once('style.load', function() {
     _mapHandlersAttached = false;
-    _rebuildAllMapLayers();
+    // Small delay ensures satellite style is fully committed before adding layers
+    setTimeout(_rebuildAllMapLayers, 50);
   });
 }
 
 function _rebuildAllMapLayers() {
+  try {
   var source = filtersApplied ? filteredData : allData;
   var valid = source.filter(function(b){ return b.lat && b.lon && !isNaN(b.lat) && !isNaN(b.lon); });
 
@@ -8491,6 +8493,15 @@ function _rebuildAllMapLayers() {
   if (_pc) _pc.textContent = allData.length.toLocaleString();
   updateFabCount();
   if (_routeStops.length && _routeGeomCache) setTimeout(_drawRouteOnMap, 100);
+  console.log('[Vavan] Map layers rebuilt for style:', _currentMapLayer, '— pins:', valid.length);
+  } catch(err) {
+    console.error('[Vavan] _rebuildAllMapLayers error:', err);
+    // Retry once after a longer delay if something went wrong
+    setTimeout(function(){
+      _mapHandlersAttached = false;
+      _rebuildAllMapLayers();
+    }, 300);
+  }
 }
 
 // ── SELECTION MODE ──
@@ -8991,7 +9002,7 @@ function _renderRPStops() {
       '<div class="rp-drag-handle" title="Drag to reorder"><svg width="14" height="20" viewBox="0 0 14 20" fill="none" style="display:block;"><circle cx="4" cy="4" r="2" fill="#aaa"/><circle cx="10" cy="4" r="2" fill="#aaa"/><circle cx="4" cy="10" r="2" fill="#aaa"/><circle cx="10" cy="10" r="2" fill="#aaa"/><circle cx="4" cy="16" r="2" fill="#aaa"/><circle cx="10" cy="16" r="2" fill="#aaa"/></svg></div>'+
       '<div class="rp-num'+(isDone?' done-num':'')+'">'+( isDone?'✓':(i+1) )+'</div>'+
       '<div class="rp-stop-info">'+
-        '<div class="rp-stop-name" onclick="_rpFlyTo('+i+')" style="cursor:pointer;" title="Show on map">'+stop.biz.name+'</div>'+
+        '<div class="rp-stop-name" onclick="_rpFlyTo('+i+')" style="cursor:pointer;" title="Open business profile">'+stop.biz.name+'</div>'+
         '<div class="rp-stop-addr" onclick="_rpFlyTo('+i+')" style="cursor:pointer;">'+(stop.biz.street||stop.biz.full_address||'')+'</div>'+
         leg+
         '<div class="rp-stop-btns">'+
@@ -9220,11 +9231,25 @@ function _rpStopAutoScroll() {
 // ── STOP ACTIONS ──
 function _rpFlyTo(idx) {
   var stop = _routeStops[idx];
-  if (!stop || !stop.biz.lat) return;
-  // Close panel on mobile so the map is visible
-  var isMobile = window.innerWidth <= 768;
-  if (isMobile) closeRoutePanel();
-  map.flyTo({center:[stop.biz.lon, stop.biz.lat], zoom:17, speed:1.4});
+  if (!stop) return;
+  var b = stop.biz;
+
+  // Fly map to business location first
+  if (b.lat && b.lon) {
+    map.flyTo({center:[b.lon, b.lat], zoom:17, speed:1.4});
+  }
+
+  // Open business profile
+  if (window.innerWidth <= 768) {
+    // Mobile: close route panel, open detail sheet
+    closeRoutePanel();
+    setTimeout(function(){
+      selectBiz(b._id);
+    }, 300);
+  } else {
+    // Desktop: open business in left panel
+    selectBiz(b._id);
+  }
 }
 
 function _rpDone(idx) {
