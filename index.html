@@ -1075,6 +1075,20 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
   </div>
 </div>
 
+<!-- SET NEW PASSWORD MODAL (shown after clicking reset link in email) -->
+<div id="setnew-modal" style="display:none;position:fixed;inset:0;background:rgba(13,13,20,.92);z-index:99999;align-items:center;justify-content:center;font-family:Inter,sans-serif;padding:16px;">
+  <div style="background:#fff;border-radius:16px;padding:32px 24px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+    <div style="font-size:18px;font-weight:800;color:var(--ink);font-family:Syne,sans-serif;margin-bottom:4px;">Set New Password</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:24px;">Choose a strong password for your account.</div>
+    <label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px;">New Password</label>
+    <input id="setnew-pass1" type="password" placeholder="At least 8 characters" style="width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:Inter,sans-serif;outline:none;margin-bottom:12px;">
+    <label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px;">Confirm Password</label>
+    <input id="setnew-pass2" type="password" placeholder="Repeat password" style="width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:Inter,sans-serif;outline:none;margin-bottom:12px;">
+    <div id="setnew-status" style="font-size:12px;min-height:18px;margin-bottom:16px;color:var(--muted);"></div>
+    <button onclick="doSetNewPassword()" style="width:100%;padding:13px;background:var(--accent);border:none;border-radius:9px;color:#fff;font-size:15px;font-weight:700;font-family:Inter,sans-serif;cursor:pointer;">Set Password & Sign In</button>
+  </div>
+</div>
+
 
 <!-- APP -->
 <div id="app">
@@ -1546,6 +1560,38 @@ async function doLogin() {
 
 async function doSignOut() { await sb.auth.signOut(); location.reload(); }
 
+function showSetNewPassword() {
+  var modal = document.getElementById('setnew-modal');
+  if (modal) modal.style.display = 'flex';
+}
+
+async function doSetNewPassword() {
+  var p1 = (document.getElementById('setnew-pass1').value || '');
+  var p2 = (document.getElementById('setnew-pass2').value || '');
+  var statusEl = document.getElementById('setnew-status');
+  var btn = document.querySelector('#setnew-modal button');
+
+  if (p1.length < 8) { statusEl.style.color='#dc2626'; statusEl.textContent='Password must be at least 8 characters.'; return; }
+  if (p1 !== p2) { statusEl.style.color='#dc2626'; statusEl.textContent='Passwords do not match.'; return; }
+
+  statusEl.style.color = 'var(--muted)'; statusEl.textContent = 'Saving...';
+  btn.disabled = true;
+
+  try {
+    var r = await sb.auth.updateUser({ password: p1 });
+    if (r.error) throw r.error;
+    statusEl.style.color = '#059669';
+    statusEl.textContent = '✓ Password set! Signing you in...';
+    setTimeout(function(){
+      document.getElementById('setnew-modal').style.display = 'none';
+      startApp();
+    }, 1200);
+  } catch(e) {
+    statusEl.style.color = '#dc2626';
+    statusEl.textContent = e.message || 'Failed to set password.';
+    btn.disabled = false;
+  }
+}
 function showForgotPassword() {
   var modal = document.getElementById('forgot-modal');
   if (modal) {
@@ -2133,6 +2179,12 @@ function _closeMenuOutside(e) {
 
 // Handle magic link / password reset tokens in URL hash
 sb.auth.onAuthStateChange(function(event, session) {
+  if (event === 'PASSWORD_RECOVERY') {
+    // User clicked the reset link — show set new password UI
+    document.getElementById('login-screen').classList.add('hidden');
+    showSetNewPassword();
+    return;
+  }
   if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') && session) {
     var loginScreen = document.getElementById('login-screen');
     if (loginScreen && !loginScreen.classList.contains('hidden')) {
