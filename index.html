@@ -1328,9 +1328,6 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
     <button class="mlt-btn active" id="mlt-dark" onclick="setMapLayer('dark')" title="Dark">
       🌑<span class="mlt-tip">Dark</span>
     </button>
-    <button class="mlt-btn" id="mlt-light" onclick="setMapLayer('light')" title="Light">
-      ☀️<span class="mlt-tip">Light</span>
-    </button>
     <button class="mlt-btn" id="mlt-sat" onclick="setMapLayer('satellite')" title="Satellite">
       🛰️<span class="mlt-tip">Satellite</span>
     </button>
@@ -3976,7 +3973,7 @@ var STATUS_COLORS = {
 };
 
 function renderPins() {
-  if (!map.isStyleLoaded()) { map.once('load', renderPins); return; }
+  if (!map.isStyleLoaded()) { map.once('style.load', renderPins); return; }
 
   // Show all data by default — user can filter down from there
   var source = filtersApplied ? filteredData : allData;
@@ -8410,7 +8407,6 @@ function _fmtDist(m) {
 var _currentMapLayer = 'dark';
 var MAP_STYLES = {
   dark:      'mapbox://styles/mapbox/dark-v11',
-  light:     'mapbox://styles/mapbox/light-v11',
   satellite: 'mapbox://styles/mapbox/satellite-streets-v12'
 };
 
@@ -8418,31 +8414,22 @@ function setMapLayer(layer) {
   if (_currentMapLayer === layer) return;
   _currentMapLayer = layer;
 
-  // Update active button
-  ['dark','light','sat'].forEach(function(k){
+  // Update active buttons
+  ['dark','sat'].forEach(function(k){
     var el = document.getElementById('mlt-'+k);
     if (el) el.classList.toggle('active', (k === 'sat' ? 'satellite' : k) === layer);
   });
 
-  // Switch map style and re-add all sources/layers after load
+  // After style switch ALL sources/layers/handlers are wiped — must rebuild everything
   map.setStyle(MAP_STYLES[layer]);
   map.once('style.load', function() {
-    // Re-add selected/hover sources
-    if (!map.getSource('biz-selected')) {
-      map.addSource('biz-selected', {type:'geojson', data:{type:'FeatureCollection',features:[]}});
-      map.addLayer({id:'biz-selected-ring',type:'circle',source:'biz-selected',
-        paint:{'circle-radius':14,'circle-color':'transparent','circle-stroke-width':3,'circle-stroke-color':'#fff'}});
-    }
-    if (!map.getSource('biz-hover')) {
-      map.addSource('biz-hover', {type:'geojson', data:{type:'FeatureCollection',features:[]}});
-      map.addLayer({id:'biz-hover-ring',type:'circle',source:'biz-hover',
-        paint:{'circle-radius':12,'circle-color':'transparent','circle-stroke-width':2,'circle-stroke-color':'rgba(255,255,255,.6)'}});
-    }
-    // Re-render all pins
+    // Reset handler flag so renderPins re-attaches click handlers
+    _mapHandlersAttached = false;
+    // Full re-render — adds all sources, layers, handlers
     renderPins();
-    // Re-draw route if active
+    // Re-draw route line if active
     if (_routeStops.length && _routeGeomCache) {
-      setTimeout(_drawRouteOnMap, 100);
+      setTimeout(_drawRouteOnMap, 200);
     }
   });
 }
