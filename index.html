@@ -8604,17 +8604,26 @@ function openRoutePanel() {
           '<button onclick="closeDesktopSection();_routeMode=false;_routeSelected={};updateRouteSelCount();" style="background:#f3f4f6;border:none;border-radius:50%;width:28px;height:28px;font-size:16px;cursor:pointer;color:#666;display:flex;align-items:center;justify-content:center;">✕</button>'+
         '</div>'+
         '<div id="dsk-route-body" style="flex:1;overflow-y:auto;"></div>';
-      // Clone route panel content into desktop host
-      if (rp) {
-        var rpBody = rp.querySelector('.rp-body') || rp;
-        var dskBody = host.querySelector('#dsk-route-body');
-        if (dskBody) dskBody.innerHTML = rpBody.innerHTML || '';
-      }
-      _renderRPStops(); // render into actual route-panel, then mirror
-      if (rp) {
-        var rpBody2 = rp.querySelector('.rp-body') || rp;
-        var dskBody2 = host.querySelector('#dsk-route-body');
-        if (dskBody2 && rpBody2) dskBody2.innerHTML = rpBody2.innerHTML;
+      // Render stops and action buttons into desktop host (no duplicate header/close)
+      _renderRPStops(); // populate the hidden route-panel
+      var dskBody = host.querySelector('#dsk-route-body');
+      if (dskBody) {
+        // Copy only the stops list and action buttons, not the header with its own X
+        var rpStops = document.getElementById('rp-stops-list');
+        var rpActions = rp ? rp.querySelector('div[style*="display:flex;gap:8px"]') : null;
+        var rpSub = document.getElementById('rp-subtitle');
+        var subText = rpSub ? rpSub.textContent : '';
+        dskBody.innerHTML =
+          (subText ? '<div style="padding:6px 14px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);">'+subText+'</div>' : '') +
+          '<div style="padding:8px 12px;display:flex;gap:6px;border-bottom:1px solid var(--border);flex-shrink:0;">'+
+            '<button class="rp-action-btn blue" onclick="reoptimizeRoute()" style="flex:1;">Re-Optimize</button>'+
+            '<button class="rp-action-btn blue" onclick="changeRouteStart()" style="flex:1;">Start Point</button>'+
+            '<button class="rp-action-btn red" onclick="clearRoute()" style="flex:1;">Clear</button>'+
+          '</div>'+
+          '<div class="rp-stops" id="dsk-rp-stops" style="flex:1;overflow-y:auto;"></div>';
+        // Copy stops into desktop version
+        var dskStops = dskBody.querySelector('#dsk-rp-stops');
+        if (dskStops && rpStops) dskStops.innerHTML = rpStops.innerHTML;
       }
     }
   }
@@ -8675,7 +8684,11 @@ function _renderRPStops() {
       '</div>'+
     '</div>';
   }).join('');
-  // Attach touch+mouse drag handlers after render
+  // Mirror to desktop panel if open
+  var dskStops = document.getElementById('dsk-rp-stops');
+  var rpStops = document.getElementById('rp-stops-list');
+  if (dskStops && rpStops) dskStops.innerHTML = rpStops.innerHTML;
+  // Attach touch+mouse drag handlers after render (both lists)
   setTimeout(_rpInitDrag, 0);
 }
 
