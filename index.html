@@ -1519,10 +1519,8 @@ PERM_DEFS.forEach(function(p){ PERM_DEFAULTS[p.key] = p.def; });
 function _can(permKey) {
   if (!currentProfile) return false;
   var role = currentProfile.role;
-  // account_owner and client_admin always have all permissions
-  if (role === 'account_owner' || role === 'client_admin' || role === 'vavan_super') return true;
+  if (['account_owner', 'client_admin', 'vavan_super'].includes(role)) return true;
   var perms = currentProfile.permissions || {};
-  // If permission not explicitly set, use default
   return perms[permKey] !== undefined ? perms[permKey] : (PERM_DEFAULTS[permKey] || false);
 }
 
@@ -2186,9 +2184,9 @@ function _updateAccountUI(fullName, isAdmin) {
   if (menuName) menuName.textContent = fullName || '—';
   var settingsRow = document.getElementById('account-menu-settings');
   if (settingsRow) {
-    // Show Admin Settings only for client_admin, not vavan_super
+    // Show Admin Settings for account_owner and client_admin, not vavan_super
     var isClientAdmin = currentProfile && 
-      (currentProfile.role === 'client_admin' || currentProfile.role === 'admin');
+      ['account_owner', 'client_admin', 'admin'].includes(currentProfile.role);
     settingsRow.style.display = isClientAdmin ? 'flex' : 'none';
   }
 }
@@ -2347,7 +2345,7 @@ async function loadProfile() {
       }
 
       var isFirstLogin = !!r.data._isFirstLogin;
-      var isAdmin = ['client_admin','vavan_super','admin'].includes(currentProfile.role);
+      var isAdmin = ['account_owner', 'client_admin', 'vavan_super', 'admin'].includes(currentProfile.role);
 
       // Load client's purchased markets (for admin market assignment UI)
       if (currentProfile.client_id) {
@@ -9191,3 +9189,4 @@ function onMapClick(e) {
 </div>
 </body>
 </html>
+  
