@@ -8323,32 +8323,52 @@ function selectRouteStart(type) {
   document.getElementById('rso-branch').classList.toggle('selected', type==='branch');
 }
 
+function selectRouteFinish(type) {
+  _routeFinishType = type;
+  ['none','start','branch'].forEach(function(t){
+    var el = document.getElementById('rfo-'+t);
+    if (el) el.classList.toggle('selected', t === type);
+  });
+}
+
 function closeRouteStartModal() {
   document.getElementById('route-start-modal').classList.remove('open');
 }
 
 async function confirmRouteStart() {
   closeRouteStartModal();
-  if (_routeStartType === 'branch') {
-    _routeStartPoint = BRANCH_ADDRESS;
-    _buildRoute();
-  } else {
-    // GPS (default)
-    if (!navigator.geolocation) {
-      // Fall back to branch if no GPS
+
+  function resolveStart(callback) {
+    if (_routeStartType === 'branch') {
       _routeStartPoint = BRANCH_ADDRESS;
-      _buildRoute();
-      return;
+      callback();
+    } else {
+      if (!navigator.geolocation) { _routeStartPoint = BRANCH_ADDRESS; callback(); return; }
+      navigator.geolocation.getCurrentPosition(function(p){
+        _routeStartPoint = {lat:p.coords.latitude, lon:p.coords.longitude, label:'My Location'};
+        callback();
+      }, function(){
+        _routeStartPoint = BRANCH_ADDRESS; callback();
+      }, {enableHighAccuracy:true, timeout:8000});
     }
-    navigator.geolocation.getCurrentPosition(function(p){
-      _routeStartPoint = {lat:p.coords.latitude, lon:p.coords.longitude, label:'My Location'};
-      _buildRoute();
-    }, function(){
-      // GPS denied — silently fall back to branch
-      _routeStartPoint = BRANCH_ADDRESS;
-      _buildRoute();
-    }, {enableHighAccuracy:true, timeout:8000});
   }
+
+  function resolveFinish() {
+    if (_routeFinishType === 'branch') {
+      _routeFinishPoint = BRANCH_ADDRESS;
+    } else if (_routeFinishType === 'start') {
+      _routeFinishPoint = _routeStartPoint; // set after start resolved
+    } else {
+      _routeFinishPoint = null;
+    }
+  }
+
+  resolveStart(function(){
+    resolveFinish();
+    // If return to start, finish = start point
+    if (_routeFinishType === 'start') _routeFinishPoint = _routeStartPoint;
+    _buildRoute();
+  });
 }
 
 // ── BUILD + OPTIMIZE ──
@@ -8383,7 +8403,7 @@ async function _buildRoute() {
 
   try {
     if (stops.length <= 11) {
-      var r = await _optimizeAPI(_routeStartPoint, stops);
+      var r = await _optimizeAPI(_routeStartPoint, stops, _routeFinishPoint);
       _routeStops = r.ordered;
       _routeGeomCache = r.geom;
       _routeTotalDur  = r.dur;
@@ -8392,6 +8412,7 @@ async function _buildRoute() {
       _routeStops = _distNNN(_routeStartPoint, stops);
       var wpts = [{lat:_routeStartPoint.lat,lon:_routeStartPoint.lon}]
         .concat(_routeStops.map(function(s){ return {lat:s.biz.lat,lon:s.biz.lon}; }));
+      if (_routeFinishPoint) wpts.push({lat:_routeFinishPoint.lat,lon:_routeFinishPoint.lon});
       var r2 = await _directionsAPI(wpts);
       _routeGeomCache = r2.geom;
       _routeTotalDur  = r2.dur;
@@ -8407,20 +8428,30 @@ async function _buildRoute() {
   _saveRoute();
   _drawRouteOnMap();
   _renderRPStops();
+  var finLabel = _routeFinishType === 'start' ? ' → back to start' :
+                _routeFinishType === 'branch' ? ' → Branch' : '';
   _setRPSubtitle(
     _routeStops.length+' stops'+
     (_routeTotalDur  ? ' · '+_fmtDur(_routeTotalDur)  : '')+
     (_routeTotalDist ? ' · '+_fmtDist(_routeTotalDist) : '')+
-    (_routeStartPoint ? ' · from '+_routeStartPoint.label : '')
+    (_routeStartPoint ? ' · from '+_routeStartPoint.label : '')+
+    finLabel
   );
 }
 
 // Mapbox Optimization API — ≤11 stops
-async function _optimizeAPI(startPt, stops) {
-  var coords = [startPt.lon+','+startPt.lat]
-    .concat(stops.map(function(s){ return s.biz.lon+','+s.biz.lat; })).join(';');
-  var res = await fetch('https://api.mapbox.com/optimized-trips/v1/mapbox/driving-traffic/'+coords
-    +'?roundtrip=false&source=first&destination=last&overview=full&geometries=geojson&steps=false&access_token='+MBOX);
+async function _optimizeAPI(startPt, stops, finishPt) {
+  var allPts = [startPt.lon+','+startPt.lat]
+    .concat(stops.map(function(s){ return s.biz.lon+','+s.biz.lat; }));
+  // Add finish point as extra coordinate if specified (and not same as start)
+  var hasFinish = finishPt && !(finishPt.lat===startPt.lat && finishPt.lon===startPt.lon);
+  if (hasFinish) allPts.push(finishPt.lon+','+finishPt.lat);
+  var coords = allPts.join(';');
+  // roundtrip=true if return to start, destination=any if finish point specified
+  var isRoundtrip = _routeFinishType === 'start';
+  var destParam = hasFinish ? 'any' : 'last';
+  var params = 'roundtrip='+(isRoundtrip?'true':'false')+'&source=first&destination='+destParam+'&overview=full&geometries=geojson&steps=false&access_token='+MBOX;
+  var res = await fetch('https://api.mapbox.com/optimized-trips/v1/mapbox/driving-traffic/'+coords+'?'+params);
   var data = await res.json();
   if (!data.trips||!data.trips[0]) throw new Error('No trip');
   var trip = data.trips[0];
@@ -9100,12 +9131,13 @@ function onMapClick(e) {
 <!-- ROUTE START MODAL -->
 <div id="route-start-modal">
   <div class="route-start-box">
-    <div class="route-start-title">Starting Point</div>
+    <div class="route-start-title">Route Settings</div>
 
-    <!-- Option 1: GPS -->
+    <!-- START POINT -->
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Starting Point</div>
     <div class="route-start-opt selected" id="rso-gps" onclick="selectRouteStart('gps')">
       <div class="route-start-opt-icon">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:#4a36c8;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:#4a36c8;">
           <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
           <circle cx="12" cy="12" r="8" stroke-dasharray="2 2" opacity=".35"/>
         </svg>
@@ -9115,11 +9147,9 @@ function onMapClick(e) {
         <div class="route-start-opt-sub">Uses your device GPS</div>
       </div>
     </div>
-
-    <!-- Option 2: Branch office -->
     <div class="route-start-opt" id="rso-branch" onclick="selectRouteStart('branch')">
       <div class="route-start-opt-icon">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:#4a36c8;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:#4a36c8;">
           <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
           <polyline points="9 22 9 12 15 12 15 22"/>
         </svg>
@@ -9127,6 +9157,43 @@ function onMapClick(e) {
       <div>
         <div class="route-start-opt-text">Branch Office</div>
         <div class="route-start-opt-sub">3840 N Bruce St, North Las Vegas</div>
+      </div>
+    </div>
+
+    <!-- FINISH POINT -->
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 8px;">Finish Point</div>
+    <div class="route-start-opt selected" id="rfo-none" onclick="selectRouteFinish('none')">
+      <div class="route-start-opt-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:#4a36c8;">
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+      </div>
+      <div>
+        <div class="route-start-opt-text">No Fixed Finish</div>
+        <div class="route-start-opt-sub">End at the last stop</div>
+      </div>
+    </div>
+    <div class="route-start-opt" id="rfo-start" onclick="selectRouteFinish('start')">
+      <div class="route-start-opt-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:#4a36c8;">
+          <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+        </svg>
+      </div>
+      <div>
+        <div class="route-start-opt-text">Return to Start</div>
+        <div class="route-start-opt-sub">Loop back to starting point</div>
+      </div>
+    </div>
+    <div class="route-start-opt" id="rfo-branch" onclick="selectRouteFinish('branch')">
+      <div class="route-start-opt-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:#4a36c8;">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+      </div>
+      <div>
+        <div class="route-start-opt-text">Return to Branch</div>
+        <div class="route-start-opt-sub">End at Branch Office</div>
       </div>
     </div>
 
