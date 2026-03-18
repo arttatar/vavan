@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Vavan">
 <title>Vavan · Market Intelligence</title>
-<title>Vavan — Market Intelligence</title>
+
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link href="https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.css" rel="stylesheet">
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.js"></script>
@@ -171,6 +171,8 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
   margin-top:8px;padding-top:8px;
   border-top:1px solid #f0f0f4;
 }
+.dsk-list-item:hover{background:var(--paper);}
+.dsk-list-item{transition:background .1s;}
 .dsk-mode-btn{
   flex:1;
   height:32px;
@@ -265,32 +267,14 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
 .fchip svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.5;}
 
 /* ── SEARCH OVERLAY ── */
-#search-overlay{
-  display:none;position:fixed;inset:0;z-index:9500;
-  background:#fff;flex-direction:column;
-  font-family:'Inter',sans-serif;
-}
-#search-overlay.open{display:flex;}
-#search-overlay-bar{
-  display:flex;align-items:center;gap:10px;
-  padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 12px;
-  border-bottom:1px solid #f0f0f0;
-  flex-shrink:0;
-  background:#fff;
-}
-#search-overlay-input{
-  flex:1;border:none;outline:none;
-  font-size:16px;font-family:'Inter',sans-serif;
-  color:#0d0d14;background:transparent;
-}
-#search-overlay-input::placeholder{color:#9ca3af;}
-#search-overlay-back{
-  background:none;border:none;cursor:pointer;
-  width:36px;height:36px;display:flex;align-items:center;justify-content:center;
-  border-radius:50%;flex-shrink:0;
-}
-#search-overlay-back:hover{background:#f3f4f6;}
-#search-overlay-content{flex:1;overflow-y:auto;}
+
+
+
+
+
+
+
+
 
 /* Quick action pills in overlay */
 .so-section-title{
@@ -298,20 +282,12 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
   text-transform:uppercase;letter-spacing:.07em;
   padding:16px 16px 8px;
 }
-.so-action-row{
-  display:flex;gap:8px;padding:0 16px 16px;
-  overflow-x:auto;scrollbar-width:none;
-}
-.so-action-row::-webkit-scrollbar{display:none;}
-.so-action{
-  display:flex;flex-direction:column;align-items:center;gap:6px;
-  background:#f8f8f8;border-radius:12px;padding:12px 16px;
-  border:none;cursor:pointer;font-family:'Inter',sans-serif;
-  flex-shrink:0;min-width:80px;
-}
-.so-action svg{width:22px;height:22px;stroke:var(--accent);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
-.so-action span{font-size:12px;font-weight:600;color:#0d0d14;}
-.so-action.active{background:var(--accent-light);}
+
+
+
+
+
+
 
 /* Industry grid in overlay */
 .so-industry-grid{
@@ -958,14 +934,14 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
   font-family:'Inter',sans-serif;cursor:pointer;
   white-space:nowrap;
 }
-.rp-action-btn{
+
   flex:1;min-width:80px;padding:7px 6px;
   border:none;border-radius:8px;
   font-size:11px;font-weight:700;
   font-family:'Inter',sans-serif;cursor:pointer;
   white-space:nowrap;
 }
-.rp-action-btn.green{background:#dcfce7;color:#059669;}
+
 .rp-action-btn.blue{background:var(--accent-light);color:var(--accent);}
 .rp-action-btn.red{background:#fef2f2;color:#dc2626;}
 
@@ -3182,141 +3158,141 @@ function _bsAttach(panelId, snaps, closeFn) {
 // ── SEARCH OVERLAY ──
 var _soSelectedInds = [];
 var _soSelectedStatuses = [];
-var _soSearchTimer = null;
 
-function openSearchOverlay() {
-  var overlay = document.getElementById('search-overlay');
-  if (!overlay) return;
-  // Move to body top level to escape any stacking context
-  document.body.appendChild(overlay);
-  _soSelectedInds = Array.isArray(filters.industry) ? filters.industry.slice() : [];
-  _soSelectedStatuses = filters.statuses ? filters.statuses.slice() : [];
-  _soSyncUI();
-  overlay.style.position = 'fixed';
-  overlay.style.top = '0';
-  overlay.style.left = '0';
-  overlay.style.right = '0';
-  overlay.style.bottom = '0';
-  overlay.style.zIndex = '99999';
-  overlay.style.background = '#fff';
-  overlay.style.flexDirection = 'column';
-  overlay.style.fontFamily = 'Inter,sans-serif';
-  overlay.style.display = 'flex';
-  setTimeout(function(){
-    var inp = document.getElementById('search-overlay-input');
-    if (inp) inp.focus();
-  }, 150);
-}
 
-function closeSearchOverlay() {
-  var overlay = document.getElementById('search-overlay');
-  if (!overlay) return;
-  overlay.style.display = 'none';
-  var inp = document.getElementById('search-overlay-input');
-  if (inp) inp.value = '';
-  var res = document.getElementById('so-results');
-  if (res) res.style.display = 'none';
-  var clr = document.getElementById('so-clear');
-  if (clr) clr.style.display = 'none';
-}
 
-function _soSyncUI() {
-  document.querySelectorAll('.so-industry-btn').forEach(function(btn){
-    btn.classList.toggle('active', _soSelectedInds.indexOf(btn.getAttribute('data-ind')) >= 0);
-  });
-  document.querySelectorAll('[data-status]').forEach(function(btn){
-    var st = btn.getAttribute('data-status');
-    if (st === 'Unassigned') {
-      btn.classList.toggle('active', !!(filters.reps && filters.reps.indexOf('unassigned') >= 0));
-    } else {
-      btn.classList.toggle('active', _soSelectedStatuses.indexOf(st) >= 0);
-    }
-  });
-  var total = _soSelectedInds.length + _soSelectedStatuses.length;
-  var applyBtn = document.getElementById('so-apply-btn');
-  if (applyBtn) applyBtn.textContent = total > 0 ? 'Apply Filters (' + total + ' active)' : 'Apply Filters';
-}
 
-function _soToggleInd(btn) {
-  var ind = btn.getAttribute('data-ind');
-  var idx = _soSelectedInds.indexOf(ind);
-  if (idx >= 0) _soSelectedInds.splice(idx, 1);
-  else _soSelectedInds.push(ind);
-  _soSyncUI();
-}
 
-function _soToggleStatus(btn) {
-  var st = btn.getAttribute('data-status');
-  if (st === 'Unassigned') {
-    if (!filters.reps) filters.reps = [];
-    var hasU = filters.reps.indexOf('unassigned') >= 0;
-    if (hasU) filters.reps = filters.reps.filter(function(r){ return r !== 'unassigned'; });
-    else filters.reps.push('unassigned');
-    _soSyncUI(); return;
-  }
-  var idx = _soSelectedStatuses.indexOf(st);
-  if (idx >= 0) _soSelectedStatuses.splice(idx, 1);
-  else _soSelectedStatuses.push(st);
-  _soSyncUI();
-}
 
-function _soSearch(val) {
-  var clr = document.getElementById('so-clear');
-  if (clr) clr.style.display = val ? 'block' : 'none';
-  clearTimeout(_soSearchTimer);
-  var res = document.getElementById('so-results');
-  if (!val.trim()) { res.style.display = 'none'; return; }
-  _soSearchTimer = setTimeout(function(){
-    var q = val.toLowerCase();
-    var matches = allData.filter(function(b){ return (b.name||'').toLowerCase().includes(q); }).slice(0, 8);
-    if (!matches.length) {
-      res.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:16px 0;">No businesses found</div>';
-    } else {
-      res.innerHTML = matches.map(function(b){
-        return '<div onclick="_soSelectBiz(\''+b._id+'\')" style="padding:12px 0;border-bottom:1px solid #f0f0f0;cursor:pointer;display:flex;align-items:center;gap:12px;">'+
-          '<div style="width:8px;height:8px;border-radius:50%;background:'+bizColor(b)+';flex-shrink:0;margin-top:2px;"></div>'+
-          '<div style="min-width:0;">'+
-            '<div style="font-size:14px;font-weight:600;color:#0d0d14;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+b.name+'</div>'+
-            '<div style="font-size:12px;color:#9ca3af;">'+b.street+'</div>'+
-          '</div>'+
-        '</div>';
-      }).join('');
-    }
-    res.style.display = 'block';
-  }, 200);
-}
 
-function _soSelectBiz(id) {
-  closeSearchOverlay();
-  var b = _bizById[id] || _bizById[String(id)];
-  if (!b) return;
-  var idx = allData.indexOf(b);
-  if (idx >= 0) selectBiz(idx);
-}
 
-function _soApply() {
-  var nameVal = (document.getElementById('search-overlay-input').value || '').trim();
-  if (nameVal) document.getElementById('s-name').value = nameVal;
-  filters.industry = _soSelectedInds.length ? _soSelectedInds : 'all';
-  filters.statuses = _soSelectedStatuses.slice();
-  filters.status = _soSelectedStatuses.length ? 'multi' : 'all';
-  if (typeof _renderStatusPills === 'function') _renderStatusPills();
-  // Update search bar text
-  var parts = [];
-  if (_soSelectedInds.length) parts.push(_soSelectedInds.join(', '));
-  if (_soSelectedStatuses.length) parts.push(_soSelectedStatuses.join(', '));
-  if (nameVal) parts.push('"' + nameVal + '"');
-  var txt = document.getElementById('search-bar-text');
-  if (txt) {
-    txt.textContent = parts.length ? parts.join(' · ') : 'Search businesses...';
-    txt.classList.toggle('has-filters', parts.length > 0);
-  }
-  closeSearchOverlay();
-  applyFilters();
-  setTimeout(function(){ navTo('list'); }, 150);
-}
 
-// ── DESKTOP CONTROL STACK ──
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 var _desktopSection = null;
 var _deskStack = []; // [{type:'list'|'filters'|'contacts'|'business', biz:obj}]
 
@@ -3428,37 +3404,106 @@ function _renderDesktopFilters(host) {
 }
 
 function _renderDesktopList(host) {
+  var isRoute = _routeMode;
+  var selCount = Object.keys(_routeSelected).length;
+
   host.innerHTML =
     '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px 8px;border-bottom:1px solid var(--border);flex-shrink:0;">'+
-      '<div style="font-size:14px;font-weight:700;color:var(--ink);font-family:Syne,sans-serif;">Results</div>'+
-      '<button onclick="closeDesktopSection()" style="background:#f3f4f6;border:none;border-radius:50%;width:28px;height:28px;font-size:16px;cursor:pointer;color:#666;display:flex;align-items:center;justify-content:center;">✕</button>'+
+      '<div style="font-size:14px;font-weight:700;color:var(--ink);font-family:Syne,sans-serif;">'+(isRoute?'Select Route Stops':'Results')+'</div>'+
+      '<button onclick="'+(isRoute?'_deskExitRoute':'closeDesktopSection')+'()" style="background:#f3f4f6;border:none;border-radius:50%;width:28px;height:28px;font-size:16px;cursor:pointer;color:#666;display:flex;align-items:center;justify-content:center;">✕</button>'+
     '</div>'+
+    (isRoute ?
+      '<div style="padding:8px 12px;background:var(--ink);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">'+
+        '<span style="font-size:12px;font-weight:600;color:rgba(255,255,255,.7);" id="dsk-route-count">'+selCount+' stop'+(selCount!==1?'s':'')+' selected</span>'+
+        '<div style="display:flex;gap:6px;">'+
+          '<button onclick="_dskSelectAllRoute()" style="padding:4px 10px;background:rgba(255,255,255,.15);border:none;border-radius:5px;font-size:11px;font-weight:600;color:#fff;cursor:pointer;font-family:Inter,sans-serif;">All</button>'+
+          '<button onclick="_dskClearRouteSelection()" style="padding:4px 10px;background:rgba(255,255,255,.1);border:none;border-radius:5px;font-size:11px;font-weight:600;color:rgba(255,255,255,.6);cursor:pointer;font-family:Inter,sans-serif;">Clear</button>'+
+          '<button onclick="_dskBuildRoute()" style="padding:4px 12px;background:var(--accent);border:none;border-radius:5px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;font-family:Inter,sans-serif;">Build Route →</button>'+
+        '</div>'+
+      '</div>'
+    : '') +
     '<div id="dsk-list-body" style="flex:1;overflow-y:auto;"></div>';
+
   var wrap = host.querySelector('#dsk-list-body');
   if (!wrap) return;
-  if (!filtersApplied && !_routeMode) {
-    // Show all visible businesses — don't block on filters
-  }
   var raw = getVisibleData().filter(function(b){ return b.lat&&b.lon; });
   if (!raw.length) {
-    wrap.innerHTML = '<div style="padding:1.5rem;font-size:13px;color:var(--muted);text-align:center;">No results in view.<br>Zoom or pan the map.</div>';
+    wrap.innerHTML = '<div style="padding:1.5rem;font-size:13px;color:var(--muted);text-align:center;">No businesses in view.<br>Zoom or pan the map.</div>';
     return;
   }
   var data = _applySortToData(raw);
+  var countLabel = data.length.toLocaleString() + ' in view' + (allData.length > data.length ? ' of ' + allData.length.toLocaleString() : '');
   wrap.innerHTML =
-    '<div style="padding:8px 12px 4px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);">'+data.length.toLocaleString()+' in view</div>'+
+    '<div style="padding:8px 12px 4px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);">'+countLabel+'</div>'+
     data.slice(0,200).map(function(b){
       var color = bizColor(b);
-      return '<div style="padding:.65rem 1rem;border-bottom:1px solid var(--border);cursor:pointer;" '+
-        'onmouseover="this.style.background=\'var(--paper)\'" onmouseout="this.style.background=\'\'" '+
+      if (isRoute) {
+        var isChecked = !!_routeSelected[b._id];
+        return '<div style="padding:.65rem 1rem;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:10px;background:'+(isChecked?'var(--accent-light)':'')+'" '+
+          'onclick="toggleRouteSelect('+b._id+');_dskUpdateRouteCount()">'+
+          '<div style="width:18px;height:18px;border-radius:4px;border:2px solid '+(isChecked?'var(--accent)':'#d1d5db')+';background:'+(isChecked?'var(--accent)':'transparent')+';display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+
+            (isChecked ? '<svg width="10" height="10" viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3" stroke="#fff" stroke-width="2" fill="none"/></svg>' : '') +
+          '</div>'+
+          '<div style="flex:1;min-width:0;">'+
+            '<div style="font-size:13px;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:6px;">'+
+              '<span style="width:7px;height:7px;border-radius:50%;background:'+color+';flex-shrink:0;display:inline-block;"></span>'+b.name+
+            '</div>'+
+            '<div style="font-size:11px;color:var(--muted);">'+(b.street||'')+'</div>'+
+          '</div>'+
+        '</div>';
+      }
+      return '<div class="dsk-list-item" style="padding:.65rem 1rem;border-bottom:1px solid var(--border);cursor:pointer;" ' +
+        '' +
         'onclick="closeDesktopSection();selectBiz('+b._id+')">'+
         '<div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:2px;display:flex;align-items:center;gap:6px;">'+
           '<span style="width:7px;height:7px;border-radius:50%;background:'+color+';flex-shrink:0;display:inline-block;"></span>'+b.name+
+          (b.pipeline_stage ? '<span style="font-size:10px;color:var(--accent);font-weight:600;margin-left:4px;">'+b.pipeline_stage+'</span>' : '') +
         '</div>'+
         '<div style="font-size:11px;color:var(--muted);">'+(b.street||'')+'</div>'+
         (b.assigned_rep ? '<div style="font-size:11px;color:var(--accent);margin-top:1px;">'+b.assigned_rep+'</div>' : '')+
       '</div>';
-    }).join('');
+    }).join('') + (data.length>200?'<div style="padding:.75rem;font-size:12px;color:var(--muted);text-align:center">Showing 200 of '+data.length.toLocaleString()+' — zoom in to narrow</div>':'');
+}
+
+function _deskExitRoute() {
+  _routeMode = false;
+  _routeSelected = {};
+  updateRouteSelCount();
+  var rb = document.getElementById('dskm-route');
+  if (rb) rb.classList.remove('active');
+  closeDesktopSection();
+}
+
+function _dskUpdateRouteCount() {
+  var n = Object.keys(_routeSelected).length;
+  var el = document.getElementById('dsk-route-count');
+  if (el) el.textContent = n + ' stop' + (n!==1?'s':'') + ' selected';
+  // Re-render to update checkboxes
+  var host = document.getElementById('desktop-panel-host');
+  if (host && host.classList.contains('open')) _renderDesktopList(host);
+}
+
+function _dskSelectAllRoute() {
+  getVisibleData().forEach(function(b){ if(b.lat&&b.lon) _routeSelected[b._id]=b; });
+  updateRouteSelCount();
+  var host = document.getElementById('desktop-panel-host');
+  if (host) _renderDesktopList(host);
+}
+
+function _dskClearRouteSelection() {
+  _routeSelected = {};
+  updateRouteSelCount();
+  var host = document.getElementById('desktop-panel-host');
+  if (host) _renderDesktopList(host);
+}
+
+function _dskBuildRoute() {
+  var sel = Object.values(_routeSelected);
+  if (!sel.length) { _showToast('Select at least one stop first'); return; }
+  if (sel.length > 50) { _showToast('Max 50 stops per route'); return; }
+  // Show start point modal then build
+  closeDesktopSection();
+  document.getElementById('route-start-modal').classList.add('open');
 }
 
 async function _renderDesktopContacts(host) {
@@ -3511,7 +3556,7 @@ if (navigator.geolocation) {
 // Refresh list as map moves — shows only what's visible
 // Auto-refresh desktop list when map moves/zooms
 function _deskRefreshListIfOpen() {
-  if (_desktopSection === 'list') {
+  if (_desktopSection === 'list' || _routeMode) {
     // Re-render the list panel with updated visible data
     var host = document.getElementById('desktop-panel-host');
     if (!host || !host.classList.contains('open')) return;
@@ -8168,7 +8213,7 @@ function toggleRouteMode() {
 
   // Open list so rep can select stops
   if (window.innerWidth > 768) {
-    openDesktopSection('list');
+    openDesktopSection('list'); // will show route checkboxes since _routeMode=true
   } else {
     navTo('list');
   }
@@ -9153,40 +9198,6 @@ function onMapClick(e) {
 <span id="nm-list" style="display:none;"><span id="nm-list-badge" style="display:none;"></span></span>
 
 <!-- SEARCH OVERLAY -->
-<div id="search-overlay">
-  <div id="search-overlay-bar">
-    <button id="search-overlay-back" onclick="closeSearchOverlay()">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0d0d14" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-    </button>
-    <input id="search-overlay-input" type="text" placeholder="Search businesses..." autocomplete="off" oninput="_soSearch(this.value)">
-    <button onclick="document.getElementById('search-overlay-input').value='';_soSearch('');" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:18px;padding:4px;display:none;" id="so-clear">✕</button>
-  </div>
-  <div id="search-overlay-content">
-    <!-- Quick Actions -->
-    <div class="so-section-title">Quick Actions</div>
-    <div class="so-action-row">
-      <button class="so-action" onclick="closeSearchOverlay();filterMyAccounts()">
-        <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        <span>My Accounts</span>
-      </button>
-      <button class="so-action" onclick="closeSearchOverlay();navTo('contacts')">
-        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        <span>Contacts</span>
-      </button>
-      <button class="so-action" onclick="closeSearchOverlay();toggleRouteNav()">
-        <svg viewBox="0 0 24 24"><circle cx="3" cy="6" r="2"/><circle cx="21" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M5 6h6a4 4 0 0 1 4 4v4"/><path d="M19 6h-6"/></svg>
-        <span>Route</span>
-      </button>
-      <button class="so-action" onclick="closeSearchOverlay();navTo('list')">
-        <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/></svg>
-        <span>List</span>
-      </button>
-      <button class="so-action" onclick="closeSearchOverlay();openAddBusiness()">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-        <span>Add Biz</span>
-      </button>
-    </div>
-
     <!-- Industry Filter -->
     <div class="so-section-title">Filter by Industry</div>
     <div class="so-industry-grid" id="so-industry-grid">
