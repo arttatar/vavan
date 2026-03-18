@@ -6473,6 +6473,13 @@ function _deskPanelBack() {
     var prev = _deskStack[_deskStack.length - 1];
     if (prev.type === 'business') {
       _deskRender();
+    } else if (prev.type === 'route') {
+      // Restore route panel in desktop host
+      _deskStack = [];
+      openRoutePanel();
+    } else if (prev.type === 'myaccounts') {
+      _deskStack = [];
+      filterMyAccounts();
     } else {
       openDesktopSection(prev.type);
       _deskStack = [];
@@ -6496,10 +6503,14 @@ function _deskRender() {
 
   if (state.type === 'business') {
     var b = state.biz;
+    var _prevType = _deskStack.length > 1 ? _deskStack[_deskStack.length-2].type : '';
     var backLabel = _deskStack.length > 1
-      ? '← Back to ' + (_deskStack[_deskStack.length-2].type === 'list' ? 'List'
-        : _deskStack[_deskStack.length-2].type === 'filters' ? 'Filters'
-        : _deskStack[_deskStack.length-2].type === 'contacts' ? 'Contacts' : 'Results')
+      ? '← Back to ' + (_prevType === 'list' ? 'List'
+        : _prevType === 'filters' ? 'Filters'
+        : _prevType === 'contacts' ? 'Contacts'
+        : _prevType === 'route' ? 'Route'
+        : _prevType === 'myaccounts' ? 'My Accounts'
+        : 'Results')
       : '← Back';
 
     host.innerHTML =
@@ -9247,8 +9258,9 @@ function _rpFlyTo(idx) {
       selectBiz(b._id);
     }, 300);
   } else {
-    // Desktop: open business in left panel
-    selectBiz(b._id);
+    // Desktop: set route as back target, then open business profile
+    _deskStack = [{ type: 'route' }];
+    _deskPanelPush('business', b);
   }
 }
 
