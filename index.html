@@ -1998,7 +1998,9 @@ async function loadProfile() {
           pendingName = pi.data.full_name || pendingName;
           pendingTerr = pi.data.territory_code || pendingTerr;
           pendingTerrName = pi.data.territory_name || pendingTerrName;
-          pendingRole = pi.data.role || pendingRole;
+          // NEVER grant admin via invite flow — only 'rep' allowed here
+          // Admin role must be set manually in Supabase or by another admin
+          pendingRole = 'rep';
           pendingClientId = pi.data.client_id || pendingClientId;
         }
       } catch(e){}
@@ -4486,35 +4488,36 @@ async function renderSettingsTab(tab) {
 // ── USERS TAB ──
 async function renderUsersTab(body) {
   try {
+    // Load both existing profiles AND pending invites not yet logged in
     var r = await sb.from('sales_profiles').select('*').order('full_name', {ascending:true});
     if (r.error) throw r.error;
     _allProfiles = r.data || [];
+
+    // Load pending invites
+    var pi = await sb.from('pending_invites').select('*').order('invited_at', {ascending:false});
+    var pendingInvites = (pi.data || []).filter(function(inv){
+      // Only show if they haven't created a profile yet
+      return !_allProfiles.some(function(p){ return p.email === inv.email; });
+    });
 
     // Load this week's activity counts per rep
     var weekAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString();
     var actR = await sb.from('activity').select('created_by, type').gte('created_at', weekAgo);
     var actThisWeek = actR.data || [];
 
-    if (!_allProfiles.length) {
+    if (!_allProfiles.length && !pendingInvites.length) {
       body.innerHTML = '<div class="det-empty">No users yet. Use Invite Rep to add someone.</div>';
       return;
     }
 
-    body.innerHTML = '<div class="settings-section">'+
-      '<div class="settings-section-title" style="display:flex;justify-content:space-between;align-items:center;">'+
-        '<span>All Users ('+_allProfiles.length+')</span>'+
-        '<span style="font-size:10px;color:var(--muted);">Activity this week</span>'+
-      '</div>'+
-      _allProfiles.map(function(p){
-        var markets = (p.territory_name||'').split(',').map(function(s){ return s.trim(); }).filter(Boolean);
-        var acts = actThisWeek.filter(function(a){ return a.created_by === p.full_name; });
-        var visits = acts.filter(function(a){ return a.type==='visited'; }).length;
-        var contacts = acts.filter(function(a){ return a.type==='contacted'; }).length;
-        var perms = p.permissions ? (typeof p.permissions==='object' ? p.permissions : {}) : {};
+    var profilesHtml = _allProfiles.map(function(p){
+      var markets = (p.territory_name||'').split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+      var acts = actThisWeek.filter(function(a){ return a.created_by === p.full_name; });
+      var visits = acts.filter(function(a){ return a.type==='visited'; }).length;
+      var contacts = acts.filter(function(a){ return a.type==='contacted'; }).length;
+      var perms = p.permissions ? (typeof p.permissions==='object' ? p.permissions : {}) : {};
 
-        return '<div id="user-row-'+p.id+'" style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:.75rem;background:#fff;">'+
-
-          // ── VIEW MODE ──
+      return '<div id="user-row-'+p.id+'" style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:.75rem;background:#fff;">'+
           '<div id="user-view-'+p.id+'" style="padding:.875rem;">'+
             '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'+
               '<div style="display:flex;align-items:center;gap:10px;">'+
@@ -4532,17 +4535,12 @@ async function renderUsersTab(body) {
             '</div>'+
             '<div style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'+
               '<span>📍 '+(markets.length ? markets.join(' · ') : 'No markets')+'</span>'+
-              (acts.length ? '<span style="color:var(--muted);">·</span>'+
-                (visits ? '<span style="color:#d97706;">'+visits+' visits</span>' : '')+
-                (contacts ? '<span style="color:#059669;">'+contacts+' calls</span>' : '') : '')+
+              (visits ? '<span style="color:#d97706;">· '+visits+' visits</span>' : '')+
+              (contacts ? '<span style="color:#059669;">'+contacts+' calls</span>' : '')+
             '</div>'+
           '</div>'+
-
-          // ── EDIT MODE ──
           '<div id="user-edit-'+p.id+'" style="display:none;border-top:2px solid var(--accent);background:var(--paper);">'+
             '<div style="padding:.875rem;display:flex;flex-direction:column;gap:.75rem;">'+
-
-              // Name + Role row
               '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;">'+
                 '<div><label class="abiz-label">Full Name</label>'+
                   '<input class="settings-input" id="ue-name-'+p.id+'" value="'+(p.full_name||'')+'" style="margin:0;"></div>'+
@@ -4552,17 +4550,12 @@ async function renderUsersTab(body) {
                     '<option value="admin"'+(p.role==='admin'?' selected':'')+'>Admin</option>'+
                   '</select></div>'+
               '</div>'+
-
-              // Email + Reset Password
               '<div style="display:grid;grid-template-columns:1fr auto;gap:.5rem;align-items:end;">'+
                 '<div><label class="abiz-label">Email Address</label>'+
-                  '<input class="settings-input" id="ue-email-'+p.id+'" value="'+(p.email||'')+'" type="email" style="margin:0;" placeholder="rep@company.com"></div>'+
-                '<button onclick="sendPasswordReset(\''+p.id+'\')" style="padding:9px 12px;background:var(--paper2);border:1px solid var(--border);border-radius:8px;font-size:11px;font-weight:600;color:var(--ink);cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;margin-bottom:0;">Send Login Link</button>'+
+                  '<input class="settings-input" id="ue-email-'+p.id+'" value="'+(p.email||'')+'" type="email" style="margin:0;"></div>'+
+                '<button onclick="sendPasswordReset(\''+p.id+'\')" style="padding:9px 12px;background:var(--paper2);border:1px solid var(--border);border-radius:8px;font-size:11px;font-weight:600;color:var(--ink);cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;">Send Login Link</button>'+
               '</div>'+
-
-              // Markets
-              '<div>'+
-                '<label class="abiz-label">Markets Assigned</label>'+
+              '<div><label class="abiz-label">Markets Assigned</label>'+
                 '<div style="display:flex;flex-wrap:wrap;gap:6px;padding:.5rem;background:#fff;border:1px solid var(--border);border-radius:8px;" id="ue-markets-'+p.id+'">'+
                   VAVAN_MARKETS.map(function(m){
                     var checked = markets.indexOf(m.name) > -1;
@@ -4572,18 +4565,15 @@ async function renderUsersTab(body) {
                   }).join('')+
                 '</div>'+
               '</div>'+
-
-              // Permissions
-              '<div>'+
-                '<label class="abiz-label">Feature Permissions</label>'+
+              '<div><label class="abiz-label">Feature Permissions</label>'+
                 '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:.625rem;background:#fff;border:1px solid var(--border);border-radius:8px;">'+
                   [
-                    {key:'can_add_business',    label:'Add Businesses',    default:true},
-                    {key:'can_edit_business',   label:'Edit Businesses',   default:true},
-                    {key:'can_log_activity',    label:'Log Activity',      default:true},
-                    {key:'can_manage_contacts', label:'Manage Contacts',   default:true},
-                    {key:'can_view_all_reps',   label:'See All Reps',      default:false},
-                    {key:'can_export',          label:'Export Data',       default:false},
+                    {key:'can_add_business',    label:'Add Businesses',  default:true},
+                    {key:'can_edit_business',   label:'Edit Businesses', default:true},
+                    {key:'can_log_activity',    label:'Log Activity',    default:true},
+                    {key:'can_manage_contacts', label:'Contacts',        default:true},
+                    {key:'can_view_all_reps',   label:'See All Reps',    default:false},
+                    {key:'can_export',          label:'Export Data',     default:false},
                   ].map(function(perm){
                     var val = perms[perm.key] !== undefined ? perms[perm.key] : perm.default;
                     return '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">'+
@@ -4592,8 +4582,6 @@ async function renderUsersTab(body) {
                   }).join('')+
                 '</div>'+
               '</div>'+
-
-              // Status message + buttons
               '<div id="ue-status-'+p.id+'" style="font-size:12px;color:var(--muted);min-height:16px;"></div>'+
               '<div style="display:flex;gap:8px;">'+
                 '<button class="settings-save-btn" onclick="saveUserEdit(\''+p.id+'\')" style="flex:1;">Save Changes</button>'+
@@ -4602,8 +4590,36 @@ async function renderUsersTab(body) {
             '</div>'+
           '</div>'+
         '</div>';
-      }).join('')+
+    }).join('');
+
+    // Pending invites — not yet logged in
+    var pendingHtml = pendingInvites.length ? (
+      '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:1rem 0 .5rem;">Pending — Invite Sent</div>'+
+      pendingInvites.map(function(inv){
+        var invDate = inv.invited_at ? _fmtRelTime(inv.invited_at) : '';
+        return '<div style="border:1px dashed var(--border);border-radius:10px;padding:.75rem 1rem;margin-bottom:.6rem;background:#fafafa;display:flex;align-items:center;justify-content:space-between;gap:10px;">'+
+          '<div style="display:flex;align-items:center;gap:10px;min-width:0;">'+
+            '<div style="width:34px;height:34px;border-radius:50%;background:#f3f4f6;border:2px dashed #d1d5db;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">✉️</div>'+
+            '<div style="min-width:0;">'+
+              '<div style="font-size:13px;font-weight:600;color:var(--ink);">'+(inv.full_name||'Unknown')+'</div>'+
+              '<div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(inv.email||'')+'</div>'+
+              '<div style="font-size:10px;color:var(--muted);margin-top:2px;">Invited '+(invDate||'')+(inv.territory_name ? ' · '+inv.territory_name : '')+'</div>'+
+            '</div>'+
+          '</div>'+
+          '<div style="display:flex;gap:6px;flex-shrink:0;">'+
+            '<button onclick="resendInvite(\''+inv.email.replace(/'/g,"\\'")+'\',\''+((inv.full_name||'').replace(/'/g,"\\'"))+'\')" style="background:var(--accent-light);border:1px solid var(--accent);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;color:var(--accent);">Resend</button>'+
+            '<button onclick="deletePendingInvite(\''+inv.email.replace(/'/g,"\\'")+'\',\''+((inv.full_name||'').replace(/'/g,"\\'"))+'\')" style="background:#fff5f5;border:1px solid #fca5a5;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;color:#dc2626;">Cancel</button>'+
+          '</div>'+
+        '</div>';
+      }).join('')
+    ) : '';
+
+    body.innerHTML = '<div class="settings-section">'+
+      '<div class="settings-section-title">All Users ('+_allProfiles.length+')</div>'+
+      profilesHtml +
+      pendingHtml +
     '</div>';
+
   } catch(e) {
     body.innerHTML = '<div class="det-empty">Error loading users: '+e.message+'</div>';
   }
@@ -4679,6 +4695,25 @@ async function sendPasswordReset(profileId) {
     statusEl.style.color = '#dc2626';
     statusEl.textContent = 'Error: '+e.message;
   }
+}
+
+async function resendInvite(email, name) {
+  try {
+    var r = await sb.auth.signInWithOtp({
+      email: email,
+      options: { shouldCreateUser: true, data: { full_name: name } }
+    });
+    if (r.error) throw r.error;
+    _showToast('Invite resent to ' + email);
+  } catch(e) { _showToast('Failed: ' + e.message); }
+}
+
+async function deletePendingInvite(email, name) {
+  if (!confirm('Cancel invite for "'+name+'"?')) return;
+  try {
+    await sb.from('pending_invites').delete().eq('email', email);
+    renderUsersTab(document.getElementById('settings-body'));
+  } catch(e) { _showToast('Failed: ' + e.message); }
 }
 
 async function deleteUser(profileId, userId, name) {
