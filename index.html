@@ -1529,8 +1529,8 @@ async function doLogin() {
 async function doSignOut() { await sb.auth.signOut(); location.reload(); }
 
 // ── SUPER ADMIN / CLIENT MANAGEMENT ──
-// Role hierarchy: vavan_super > admin > rep
-var SUPER_ADMIN_EMAILS = ['art@interstate-oil.com', 'arttatar1@gmail.com', 'atatar@interstateoil.com']; // Add super admin emails here
+// Role hierarchy: vavan_super > client_admin > rep
+var SUPER_ADMIN_EMAILS = ['art@interstate-oil.com', 'arttatar1@gmail.com', 'atatar@interstateoil.com', 'info@vavan.co'];
 
 async function checkIfSuperAdmin() {
   var session = await sb.auth.getSession();
@@ -2167,32 +2167,26 @@ async function loadProfile() {
       if (currentProfile.client_id) {
         var mr = await sb.from('client_markets')
           .select('market_id, markets(id, name, state)')
-          .eq('client_id', currentProfile.client_id)
-          .eq('active', true);
-        if (mr.data) clientMarkets = mr.data;
+          .eq('client_id', currentProfile.client_id);
+        if (mr.data && mr.data.length) clientMarkets = mr.data;
       }
 
       // Load THIS USER's assigned markets from profile_market_access
-      // Falls back to all client markets for client_admin / vavan_super
       userMarkets = [];
       if (currentProfile.id) {
-        var uma = await sb.from('profile_market_access')
-          .select('market_id, markets(id, name, state)')
-          .eq('profile_id', currentProfile.id)
-          .eq('active', true);
-        if (uma.data && uma.data.length) {
-          userMarkets = uma.data;
-        } else if (isAdmin) {
-          // Admins default to seeing all client markets
+        try {
+          var uma = await sb.from('profile_market_access')
+            .select('market_id, markets(id, name, state)')
+            .eq('profile_id', currentProfile.id)
+            .eq('active', true);
+          if (uma.data && uma.data.length) {
+            userMarkets = uma.data;
+          }
+        } catch(e){ console.warn('profile_market_access query failed:', e.message); }
+
+        // Fallback: use all client markets
+        if (!userMarkets.length) {
           userMarkets = clientMarkets;
-        } else {
-          // Rep with no assignments — use territory_name as fallback
-          userMarkets = clientMarkets.filter(function(m){
-            return m.markets && currentProfile.territory_name &&
-              currentProfile.territory_name.indexOf(m.markets.name) > -1;
-          });
-          // If still nothing, give all client markets
-          if (!userMarkets.length) userMarkets = clientMarkets;
         }
       }
 
@@ -2746,7 +2740,6 @@ function applySubIndustries(rows) {
 
 async function loadData() {
   try {
-    // Get allowed market names from user's profile_market_access
     var allowedMarketNames = userMarkets
       .map(function(m){ return m.markets ? m.markets.name : null; })
       .filter(Boolean);
@@ -2757,7 +2750,6 @@ async function loadData() {
 
     while (true) {
       var query = sb.from('businesses').select('*').range(from, from + pageSize - 1);
-      // businesses.market column holds the market name (e.g. "Las Vegas", "Sacramento")
       if (allowedMarketNames.length) {
         query = query.in('market', allowedMarketNames);
       }
@@ -2770,6 +2762,21 @@ async function loadData() {
       from += pageSize;
     }
 
+    // If market filter returned nothing, retry without filter (safety fallback)
+    if (allRows.length === 0 && allowedMarketNames.length > 0) {
+      console.warn('Market filter returned 0 — loading all as fallback');
+      from = 0;
+      while (true) {
+        var r2 = await sb.from('businesses').select('*').range(from, from + pageSize - 1);
+        if (r2.error) throw r2.error;
+        if (!r2.data || r2.data.length === 0) break;
+        allRows = allRows.concat(r2.data);
+        prog(30 + Math.min(30, Math.floor(allRows.length / 60)), 'Loading... ' + allRows.length + ' businesses');
+        if (r2.data.length < pageSize) break;
+        from += pageSize;
+      }
+    }
+
     if (allRows.length > 0) {
       var nonAbandoned = allRows.filter(function(b){ return !b.is_abandoned; });
       allData = applySubIndustries(normalizeAll(nonAbandoned));
@@ -2780,19 +2787,16 @@ async function loadData() {
       return;
     }
 
-    prog(100, 'No businesses found for your account');
+    prog(100, 'No businesses found');
     document.getElementById('loader').classList.add('hidden');
-    var _pc=document.getElementById('pcount');if(_pc)_pc.textContent='0';
-    console.warn('No businesses returned — check RLS and market assignments');
+    var _pc = document.getElementById('pcount'); if (_pc) _pc.textContent = '0';
 
   } catch(e) {
     console.error('loadData error:', e);
     prog(100, 'Failed to load data');
     document.getElementById('loader').classList.add('hidden');
-    var _pc=document.getElementById('pcount');if(_pc)_pc.textContent='Error';
-    setTimeout(function(){
-      alert('Could not load businesses.\n\nError: ' + e.message);
-    }, 500);
+    var _pc = document.getElementById('pcount'); if (_pc) _pc.textContent = 'Error';
+    setTimeout(function(){ alert('Could not load businesses.\n\nError: ' + e.message); }, 500);
   }
 }
 
