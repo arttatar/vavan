@@ -783,6 +783,58 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
 .pipe-dot.won-stage.active .pipe-dot-label{color:#059669;}
 
 /* LOCATE BUTTON */
+#map-layer-toggle{
+  position:absolute;
+  bottom:120px;
+  right:10px;
+  z-index:500;
+  background:#fff;
+  border:none;
+  border-radius:8px;
+  box-shadow:0 2px 8px rgba(0,0,0,.2);
+  padding:0;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+.mlt-btn{
+  width:36px;
+  height:36px;
+  border:none;
+  background:#fff;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:16px;
+  border-bottom:1px solid #e5e7eb;
+  transition:background .15s;
+  position:relative;
+}
+.mlt-btn:last-child{border-bottom:none;}
+.mlt-btn:hover{background:#f3f4f6;}
+.mlt-btn.active{background:var(--accent-light);}
+.mlt-btn .mlt-tip{
+  position:absolute;
+  right:42px;
+  top:50%;
+  transform:translateY(-50%);
+  background:rgba(0,0,0,.75);
+  color:#fff;
+  font-size:11px;
+  font-weight:600;
+  padding:3px 7px;
+  border-radius:5px;
+  white-space:nowrap;
+  pointer-events:none;
+  opacity:0;
+  transition:opacity .15s;
+}
+.mlt-btn:hover .mlt-tip{opacity:1;}
+@media(max-width:768px){
+  #map-layer-toggle{bottom:90px;right:8px;}
+  .mlt-btn{width:34px;height:34px;}
+}
 #locate-btn{
   position:fixed;
   right:10px;
@@ -809,7 +861,59 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
     right:10px !important;
   }
   /* Locate sits just below nav control */
-  #locate-btn{
+  #map-layer-toggle{
+  position:absolute;
+  bottom:120px;
+  right:10px;
+  z-index:500;
+  background:#fff;
+  border:none;
+  border-radius:8px;
+  box-shadow:0 2px 8px rgba(0,0,0,.2);
+  padding:0;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+.mlt-btn{
+  width:36px;
+  height:36px;
+  border:none;
+  background:#fff;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:16px;
+  border-bottom:1px solid #e5e7eb;
+  transition:background .15s;
+  position:relative;
+}
+.mlt-btn:last-child{border-bottom:none;}
+.mlt-btn:hover{background:#f3f4f6;}
+.mlt-btn.active{background:var(--accent-light);}
+.mlt-btn .mlt-tip{
+  position:absolute;
+  right:42px;
+  top:50%;
+  transform:translateY(-50%);
+  background:rgba(0,0,0,.75);
+  color:#fff;
+  font-size:11px;
+  font-weight:600;
+  padding:3px 7px;
+  border-radius:5px;
+  white-space:nowrap;
+  pointer-events:none;
+  opacity:0;
+  transition:opacity .15s;
+}
+.mlt-btn:hover .mlt-tip{opacity:1;}
+@media(max-width:768px){
+  #map-layer-toggle{bottom:90px;right:8px;}
+  .mlt-btn{width:34px;height:34px;}
+}
+#locate-btn{
     bottom:calc(env(safe-area-inset-bottom,0px) + 36px);
     right:10px;
   }
@@ -844,7 +948,59 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
   /* Hide the "i" expand button — we only want the compact text */
   .mapboxgl-ctrl-attrib-button{ display:none !important; }
   /* Locate button aligns with nav rail */
-  #locate-btn{
+  #map-layer-toggle{
+  position:absolute;
+  bottom:120px;
+  right:10px;
+  z-index:500;
+  background:#fff;
+  border:none;
+  border-radius:8px;
+  box-shadow:0 2px 8px rgba(0,0,0,.2);
+  padding:0;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+.mlt-btn{
+  width:36px;
+  height:36px;
+  border:none;
+  background:#fff;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:16px;
+  border-bottom:1px solid #e5e7eb;
+  transition:background .15s;
+  position:relative;
+}
+.mlt-btn:last-child{border-bottom:none;}
+.mlt-btn:hover{background:#f3f4f6;}
+.mlt-btn.active{background:var(--accent-light);}
+.mlt-btn .mlt-tip{
+  position:absolute;
+  right:42px;
+  top:50%;
+  transform:translateY(-50%);
+  background:rgba(0,0,0,.75);
+  color:#fff;
+  font-size:11px;
+  font-weight:600;
+  padding:3px 7px;
+  border-radius:5px;
+  white-space:nowrap;
+  pointer-events:none;
+  opacity:0;
+  transition:opacity .15s;
+}
+.mlt-btn:hover .mlt-tip{opacity:1;}
+@media(max-width:768px){
+  #map-layer-toggle{bottom:90px;right:8px;}
+  .mlt-btn{width:34px;height:34px;}
+}
+#locate-btn{
     bottom:72px;
     right:10px;
     width:29px; height:29px;
@@ -1167,6 +1323,19 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
   <button id="my-accounts-btn" style="display:none;" onclick="filterMyAccounts()"></button>
   <button id="route-btn" style="display:none;" onclick="toggleRouteMode()"></button>
   <button id="header-add-btn" style="display:none;" onclick="openAddBusiness()"></button>
+  <!-- Map Layer Toggle -->
+  <div id="map-layer-toggle">
+    <button class="mlt-btn active" id="mlt-dark" onclick="setMapLayer('dark')" title="Dark">
+      🌑<span class="mlt-tip">Dark</span>
+    </button>
+    <button class="mlt-btn" id="mlt-light" onclick="setMapLayer('light')" title="Light">
+      ☀️<span class="mlt-tip">Light</span>
+    </button>
+    <button class="mlt-btn" id="mlt-sat" onclick="setMapLayer('satellite')" title="Satellite">
+      🛰️<span class="mlt-tip">Satellite</span>
+    </button>
+  </div>
+
   <button id="locate-btn" onclick="locateMe()" title="Go to my location">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="12" r="3"/>
@@ -8235,6 +8404,47 @@ function _fmtDur(sec) {
 function _fmtDist(m) {
   if (!m) return '';
   return ((m/1609.34) < 10 ? (m/1609.34).toFixed(1) : Math.round(m/1609.34))+' mi';
+}
+
+// ── MAP LAYER TOGGLE ──
+var _currentMapLayer = 'dark';
+var MAP_STYLES = {
+  dark:      'mapbox://styles/mapbox/dark-v11',
+  light:     'mapbox://styles/mapbox/light-v11',
+  satellite: 'mapbox://styles/mapbox/satellite-streets-v12'
+};
+
+function setMapLayer(layer) {
+  if (_currentMapLayer === layer) return;
+  _currentMapLayer = layer;
+
+  // Update active button
+  ['dark','light','sat'].forEach(function(k){
+    var el = document.getElementById('mlt-'+k);
+    if (el) el.classList.toggle('active', (k === 'sat' ? 'satellite' : k) === layer);
+  });
+
+  // Switch map style and re-add all sources/layers after load
+  map.setStyle(MAP_STYLES[layer]);
+  map.once('style.load', function() {
+    // Re-add selected/hover sources
+    if (!map.getSource('biz-selected')) {
+      map.addSource('biz-selected', {type:'geojson', data:{type:'FeatureCollection',features:[]}});
+      map.addLayer({id:'biz-selected-ring',type:'circle',source:'biz-selected',
+        paint:{'circle-radius':14,'circle-color':'transparent','circle-stroke-width':3,'circle-stroke-color':'#fff'}});
+    }
+    if (!map.getSource('biz-hover')) {
+      map.addSource('biz-hover', {type:'geojson', data:{type:'FeatureCollection',features:[]}});
+      map.addLayer({id:'biz-hover-ring',type:'circle',source:'biz-hover',
+        paint:{'circle-radius':12,'circle-color':'transparent','circle-stroke-width':2,'circle-stroke-color':'rgba(255,255,255,.6)'}});
+    }
+    // Re-render all pins
+    renderPins();
+    // Re-draw route if active
+    if (_routeStops.length && _routeGeomCache) {
+      setTimeout(_drawRouteOnMap, 100);
+    }
+  });
 }
 
 // ── SELECTION MODE ──
