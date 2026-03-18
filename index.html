@@ -3696,8 +3696,8 @@ var STATUS_COLORS = {
 function renderPins() {
   if (!map.isStyleLoaded()) { map.once('load', renderPins); return; }
 
-  // Start with empty source — map shows blank until filters applied
-  var source = filtersApplied ? filteredData : [];
+  // Show all data by default — user can filter down from there
+  var source = filtersApplied ? filteredData : allData;
   var valid = source.filter(function(b){ return b.lat && b.lon && !isNaN(b.lat) && !isNaN(b.lon); });
 
   // If source already exists just refresh via authoritative helper
@@ -8790,9 +8790,8 @@ function clearFilters() {
   filtersApplied = false;
   filteredData = [];
   if (map && map.getSource('biz')) {
-    map.getSource('biz').setData({ type:'FeatureCollection', features: [] });
-    if (map.getSource('biz-selected')) map.getSource('biz-selected').setData({type:'FeatureCollection',features:[]});
-    if (map.getSource('biz-hover')) map.getSource('biz-hover').setData({type:'FeatureCollection',features:[]});
+    // Show all data when filters cleared — not a blank map
+    _refreshMapSource(allData);
     lastSelectedBiz = null;
   }
   updateFabCount();
@@ -9189,4 +9188,3 @@ function onMapClick(e) {
 </div>
 </body>
 </html>
-  
