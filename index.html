@@ -1422,14 +1422,35 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
 var SURL = 'https://gcylhmxrzhbkaqkcovct.supabase.co';
 var SKEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdjeWxobXhyemhia2Fxa2NvdmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0MDg4MDMsImV4cCI6MjA4ODk4NDgwM30.aGoL_gr4XXX-sefNLAWf1bgZnqVPgUyCY7GImpQhq9U';
 var MBOX = 'pk.eyJ1IjoiYXJ0dGF0YXIiLCJhIjoiY21pdWppYThlMjEzcjNxb3JjaDZkdWs4dyJ9.d-lDV_T6-_T2_10CHxfvVg';
+var FN_URL = SURL + '/functions/v1'; // Edge Functions base URL
 
 var sb = window.supabase.createClient(SURL, SKEY);
 mapboxgl.accessToken = MBOX;
+
+// ── EDGE FUNCTION CALLER ──
+// Calls a Supabase Edge Function with the current user's JWT for auth
+async function _callFn(fnName, body) {
+  var session = await sb.auth.getSession();
+  var token = session.data && session.data.session ? session.data.session.access_token : '';
+  var res = await fetch(FN_URL + '/' + fnName, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token,
+      'apikey': SKEY
+    },
+    body: JSON.stringify(body)
+  });
+  var data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Function error');
+  return data;
+}
 
 var allData = [], filteredData = [], filtersApplied = false, map, draw;
 var _bizById = {}; // fast lookup by _id
 var currentProfile = null; // loaded sales profile for logged-in user
 var clientMarkets  = [];   // markets this client has purchased, loaded on login
+var userMarkets    = [];   // markets THIS USER is assigned to (subset of clientMarkets)
 
 // ── VAVAN MARKETS ──
 // These are Vavan's sellable market units. Each is exclusive per industry per client.
@@ -2027,46 +2048,76 @@ async function loadProfile() {
 
     if (r.data) {
       currentProfile = r.data;
-      var isFirstLogin = !!r.data._isFirstLogin;
 
-      // Load client's purchased markets
+      // Block disabled users immediately
+      if (currentProfile.active === false) {
+        await sb.auth.signOut();
+        document.getElementById('login-screen').classList.remove('hidden');
+        document.getElementById('lerr').textContent = 'Your account has been disabled. Contact your admin.';
+        document.getElementById('app').style.display = 'none';
+        document.getElementById('loader').classList.add('hidden');
+        return;
+      }
+
+      var isFirstLogin = !!r.data._isFirstLogin;
+      var isAdmin = ['client_admin','vavan_super','admin'].includes(currentProfile.role);
+
+      // Load client's purchased markets (for admin market assignment UI)
       if (currentProfile.client_id) {
         var mr = await sb.from('client_markets')
-          .select('market_id, markets(name, state)')
+          .select('market_id, markets(id, name, state)')
           .eq('client_id', currentProfile.client_id)
           .eq('active', true);
         if (mr.data) clientMarkets = mr.data;
       }
 
-      // Show market name(s) in header badge
+      // Load THIS USER's assigned markets from profile_market_access
+      // Falls back to all client markets for client_admin / vavan_super
+      userMarkets = [];
+      if (currentProfile.id) {
+        var uma = await sb.from('profile_market_access')
+          .select('market_id, markets(id, name, state)')
+          .eq('profile_id', currentProfile.id)
+          .eq('active', true);
+        if (uma.data && uma.data.length) {
+          userMarkets = uma.data;
+        } else if (isAdmin) {
+          // Admins default to seeing all client markets
+          userMarkets = clientMarkets;
+        } else {
+          // Rep with no assignments — use territory_name as fallback
+          userMarkets = clientMarkets.filter(function(m){
+            return m.markets && currentProfile.territory_name &&
+              currentProfile.territory_name.indexOf(m.markets.name) > -1;
+          });
+          // If still nothing, give all client markets
+          if (!userMarkets.length) userMarkets = clientMarkets;
+        }
+      }
+
+      // Sync VAVAN_MARKETS from loaded data
+      if (!_dbMarketsLoaded) await _loadMarketsFromDB();
+
+      // Show market badge
       var badge = document.getElementById('filter-badge');
       if (badge) {
-        var marketNames = clientMarkets.map(function(m){ return m.markets ? m.markets.name : ''; }).filter(Boolean);
-        if (marketNames.length) {
-          badge.textContent = marketNames.join(', ');
-          badge.classList.add('visible');
-        } else if (currentProfile.territory_name) {
-          badge.textContent = currentProfile.territory_name;
-          badge.classList.add('visible');
-        }
+        var marketNames = userMarkets.map(function(m){ return m.markets ? m.markets.name : ''; }).filter(Boolean);
+        if (marketNames.length) { badge.textContent = marketNames.join(', '); badge.classList.add('visible'); }
+        else if (currentProfile.territory_name) { badge.textContent = currentProfile.territory_name; badge.classList.add('visible'); }
       }
 
       var maBtn = document.getElementById('my-accounts-btn');
       if (maBtn && currentProfile.full_name) maBtn.style.display = '';
-
       var routeBtn = document.getElementById('route-btn');
       if (routeBtn) routeBtn.style.display = '';
 
-      _updateAccountUI(currentProfile.full_name || '', currentProfile.role === 'admin');
+      _updateAccountUI(currentProfile.full_name || '', isAdmin);
       populateRepFilter();
       _initTagFilterDropdown();
       _initSupplierFilterDropdown();
       _maybeShowSuperAdminBtn();
 
-      // Show onboarding for first-time logins
-      if (isFirstLogin) {
-        setTimeout(function(){ _showOnboarding(); }, 1500);
-      }
+      if (isFirstLogin) setTimeout(function(){ _showOnboarding(); }, 1500);
     }
   } catch(e) {
     console.warn('Profile load error:', e);
@@ -2594,14 +2645,23 @@ function applySubIndustries(rows) {
 
 async function loadData() {
   try {
+    // Get allowed market names from user's profile_market_access
+    var allowedMarketNames = userMarkets
+      .map(function(m){ return m.markets ? m.markets.name : null; })
+      .filter(Boolean);
+
     var allRows = [];
     var from = 0;
     var pageSize = 1000;
 
     while (true) {
       var query = sb.from('businesses').select('*').range(from, from + pageSize - 1);
+      // businesses.market column holds the market name (e.g. "Las Vegas", "Sacramento")
+      if (allowedMarketNames.length) {
+        query = query.in('market', allowedMarketNames);
+      }
       var r = await query;
-      if (r.error) { console.error('Load error:', r.error); throw r.error; }
+      if (r.error) throw r.error;
       if (!r.data || r.data.length === 0) break;
       allRows = allRows.concat(r.data);
       prog(30 + Math.min(30, Math.floor(allRows.length / 60)), 'Loading... ' + allRows.length + ' businesses');
@@ -2610,7 +2670,6 @@ async function loadData() {
     }
 
     if (allRows.length > 0) {
-      // Filter out abandoned businesses — they are excluded from everything
       var nonAbandoned = allRows.filter(function(b){ return !b.is_abandoned; });
       allData = applySubIndustries(normalizeAll(nonAbandoned));
       _buildLookup();
@@ -2620,21 +2679,18 @@ async function loadData() {
       return;
     }
 
-    // No data returned — show clear message instead of hiding the problem
     prog(100, 'No businesses found for your account');
     document.getElementById('loader').classList.add('hidden');
     var _pc=document.getElementById('pcount');if(_pc)_pc.textContent='0';
-    console.warn('No businesses returned — check RLS policies and client_markets assignment');
+    console.warn('No businesses returned — check RLS and market assignments');
 
   } catch(e) {
     console.error('loadData error:', e);
     prog(100, 'Failed to load data');
     document.getElementById('loader').classList.add('hidden');
     var _pc=document.getElementById('pcount');if(_pc)_pc.textContent='Error';
-    // Show error in UI so rep knows something is wrong
     setTimeout(function(){
-      var msg = 'Could not load businesses.\n\nCheck your connection and try refreshing.\n\nError: ' + e.message;
-      alert(msg);
+      alert('Could not load businesses.\n\nError: ' + e.message);
     }, 500);
   }
 }
@@ -4482,148 +4538,208 @@ async function renderSettingsTab(tab) {
   body.innerHTML = '<div class="det-empty">Loading...</div>';
   if (tab === 'users') await renderUsersTab(body);
   else if (tab === 'invite') await renderInviteTab(body);
-  else if (tab === 'markets') renderMarketsTab(body);
+  else if (tab === 'markets') await renderMarketsTab(body);
+}
+
+// ── LOAD PROFILE MARKET ACCESS ──
+async function _loadProfileMarkets(profileId) {
+  try {
+    var r = await sb.from('profile_market_access')
+      .select('market_id, markets(id, name, state)')
+      .eq('profile_id', profileId)
+      .eq('active', true);
+    return r.data || [];
+  } catch(e) { return []; }
+}
+
+async function _saveProfileMarkets(profileId, marketIds) {
+  // Delete existing then insert new
+  await sb.from('profile_market_access').delete().eq('profile_id', profileId);
+  if (marketIds.length) {
+    var rows = marketIds.map(function(mid){
+      return { profile_id: profileId, market_id: mid, active: true };
+    });
+    await sb.from('profile_market_access').insert(rows);
+  }
 }
 
 // ── USERS TAB ──
 async function renderUsersTab(body) {
   try {
-    // Load both existing profiles AND pending invites not yet logged in
+    if (!_dbMarketsLoaded) await _loadMarketsFromDB();
+
     var r = await sb.from('sales_profiles').select('*').order('full_name', {ascending:true});
     if (r.error) throw r.error;
-    _allProfiles = r.data || [];
+    _allProfiles = (r.data || []).filter(function(p){ return p.client_id === (currentProfile ? currentProfile.client_id : null) || currentProfile.role === 'vavan_super'; });
 
-    // Load pending invites
     var pi = await sb.from('pending_invites').select('*').order('invited_at', {ascending:false});
     var pendingInvites = (pi.data || []).filter(function(inv){
-      // Only show if they haven't created a profile yet
       return !_allProfiles.some(function(p){ return p.email === inv.email; });
     });
 
-    // Load this week's activity counts per rep
     var weekAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString();
     var actR = await sb.from('activity').select('created_by, type').gte('created_at', weekAgo);
     var actThisWeek = actR.data || [];
+
+    // Load all market access rows for all profiles at once
+    var profileIds = _allProfiles.map(function(p){ return p.id; });
+    var maRows = [];
+    if (profileIds.length) {
+      var maR = await sb.from('profile_market_access').select('profile_id, market_id').eq('active', true);
+      maRows = maR.data || [];
+    }
 
     if (!_allProfiles.length && !pendingInvites.length) {
       body.innerHTML = '<div class="det-empty">No users yet. Use Invite Rep to add someone.</div>';
       return;
     }
 
+    var roleColors = { admin:'var(--accent)', rep:'var(--muted)', vavan_super:'#d97706' };
+
     var profilesHtml = _allProfiles.map(function(p){
-      var markets = (p.territory_name||'').split(',').map(function(s){ return s.trim(); }).filter(Boolean);
       var acts = actThisWeek.filter(function(a){ return a.created_by === p.full_name; });
       var visits = acts.filter(function(a){ return a.type==='visited'; }).length;
       var contacts = acts.filter(function(a){ return a.type==='contacted'; }).length;
-      var perms = p.permissions ? (typeof p.permissions==='object' ? p.permissions : {}) : {};
+      var assignedMarketIds = maRows.filter(function(m){ return m.profile_id === p.id; }).map(function(m){ return m.market_id; });
+      var assignedMarketNames = VAVAN_MARKETS.filter(function(m){ return assignedMarketIds.indexOf(m.id) > -1; }).map(function(m){ return m.name; });
+      // Fall back to territory_name if profile_market_access not set up yet
+      if (!assignedMarketNames.length && p.territory_name) {
+        assignedMarketNames = p.territory_name.split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+      }
+      var isActive = p.active !== false;
+      var perms = p.permissions || {};
 
-      return '<div id="user-row-'+p.id+'" style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:.75rem;background:#fff;">'+
-          '<div id="user-view-'+p.id+'" style="padding:.875rem;">'+
-            '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'+
-              '<div style="display:flex;align-items:center;gap:10px;">'+
-                '<div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;">'+_getInitials(p.full_name)+'</div>'+
-                '<div>'+
-                  '<div style="font-size:13px;font-weight:700;color:var(--ink);">'+(p.full_name||'Unnamed')+'</div>'+
-                  '<div style="font-size:11px;color:var(--muted);">'+(p.email||'No email')+'</div>'+
-                '</div>'+
-              '</div>'+
-              '<div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">'+
-                '<span style="font-size:10px;background:'+(p.role==='admin'?'var(--accent-light)':'var(--paper2)')+';color:'+(p.role==='admin'?'var(--accent)':'var(--muted)')+';padding:3px 8px;border-radius:100px;font-weight:600;">'+(p.role||'rep')+'</span>'+
-                '<button onclick="editUserInline(\''+p.id+'\')" style="background:var(--paper);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;color:var(--ink);">Edit</button>'+
-                '<button onclick="deleteUser(\''+p.id+'\',\''+p.user_id+'\',\''+((p.full_name||'').replace(/'/g,"\\'"))+'\')" style="background:#fff5f5;border:1px solid #fca5a5;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;color:#dc2626;">Remove</button>'+
-              '</div>'+
-            '</div>'+
-            '<div style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'+
-              '<span>📍 '+(markets.length ? markets.join(' · ') : 'No markets')+'</span>'+
-              (visits ? '<span style="color:#d97706;">· '+visits+' visits</span>' : '')+
-              (contacts ? '<span style="color:#059669;">'+contacts+' calls</span>' : '')+
-            '</div>'+
-          '</div>'+
-          '<div id="user-edit-'+p.id+'" style="display:none;border-top:2px solid var(--accent);background:var(--paper);">'+
-            '<div style="padding:.875rem;display:flex;flex-direction:column;gap:.75rem;">'+
-              '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;">'+
-                '<div><label class="abiz-label">Full Name</label>'+
-                  '<input class="settings-input" id="ue-name-'+p.id+'" value="'+(p.full_name||'')+'" style="margin:0;"></div>'+
-                '<div><label class="abiz-label">Role</label>'+
-                  '<select class="settings-select" id="ue-role-'+p.id+'" style="margin:0;">'+
-                    '<option value="rep"'+(p.role==='rep'?' selected':'')+'>Rep</option>'+
-                    '<option value="admin"'+(p.role==='admin'?' selected':'')+'>Admin</option>'+
-                  '</select></div>'+
-              '</div>'+
-              '<div style="display:grid;grid-template-columns:1fr auto;gap:.5rem;align-items:end;">'+
-                '<div><label class="abiz-label">Email Address</label>'+
-                  '<input class="settings-input" id="ue-email-'+p.id+'" value="'+(p.email||'')+'" type="email" style="margin:0;"></div>'+
-                '<button onclick="sendPasswordReset(\''+p.id+'\')" style="padding:9px 12px;background:var(--paper2);border:1px solid var(--border);border-radius:8px;font-size:11px;font-weight:600;color:var(--ink);cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;">Send Login Link</button>'+
-              '</div>'+
-              '<div><label class="abiz-label">Markets Assigned</label>'+
-                '<div style="display:flex;flex-wrap:wrap;gap:6px;padding:.5rem;background:#fff;border:1px solid var(--border);border-radius:8px;" id="ue-markets-'+p.id+'">'+
-                  VAVAN_MARKETS.map(function(m){
-                    var checked = markets.indexOf(m.name) > -1;
-                    return '<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;white-space:nowrap;">'+
-                      '<input type="checkbox" value="'+m.name+'" '+(checked?'checked':'')+' style="accent-color:var(--accent);">'+
-                      m.name+' <span style="font-size:10px;color:var(--muted);">('+m.state+')</span></label>';
-                  }).join('')+
-                '</div>'+
-              '</div>'+
-              '<div><label class="abiz-label">Feature Permissions</label>'+
-                '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:.625rem;background:#fff;border:1px solid var(--border);border-radius:8px;">'+
-                  [
-                    {key:'can_add_business',    label:'Add Businesses',  default:true},
-                    {key:'can_edit_business',   label:'Edit Businesses', default:true},
-                    {key:'can_log_activity',    label:'Log Activity',    default:true},
-                    {key:'can_manage_contacts', label:'Contacts',        default:true},
-                    {key:'can_view_all_reps',   label:'See All Reps',    default:false},
-                    {key:'can_export',          label:'Export Data',     default:false},
-                  ].map(function(perm){
-                    var val = perms[perm.key] !== undefined ? perms[perm.key] : perm.default;
-                    return '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">'+
-                      '<input type="checkbox" id="ue-perm-'+perm.key+'-'+p.id+'" '+(val?'checked':'')+' style="accent-color:var(--accent);">'+
-                      perm.label+'</label>';
-                  }).join('')+
-                '</div>'+
-              '</div>'+
-              '<div id="ue-status-'+p.id+'" style="font-size:12px;color:var(--muted);min-height:16px;"></div>'+
-              '<div style="display:flex;gap:8px;">'+
-                '<button class="settings-save-btn" onclick="saveUserEdit(\''+p.id+'\')" style="flex:1;">Save Changes</button>'+
-                '<button class="settings-cancel-btn" onclick="cancelUserEdit(\''+p.id+'\')">Cancel</button>'+
-              '</div>'+
-            '</div>'+
-          '</div>'+
-        '</div>';
+      return '<div id="user-row-'+p.id+'" style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:.75rem;background:'+(isActive?'#fff':'#fafafa')+';'+(isActive?'':'opacity:.7;')+'">' +
+
+        // VIEW
+        '<div id="user-view-'+p.id+'" style="padding:.875rem;">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">' +
+            '<div style="display:flex;align-items:center;gap:10px;min-width:0;">' +
+              '<div style="width:36px;height:36px;border-radius:50%;background:'+(isActive?'var(--accent)':'#9ca3af')+';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;">'+_getInitials(p.full_name)+'</div>' +
+              '<div style="min-width:0;">' +
+                '<div style="font-size:13px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:6px;">' +
+                  (p.full_name||'Unnamed') +
+                  (!isActive ? '<span style="font-size:10px;background:#fef2f2;color:#dc2626;padding:2px 7px;border-radius:100px;font-weight:600;">Disabled</span>' : '') +
+                '</div>' +
+                '<div style="font-size:11px;color:var(--muted);">'+(p.email||'No email')+'</div>' +
+              '</div>' +
+            '</div>' +
+            '<div style="display:flex;gap:5px;align-items:center;flex-shrink:0;">' +
+              '<span style="font-size:10px;background:'+(p.role==='admin'?'var(--accent-light)':p.role==='vavan_super'?'#fff7e6':'var(--paper2)')+';color:'+(roleColors[p.role]||'var(--muted)')+';padding:3px 8px;border-radius:100px;font-weight:600;">'+(p.role||'rep')+'</span>' +
+              '<button onclick="editUserInline(\''+p.id+'\')" style="background:var(--paper);border:1px solid var(--border);border-radius:6px;padding:4px 9px;font-size:11px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;color:var(--ink);">Edit</button>' +
+              '<button onclick="toggleUserActive(\''+p.id+'\','+(isActive?'false':'true')+')" style="background:'+(isActive?'#fff5f5':'#f0fdf4')+';border:1px solid '+(isActive?'#fca5a5':'#6ee7b7')+';border-radius:6px;padding:4px 9px;font-size:11px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;color:'+(isActive?'#dc2626':'#059669')+'">'+(isActive?'Disable':'Enable')+'</button>' +
+            '</div>' +
+          '</div>' +
+          '<div style="font-size:11px;color:var(--muted);margin-top:5px;display:flex;flex-wrap:wrap;gap:8px;">' +
+            '<span>📍 '+(assignedMarketNames.length ? assignedMarketNames.join(', ') : 'No markets')+'</span>' +
+            (visits ? '<span style="color:#d97706;">· '+visits+' visits</span>' : '') +
+            (contacts ? '<span style="color:#059669;">'+contacts+' calls</span>' : '') +
+          '</div>' +
+        '</div>' +
+
+        // EDIT
+        '<div id="user-edit-'+p.id+'" style="display:none;border-top:2px solid var(--accent);background:var(--paper);">' +
+          '<div style="padding:.875rem;display:flex;flex-direction:column;gap:.75rem;">' +
+
+            // Name + Role
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;">' +
+              '<div><label class="abiz-label">Full Name</label>' +
+                '<input class="settings-input" id="ue-name-'+p.id+'" value="'+(p.full_name||'')+'" style="margin:0;"></div>' +
+              '<div><label class="abiz-label">Role</label>' +
+                '<select class="settings-select" id="ue-role-'+p.id+'" style="margin:0;">' +
+                '<select class="settings-select" id="ue-role-'+p.id+'" style="margin:0;">' +
+                  '<option value="rep"'+(p.role==='rep'?' selected':'')+'>Rep</option>' +
+                  '<option value="client_admin"'+(['client_admin','admin'].indexOf(p.role)>-1?' selected':'')+'>Admin</option>' +
+            '</div>' +
+
+            // Email + Send Link
+            '<div style="display:grid;grid-template-columns:1fr auto;gap:.5rem;align-items:end;">' +
+              '<div><label class="abiz-label">Email Address</label>' +
+                '<input class="settings-input" id="ue-email-'+p.id+'" value="'+(p.email||'')+'" type="email" style="margin:0;" placeholder="rep@company.com"></div>' +
+              '<button onclick="sendPasswordReset(\''+p.id+'\')" style="padding:9px 12px;background:var(--paper2);border:1px solid var(--border);border-radius:8px;font-size:11px;font-weight:600;color:var(--ink);cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;">Send Login Link</button>' +
+            '</div>' +
+
+            // Markets
+            // Markets — only show markets this client owns
+            (function(){
+              var clientOwnedIds = clientMarkets.map(function(cm){ return cm.market_id; });
+              var availMkts = VAVAN_MARKETS.filter(function(m){ return !clientOwnedIds.length || clientOwnedIds.indexOf(m.id) > -1; });
+              if (!availMkts.length) availMkts = VAVAN_MARKETS;
+              return '<div><label class="abiz-label">Markets Assigned <span style="font-size:10px;color:var(--muted);font-weight:400;">(client markets only)</span></label>' +
+                '<div style="display:flex;flex-wrap:wrap;gap:6px;padding:.5rem;background:#fff;border:1px solid var(--border);border-radius:8px;" id="ue-markets-'+p.id+'">' +
+                  availMkts.map(function(m){
+                    var checked = assignedMarketIds.indexOf(m.id) > -1 || (!assignedMarketIds.length && assignedMarketNames.indexOf(m.name) > -1);
+                    return '<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;white-space:nowrap;">' +
+                      '<input type="checkbox" value="'+m.id+'" data-name="'+m.name+'" '+(checked?'checked':'')+' style="accent-color:var(--accent);">' +
+                      m.name+(m.state ? ' <span style="font-size:10px;color:var(--muted);">('+m.state+')</span>' : '')+'</label>';
+                  }).join('') +
+                '</div>' +
+              '</div>';
+            })() +
+
+            // Permissions
+            '<div><label class="abiz-label">Feature Permissions</label>' +
+              '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:.625rem;background:#fff;border:1px solid var(--border);border-radius:8px;">' +
+                [
+                  {key:'can_add_business',    label:'Add Businesses',  def:true},
+                  {key:'can_edit_business',   label:'Edit Businesses', def:true},
+                  {key:'can_log_activity',    label:'Log Activity',    def:true},
+                  {key:'can_manage_contacts', label:'Contacts',        def:true},
+                  {key:'can_view_all_reps',   label:'See All Reps',    def:false},
+                  {key:'can_export',          label:'Export Data',     def:false},
+                ].map(function(perm){
+                  var val = perms[perm.key] !== undefined ? perms[perm.key] : perm.def;
+                  return '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">' +
+                    '<input type="checkbox" id="ue-perm-'+perm.key+'-'+p.id+'" '+(val?'checked':'')+' style="accent-color:var(--accent);">' +
+                    perm.label+'</label>';
+                }).join('') +
+              '</div>' +
+            '</div>' +
+
+            '<div id="ue-status-'+p.id+'" style="font-size:12px;color:var(--muted);min-height:16px;"></div>' +
+            '<div style="display:flex;gap:8px;">' +
+              '<button class="settings-save-btn" onclick="saveUserEdit(\''+p.id+'\')" style="flex:1;">Save Changes</button>' +
+              '<button class="settings-cancel-btn" onclick="cancelUserEdit(\''+p.id+'\')">Cancel</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
     }).join('');
 
-    // Pending invites — not yet logged in
+    // Pending invites
     var pendingHtml = pendingInvites.length ? (
-      '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:1rem 0 .5rem;">Pending — Invite Sent</div>'+
+      '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:1rem 0 .5rem;">Pending — Invite Sent</div>' +
       pendingInvites.map(function(inv){
-        var invDate = inv.invited_at ? _fmtRelTime(inv.invited_at) : '';
-        return '<div style="border:1px dashed var(--border);border-radius:10px;padding:.75rem 1rem;margin-bottom:.6rem;background:#fafafa;display:flex;align-items:center;justify-content:space-between;gap:10px;">'+
-          '<div style="display:flex;align-items:center;gap:10px;min-width:0;">'+
-            '<div style="width:34px;height:34px;border-radius:50%;background:#f3f4f6;border:2px dashed #d1d5db;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">✉️</div>'+
-            '<div style="min-width:0;">'+
-              '<div style="font-size:13px;font-weight:600;color:var(--ink);">'+(inv.full_name||'Unknown')+'</div>'+
-              '<div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(inv.email||'')+'</div>'+
-              '<div style="font-size:10px;color:var(--muted);margin-top:2px;">Invited '+(invDate||'')+(inv.territory_name ? ' · '+inv.territory_name : '')+'</div>'+
-            '</div>'+
-          '</div>'+
-          '<div style="display:flex;gap:6px;flex-shrink:0;">'+
-            '<button onclick="resendInvite(\''+inv.email.replace(/'/g,"\\'")+'\',\''+((inv.full_name||'').replace(/'/g,"\\'"))+'\')" style="background:var(--accent-light);border:1px solid var(--accent);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;color:var(--accent);">Resend</button>'+
-            '<button onclick="deletePendingInvite(\''+inv.email.replace(/'/g,"\\'")+'\',\''+((inv.full_name||'').replace(/'/g,"\\'"))+'\')" style="background:#fff5f5;border:1px solid #fca5a5;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;color:#dc2626;">Cancel</button>'+
-          '</div>'+
+        return '<div style="border:1px dashed var(--border);border-radius:10px;padding:.75rem 1rem;margin-bottom:.6rem;background:#fafafa;display:flex;align-items:center;justify-content:space-between;gap:10px;">' +
+          '<div style="display:flex;align-items:center;gap:10px;min-width:0;">' +
+            '<div style="width:34px;height:34px;border-radius:50%;background:#f3f4f6;border:2px dashed #d1d5db;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">✉️</div>' +
+            '<div style="min-width:0;">' +
+              '<div style="font-size:13px;font-weight:600;color:var(--ink);">'+(inv.full_name||'Unknown')+'</div>' +
+              '<div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(inv.email||'')+'</div>' +
+              '<div style="font-size:10px;color:var(--muted);margin-top:2px;">' +
+                'Invited '+(inv.invited_at ? _fmtRelTime(inv.invited_at) : '')+(inv.territory_name ? ' · '+inv.territory_name : '') +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div style="display:flex;gap:6px;flex-shrink:0;">' +
+            '<button onclick="resendInvite(\''+inv.email.replace(/'/g,"\\'")+'\',\''+((inv.full_name||'').replace(/'/g,"\\'"))+'\')" style="background:var(--accent-light);border:1px solid var(--accent);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;color:var(--accent);">Resend</button>' +
+            '<button onclick="deletePendingInvite(\''+inv.email.replace(/'/g,"\\'")+'\',\''+((inv.full_name||'').replace(/'/g,"\\'"))+'\')" style="background:#fff5f5;border:1px solid #fca5a5;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;color:#dc2626;">Cancel</button>' +
+          '</div>' +
         '</div>';
       }).join('')
     ) : '';
 
-    body.innerHTML = '<div class="settings-section">'+
-      '<div class="settings-section-title">All Users ('+_allProfiles.length+')</div>'+
-      profilesHtml +
-      pendingHtml +
+    body.innerHTML = '<div class="settings-section">' +
+      '<div class="settings-section-title">All Users ('+_allProfiles.length+')</div>' +
+      profilesHtml + pendingHtml +
     '</div>';
 
   } catch(e) {
-    body.innerHTML = '<div class="det-empty">Error loading users: '+e.message+'</div>';
+    body.innerHTML = '<div class="det-empty">Error: '+e.message+'</div>';
+    console.error(e);
   }
 }
+
 
 function editUserInline(id) {
   document.getElementById('user-view-'+id).style.display = 'none';
@@ -4639,56 +4755,80 @@ async function saveUserEdit(id) {
   var email = (document.getElementById('ue-email-'+id)||{}).value || '';
   var role  = (document.getElementById('ue-role-'+id)||{}).value || 'rep';
   var marketsWrap = document.getElementById('ue-markets-'+id);
-  var checked = marketsWrap ? Array.from(marketsWrap.querySelectorAll('input:checked')).map(function(cb){ return cb.value; }) : [];
-  var tname = checked.join(', ');
-  var tcode = checked.length ? checked[0].toUpperCase().replace(/ /g,'-')+'-ALL' : 'LAS-ALL';
+  var checkedEls  = marketsWrap ? Array.from(marketsWrap.querySelectorAll('input:checked')) : [];
+  var marketIds   = checkedEls.map(function(cb){ return cb.value; }).filter(function(v){ return v.length > 10; });
+  var marketNames = VAVAN_MARKETS.filter(function(m){ return m.id && marketIds.indexOf(m.id) > -1; }).map(function(m){ return m.name; });
+  if (!marketNames.length) marketNames = checkedEls.map(function(cb){ return cb.getAttribute('data-name') || cb.value; });
+  var tname = marketNames.join(', ');
+  var tcode = marketNames.length ? marketNames[0].toUpperCase().replace(/ /g,'-')+'-ALL' : 'LAS-ALL';
   var statusEl = document.getElementById('ue-status-'+id);
-
-  // Collect permissions
   var permKeys = ['can_add_business','can_edit_business','can_log_activity','can_manage_contacts','can_view_all_reps','can_export'];
   var perms = {};
   permKeys.forEach(function(k){
     var el = document.getElementById('ue-perm-'+k+'-'+id);
     if (el) perms[k] = el.checked;
   });
-
-  statusEl.style.color = 'var(--muted)';
-  statusEl.textContent = 'Saving...';
-
+  statusEl.style.color = 'var(--muted)'; statusEl.textContent = 'Saving...';
   try {
-    var updates = {
-      full_name: name.trim(),
-      role: role,
-      territory_name: tname,
-      territory_code: tcode,
-      permissions: perms
-    };
-    // Only update email if it changed and is set
-    if (email.trim()) updates.email = email.trim();
-
-    var r = await sb.from('sales_profiles').update(updates).eq('id', id);
-    if (r.error) throw r.error;
-
-    statusEl.style.color = '#059669';
-    statusEl.textContent = '✓ Saved';
+    var fnOk = false;
+    try {
+      await _callFn('update-user', {
+        profile_id: id, full_name: name.trim(), email: email.trim(), role: role,
+        territory_name: tname, territory_code: tcode,
+        permissions: perms, market_ids: marketIds.length ? marketIds : undefined
+      });
+      fnOk = true;
+    } catch(fnErr) { console.warn('update-user fn not available:', fnErr.message); }
+    if (!fnOk) {
+      var updates = { full_name: name.trim(), role: role, territory_name: tname, territory_code: tcode, permissions: perms, updated_at: new Date().toISOString() };
+      if (email.trim()) updates.email = email.trim();
+      var r = await sb.from('sales_profiles').update(updates).eq('id', id);
+      if (r.error) throw r.error;
+      if (marketIds.length) await _saveProfileMarkets(id, marketIds);
+    }
+    statusEl.style.color = '#059669'; statusEl.textContent = '✓ Saved';
     setTimeout(function(){ renderUsersTab(document.getElementById('settings-body')); }, 800);
   } catch(e) {
-    statusEl.style.color = '#dc2626';
-    statusEl.textContent = 'Error: '+e.message;
+    statusEl.style.color = '#dc2626'; statusEl.textContent = 'Error: '+e.message;
   }
 }
 
+async function toggleUserActive(profileId, makeActive) {
+  try {
+    var fnOk = false;
+    try {
+      await _callFn('manage-user', { action: makeActive ? 'enable' : 'disable', profile_id: profileId });
+      fnOk = true;
+    } catch(e) { console.warn('manage-user fn not available:', e.message); }
+    if (!fnOk) {
+      var r = await sb.from('sales_profiles').update({ active: makeActive, updated_at: new Date().toISOString() }).eq('id', profileId);
+      if (r.error) throw r.error;
+    }
+    _showToast(makeActive ? 'User enabled' : 'User disabled');
+    renderUsersTab(document.getElementById('settings-body'));
+  } catch(e) { _showToast('Failed: ' + e.message); }
+}
+
 async function sendPasswordReset(profileId) {
-  // Find email for this profile
-  var profile = _allProfiles.find(function(p){ return p.id === profileId; });
+  var profile = (_allProfiles||[]).find(function(p){ return p.id === profileId; });
   var emailEl = document.getElementById('ue-email-'+profileId);
   var email = emailEl ? emailEl.value.trim() : (profile ? profile.email : '');
   if (!email) { alert('No email address set for this user.'); return; }
   var statusEl = document.getElementById('ue-status-'+profileId);
   statusEl.style.color = 'var(--muted)'; statusEl.textContent = 'Sending login link...';
   try {
-    var r = await sb.auth.signInWithOtp({ email: email, options: { shouldCreateUser: false } });
-    if (r.error) throw r.error;
+    // Try edge function first (proper password reset flow)
+    var fnOk = false;
+    try {
+      var result = await _callFn('manage-user', { action: 'reset_password', profile_id: profileId });
+      if (result.success) fnOk = true;
+    } catch(fnErr) { console.warn('manage-user fn not available:', fnErr.message); }
+
+    if (!fnOk) {
+      // Fallback: OTP magic link
+      var r = await sb.auth.signInWithOtp({ email: email, options: { shouldCreateUser: false } });
+      if (r.error) throw r.error;
+    }
     statusEl.style.color = '#059669';
     statusEl.textContent = '✓ Login link sent to ' + email;
   } catch(e) {
@@ -4729,115 +4869,138 @@ async function deleteUser(profileId, userId, name) {
 
 // ── INVITE TAB ──
 async function renderInviteTab(body) {
-  // Make sure markets are loaded
   if (!_dbMarketsLoaded) await _loadMarketsFromDB();
+
+  // Get client-owned markets for the checkboxes
+  var availMarkets = clientMarkets.length
+    ? clientMarkets.map(function(m){ return m.markets || {}; }).filter(function(m){ return m.name; })
+    : VAVAN_MARKETS;
+
   body.innerHTML =
     '<div class="settings-section">'+
-      '<div class="settings-section-title">Invite a New Rep</div>'+
-      '<div class="invite-form">'+
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.5rem;">'+
+      '<div class="settings-section-title">Add New User</div>'+
+      '<div class="invite-form" style="display:flex;flex-direction:column;gap:.75rem;">'+
+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;">'+
           '<div><label class="abiz-label">Full Name *</label>'+
             '<input class="settings-input" id="inv-name" placeholder="First Last" style="margin:0;"></div>'+
           '<div><label class="abiz-label">Role</label>'+
             '<select class="settings-select" id="inv-role" style="margin:0;">'+
-              '<option value="rep" selected>Rep</option>'+
+              '<option value="rep">Rep</option>'+
+              '<option value="client_admin">Admin</option>'+
             '</select></div>'+
         '</div>'+
-        '<label class="abiz-label">Email Address *</label>'+
-        '<input class="settings-input" id="inv-email" type="email" placeholder="rep@interstate-oil.com">'+
-        '<label class="abiz-label">Markets Assigned</label>'+
-        '<div style="display:flex;flex-wrap:wrap;gap:6px;padding:.5rem;background:#fff;border:1px solid var(--border);border-radius:8px;margin-bottom:.5rem;" id="inv-markets">'+
-          VAVAN_MARKETS.map(function(m){
-            return '<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;white-space:nowrap;">'+
-              '<input type="checkbox" value="'+m.name+'" style="accent-color:var(--accent);">'+
-              m.name+'</label>';
-          }).join('')+
+
+        '<div><label class="abiz-label">Email Address *</label>'+
+          '<input class="settings-input" id="inv-email" type="email" placeholder="rep@company.com" style="margin:0;"></div>'+
+
+        '<div><label class="abiz-label">Markets — which can this user see?</label>'+
+          '<div style="display:flex;flex-wrap:wrap;gap:6px;padding:.5rem;background:#fff;border:1px solid var(--border);border-radius:8px;" id="inv-markets">'+
+            availMarkets.map(function(m){
+              return '<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;white-space:nowrap;">'+
+                '<input type="checkbox" value="'+(m.id||m.name)+'" data-name="'+(m.name||'')+'" style="accent-color:var(--accent);">'+
+                (m.name||'')+(m.state ? ' <span style="color:var(--muted);font-size:10px;">('+m.state+')</span>' : '')+'</label>';
+            }).join('')+
+          '</div>'+
         '</div>'+
-        '<div id="inv-status" style="font-size:12px;min-height:20px;margin:.5rem 0;"></div>'+
-        '<button class="settings-save-btn" onclick="sendInvite()" style="width:100%;">Send Invite Link</button>'+
+
+        '<div id="inv-status" style="font-size:12px;min-height:20px;color:var(--muted);"></div>'+
+
+        '<button class="settings-save-btn" onclick="sendInvite()" style="width:100%;">Add User & Send Invite</button>'+
+
       '</div>'+
       '<div style="margin-top:1rem;padding:.875rem;background:var(--paper);border-radius:10px;border:1px solid var(--border);">'+
-        '<div class="settings-section-title" style="margin-bottom:.5rem;">How it works</div>'+
+        '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem;">How it works</div>'+
         '<div style="font-size:12px;color:var(--muted);line-height:1.7;">'+
-          '1. Enter the rep\'s name, email, role, and market.<br>'+
-          '2. They\'ll receive a magic link — no password needed.<br>'+
-          '3. First login shows them an onboarding screen.<br>'+
-          '4. Their profile is created with their assigned territory.<br>'+
-          '5. They only see businesses in their market.'+
+          '1. Fill in name, email, role, and markets.<br>'+
+          '2. A secure account is created on the server.<br>'+
+          '3. The rep receives a magic link to their email.<br>'+
+          '4. They log in and only see their assigned markets.<br>'+
+          '5. You can edit or disable them any time from Users.'+
         '</div>'+
       '</div>'+
     '</div>';
 }
 
 async function sendInvite() {
-  var name        = document.getElementById('inv-name').value.trim();
-  var email       = document.getElementById('inv-email').value.trim();
-  var role        = document.getElementById('inv-role') ? document.getElementById('inv-role').value : 'rep';
+  var name        = (document.getElementById('inv-name')||{}).value || '';
+  var email       = (document.getElementById('inv-email')||{}).value || '';
+  var role        = (document.getElementById('inv-role')||{}).value || 'rep';
   var marketsWrap = document.getElementById('inv-markets');
-  var markets     = marketsWrap ? Array.from(marketsWrap.querySelectorAll('input:checked')).map(function(cb){ return cb.value; }) : [];
+  var checkedEls  = marketsWrap ? Array.from(marketsWrap.querySelectorAll('input:checked')) : [];
+  var marketIds   = checkedEls.map(function(cb){ return cb.value; }).filter(function(v){ return v.length > 10; }); // UUIDs only
+  var marketNames = checkedEls.map(function(cb){ return cb.getAttribute('data-name') || cb.value; });
   var statusEl    = document.getElementById('inv-status');
+  var btn         = document.querySelector('#settings-body .settings-save-btn');
 
-  if (!name)          { statusEl.style.color='#ef4444'; statusEl.textContent='Name required.'; return; }
-  if (!email)         { statusEl.style.color='#ef4444'; statusEl.textContent='Email required.'; return; }
-  if (!markets.length){ statusEl.style.color='#ef4444'; statusEl.textContent='Select at least one market.'; return; }
+  name = name.trim(); email = email.trim();
+  if (!name)  { statusEl.style.color='#ef4444'; statusEl.textContent='Name required.'; return; }
+  if (!email) { statusEl.style.color='#ef4444'; statusEl.textContent='Email required.'; return; }
 
-  statusEl.style.color = 'var(--muted)';
-  statusEl.textContent = 'Sending invite...';
-  var btn = document.querySelector('.settings-save-btn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
+  statusEl.style.color = 'var(--muted)'; statusEl.textContent = 'Creating user...';
+  if (btn) { btn.disabled = true; btn.textContent = 'Creating...'; }
 
   try {
-    var territoryName = markets.join(', ');
-    var territoryCode = 'LAS-ALL'; // default; expand when multi-market
+    var territoryName = marketNames.join(', ');
+    var territoryCode = marketNames.length ? marketNames[0].toUpperCase().replace(/ /g,'-')+'-ALL' : 'LAS-ALL';
 
-    // Send magic link invite via Supabase OTP
-    var r = await sb.auth.signInWithOtp({
-      email: email,
-      options: {
-        shouldCreateUser: true,
-        data: {
-          full_name: name,
-          territory_code: territoryCode,
-          territory_name: territoryName,
-          role: role,
-          client_id: currentProfile ? currentProfile.client_id : null
-        }
-      }
-    });
-    if (r.error) throw r.error;
-
-    // Store pending invite so profile is ready when they first log in
+    // Try Edge Function first (creates real auth user + profile + market access)
+    var fnOk = false;
     try {
-      await sb.from('pending_invites').upsert({
-        email:          email,
-        full_name:      name,
-        territory_code: territoryCode,
-        territory_name: territoryName,
-        role:           role,
-        client_id:      currentProfile ? currentProfile.client_id : null,
-        invited_by:     currentProfile ? currentProfile.full_name : '',
-        invited_at:     new Date().toISOString()
-      }, { onConflict: 'email' });
-    } catch(e){ /* pending_invites table optional */ }
+      var result = await _callFn('create-user', {
+        full_name: name, email: email, role: role,
+        territory_name: territoryName, territory_code: territoryCode,
+        market_ids: marketIds,
+        client_id: currentProfile ? currentProfile.client_id : null
+      });
+      if (result.success) fnOk = true;
+    } catch(fnErr) {
+      console.warn('create-user function not available, falling back to OTP:', fnErr.message);
+    }
+
+    if (!fnOk) {
+      // Fallback: OTP invite (creates auth user on first click, profile on first login)
+      var r = await sb.auth.signInWithOtp({
+        email: email,
+        options: {
+          shouldCreateUser: true,
+          data: { full_name: name, territory_code: territoryCode, territory_name: territoryName, role: 'rep', client_id: currentProfile ? currentProfile.client_id : null }
+        }
+      });
+      if (r.error) throw r.error;
+
+      // Store pending invite
+      try {
+        await sb.from('pending_invites').upsert({
+          email, full_name: name, territory_code: territoryCode, territory_name: territoryName,
+          role: 'rep', client_id: currentProfile ? currentProfile.client_id : null,
+          invited_by: currentProfile ? currentProfile.full_name : '',
+          invited_at: new Date().toISOString()
+        }, { onConflict: 'email' });
+      } catch(e){}
+    }
 
     statusEl.style.color = '#059669';
-    statusEl.textContent = '✓ Invite sent to ' + email + '. They\'ll receive a login link.';
+    statusEl.textContent = '✓ User added! They\'ll receive a login link at ' + email;
 
     // Reset form
     document.getElementById('inv-name').value = '';
     document.getElementById('inv-email').value = '';
     if (marketsWrap) marketsWrap.querySelectorAll('input').forEach(function(cb){ cb.checked = false; });
 
+    // Switch to users tab after 1.5s so admin can see the new user
+    setTimeout(function(){ switchSettingsTab('users'); }, 1500);
+
   } catch(e) {
     statusEl.style.color = '#ef4444';
-    statusEl.textContent = e.message || 'Invite failed.';
+    statusEl.textContent = e.message || 'Failed to add user.';
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Send Invite Link'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Add User & Send Invite'; }
   }
 }
 
 // ── TERRITORIES TAB ──
-function renderMarketsTab(body) {
+async function renderMarketsTab(body) {
   var sold      = VAVAN_MARKETS.filter(function(m){ return !m.available; });
   var available = VAVAN_MARKETS.filter(function(m){ return m.available; });
 
