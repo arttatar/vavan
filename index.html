@@ -57,6 +57,14 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
     border-right: none !important;
     border-left: none !important;
     box-shadow: 0 -4px 40px rgba(0,0,0,0.22) !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  #detail #det-body, #contacts-panel #contacts-panel-list {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    flex: 1 !important;
+    min-height: 0 !important;
   }
   #sidebar        { z-index: 3000 !important; }
   #results-panel  { z-index: 3100 !important; }
@@ -421,6 +429,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
   transition:transform .28s cubic-bezier(.4,0,.2,1);
 }
 #contacts-panel.open{ transform:translateX(0); }
+/* scoreboard removed */
 .citem{ padding:.65rem 1rem; border-bottom:1px solid var(--border); cursor:pointer; transition:background .1s; }
 .citem:hover{ background:var(--paper); }
 .citem-name{ font-size:13px; font-weight:600; color:var(--ink); margin-bottom:1px; }
@@ -517,14 +526,14 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
   #detail{ display:none !important; }
 }
 #det-x{flex-shrink:0;width:100%;background:#fff;border-bottom:1px solid var(--border);display:flex;flex-direction:column;}
-#det-body{overflow-y:auto;flex:1;min-height:0;display:flex;flex-direction:column;}
+#det-body{overflow-y:auto;flex:1;min-height:0;-webkit-overflow-scrolling:touch;}
 
 /* Section tabs */
 .det-tabs{display:flex;border-bottom:2px solid var(--border);background:#fff;flex-shrink:0;position:sticky;top:0;z-index:9;}
 .det-tab{flex:1;padding:.6rem .5rem;font-size:12px;font-weight:600;color:var(--muted);text-align:center;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;}
 .det-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
-.det-section{display:none;padding:1rem 1.25rem;flex:1;}
-.det-section.active{display:block;}
+.det-section{display:none;padding:1rem 1.25rem;}
+.det-section.active{display:block;padding-bottom:4rem;}
 .det-hero{padding:1rem 1.25rem .75rem;border-bottom:1px solid var(--border);background:#fff;}
 .det-hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:.5rem;}
 .det-biz-name{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;color:var(--ink);line-height:1.2;flex:1;}
@@ -552,8 +561,8 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
 .det-tabs{display:flex;border-bottom:2px solid var(--border);background:#fff;position:sticky;top:48px;z-index:9;}
 .det-tab{flex:1;padding:.6rem .5rem;font-size:12px;font-weight:600;color:var(--muted);text-align:center;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;}
 .det-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
-.det-section{display:none;padding:1rem 1.25rem;flex:1;}
-.det-section.active{display:block;}
+.det-section{display:none;padding:1rem 1.25rem;}
+.det-section.active{display:block;padding-bottom:4rem;}
 
 /* Profile section */
 .det-field-row{display:flex;justify-content:space-between;align-items:flex-start;padding:.4rem 0;border-bottom:1px solid var(--border);}
@@ -1323,16 +1332,6 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
   <button id="my-accounts-btn" style="display:none;" onclick="filterMyAccounts()"></button>
   <button id="route-btn" style="display:none;" onclick="toggleRouteMode()"></button>
   <button id="header-add-btn" style="display:none;" onclick="openAddBusiness()"></button>
-  <!-- Map Layer Toggle -->
-  <div id="map-layer-toggle">
-    <button class="mlt-btn active" id="mlt-dark" onclick="setMapLayer('dark')" title="Dark">
-      🌑<span class="mlt-tip">Dark</span>
-    </button>
-    <button class="mlt-btn" id="mlt-sat" onclick="setMapLayer('satellite')" title="Satellite">
-      🛰️<span class="mlt-tip">Satellite</span>
-    </button>
-  </div>
-
   <button id="locate-btn" onclick="locateMe()" title="Go to my location">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="12" r="3"/>
@@ -1658,7 +1657,7 @@ PERM_DEFS.forEach(function(p){ PERM_DEFAULTS[p.key] = p.def; });
 function _can(permKey) {
   if (!currentProfile) return false;
   var role = currentProfile.role;
-  if (['account_owner', 'client_admin', 'vavan_super'].includes(role)) return true;
+  if (['account_owner', 'account_admin', 'vavan_admin'].includes(role)) return true;
   var perms = currentProfile.permissions || {};
   return perms[permKey] !== undefined ? perms[permKey] : (PERM_DEFAULTS[permKey] || false);
 }
@@ -1686,20 +1685,38 @@ var VAVAN_MARKETS = [
 ];
 
 // ── REP ROSTER ──
-// All reps available for assignment. Markets are stored per-rep in sales_profiles.territory_name
-var ALL_REPS = [
-  'Brian Knoll','DJ DeMille','Brent Andrews','Chris Anderson','Kylie Andrews',
-  'Logan Shepard','Steve Cox','Todd Glades','Adan Gutierrez','Art Tatar',
-  'Dina Nigro','Geary Galusha','Ralph Torres','Roland Kelly','Ben Drysdale',
-  'Hunter Hartwell','Spencer Barone','Jesse Watson','John Bryant','Tyler Stewart'
-];
+var _clientAssignableUsers = [];
 
-// Returns reps for the current user's market context
-// For now returns all reps — will filter by market when multi-market goes live
+async function loadClientAssignableUsers() {
+  if (!currentProfile || !currentProfile.client_id) {
+    _clientAssignableUsers = [];
+    return;
+  }
+
+  try {
+    var r = await sb.from('sales_profiles')
+      .select('id, full_name, role, active, client_id')
+      .eq('client_id', currentProfile.client_id)
+      .order('full_name', { ascending: true });
+    if (r.error) throw r.error;
+
+    _clientAssignableUsers = (r.data || []).filter(function(p) {
+      return p.active !== false && !!(p.full_name || '').trim() && p.role !== 'vavan_admin';
+    });
+  } catch (e) {
+    console.warn('Could not load assignable client users:', e.message);
+    _clientAssignableUsers = [];
+  }
+}
+
 function getTerritoryReps() {
-  if (!currentProfile) return ALL_REPS;
-  // If rep has markets set, filter to reps in same markets (future)
-  return ALL_REPS;
+  if (_clientAssignableUsers && _clientAssignableUsers.length) {
+    return _clientAssignableUsers
+      .map(function(p){ return (p.full_name || '').trim(); })
+      .filter(Boolean);
+  }
+  if (currentProfile && currentProfile.full_name) return [currentProfile.full_name];
+  return [];
 }
 
 function _buildLookup() {
@@ -1820,19 +1837,19 @@ async function sendPasswordReset2() {
 }
 
 // ── SUPER ADMIN / CLIENT MANAGEMENT ──
-// Role hierarchy: vavan_super > client_admin > rep
+// Role hierarchy: vavan_admin > account_admin > rep
 var SUPER_ADMIN_EMAILS = ['info@vavan.co']; // Vavan internal only
 
 async function checkIfSuperAdmin() {
   // Use already-loaded profile first (fastest)
-  if (currentProfile) return currentProfile.role === 'vavan_super';
+  if (currentProfile) return currentProfile.role === 'vavan_admin';
   // Fallback: check email list or DB
   var session = await sb.auth.getSession();
   if (!session.data || !session.data.session) return false;
   var email = session.data.session.user.email;
   if (SUPER_ADMIN_EMAILS.indexOf(email) >= 0) return true;
   var r = await sb.from('sales_profiles').select('role').eq('user_id', session.data.session.user.id).single();
-  return r.data && r.data.role === 'vavan_super';
+  return r.data && r.data.role === 'vavan_admin';
 }
 
 function openClientManagement() {
@@ -2010,7 +2027,7 @@ async function _cmManageClient(clientId, clientName) {
                 (contacts ? '<span style="font-size:10px;background:#f0fdf4;color:#059669;border-radius:100px;padding:1px 7px;font-weight:600;">'+contacts+' calls</span>' : '') +
               '</div>' : '') +
             '</div>' +
-            '<span style="font-size:10px;background:'+(['client_admin','admin'].indexOf(p.role)>-1?'var(--accent-light)':'var(--paper2)')+';color:'+(['client_admin','admin'].indexOf(p.role)>-1?'var(--accent)':'var(--muted)')+';padding:3px 8px;border-radius:100px;font-weight:600;flex-shrink:0;">'+(p.role||'rep')+'</span>' +
+            '<span style="font-size:10px;background:'+(['account_admin','account_owner'].indexOf(p.role)>-1?'var(--accent-light)':'var(--paper2)')+';color:'+(['account_admin','account_owner'].indexOf(p.role)>-1?'var(--accent)':'var(--muted)')+';padding:3px 8px;border-radius:100px;font-weight:600;flex-shrink:0;">'+(p.role||'account_user')+'</span>' +
           '</div>';
         }).join('')
       );
@@ -2063,13 +2080,16 @@ function _cmAddUserForClient(clientId, clientName) {
               '<input class="settings-input" id="cmu-name" placeholder="First Last" style="margin:0;"></div>' +
             '<div><label class="abiz-label">Role</label>' +
               '<select class="settings-select" id="cmu-role" style="margin:0;">' +
-                '<option value="user">User</option>' +
-                '<option value="client_admin">Admin</option>' +
+                '<option value="account_user">Account User</option>' +
+                '<option value="account_admin">Account Admin</option>' +
               '</select></div>' +
           '</div>' +
 
           '<div><label class="abiz-label">Email Address *</label>' +
             '<input class="settings-input" id="cmu-email" type="email" placeholder="user@company.com" style="margin:0;"></div>' +
+
+          '<div><label class="abiz-label">Password * <span style="font-size:10px;color:var(--muted);font-weight:400;">(min 8 characters)</span></label>' +
+            '<input class="settings-input" id="cmu-password" type="password" placeholder="Set a password for this user" style="margin:0;" autocomplete="new-password"></div>' +
 
           '<div><label class="abiz-label">Markets — which can this user see?</label>' +
             '<div style="display:flex;flex-wrap:wrap;gap:6px;padding:.5rem;background:#fff;border:1px solid var(--border);border-radius:8px;" id="cmu-markets">' +
@@ -2097,17 +2117,20 @@ function _cmAddUserForClient(clientId, clientName) {
 async function _cmSaveNewUser(clientId, clientName) {
   var name     = (document.getElementById('cmu-name')||{}).value || '';
   var email    = (document.getElementById('cmu-email')||{}).value || '';
-  var role     = (document.getElementById('cmu-role')||{}).value || 'rep';
+  var password = (document.getElementById('cmu-password')||{}).value || '';
+  var role     = (document.getElementById('cmu-role')||{}).value || 'account_user';
   var mkWrap   = document.getElementById('cmu-markets');
   var mkEls    = mkWrap ? Array.from(mkWrap.querySelectorAll('input:checked')) : [];
   var mkIds    = mkEls.map(function(cb){ return cb.value; });
   var mkNames  = mkEls.map(function(cb){ return cb.getAttribute('data-name') || cb.value; });
   var statusEl = document.getElementById('cmu-status');
   var tname    = mkNames.join(', ');
+  var tcode    = tname ? tname.split(',')[0].trim().toUpperCase().replace(/ /g,'-')+'-ALL' : 'LAS-ALL';
 
   name = name.trim(); email = email.trim();
   if (!name)  { statusEl.style.color='#dc2626'; statusEl.textContent='Name required.'; return; }
   if (!email) { statusEl.style.color='#dc2626'; statusEl.textContent='Email required.'; return; }
+  if (!password || password.length < 8) { statusEl.style.color='#dc2626'; statusEl.textContent='Password must be at least 8 characters.'; return; }
 
   statusEl.style.color = 'var(--muted)'; statusEl.textContent = 'Creating user...';
   var btn = document.querySelector('#cm-body button:last-of-type');
@@ -2116,36 +2139,67 @@ async function _cmSaveNewUser(clientId, clientName) {
   try {
     // Try edge function first
     var fnOk = false;
+    var newUserId = null;
     try {
       var result = await _callFn('create-user', {
-        full_name: name, email: email, role: role,
-        territory_name: tname, territory_code: tname ? tname.split(',')[0].trim().toUpperCase().replace(/ /g,'-')+'-ALL' : 'LAS-ALL',
+        full_name: name, email: email, password: password, role: role,
+        territory_name: tname, territory_code: tcode,
         market_ids: mkIds, client_id: clientId
       });
-      if (result.success) fnOk = true;
+      if (result.success) { fnOk = true; newUserId = result.user_id || null; }
     } catch(fnErr) { console.warn('create-user fn not available:', fnErr.message); }
 
     if (!fnOk) {
-      // Fallback: OTP invite — profile created on first login
-      var r = await sb.auth.signInWithOtp({
+      // Save current session before signUp
+      var currentSession = await sb.auth.getSession();
+      var currentToken = currentSession.data.session ? currentSession.data.session.refresh_token : null;
+
+      // Create auth user with password
+      var r = await sb.auth.signUp({
         email: email,
+        password: password,
         options: {
-          shouldCreateUser: true,
-          data: { full_name: name, role: 'rep', client_id: clientId, territory_name: tname, territory_code: 'LAS-ALL' }
+          data: { full_name: name, role: role, client_id: clientId, territory_name: tname, territory_code: tcode }
         }
       });
       if (r.error) throw r.error;
-      // Store pending invite
+      newUserId = r.data.user ? r.data.user.id : null;
+
+      // Restore admin session
+      if (currentToken) {
+        try { await sb.auth.refreshSession({ refresh_token: currentToken }); } catch(e){}
+      }
+    }
+
+    // Immediately create profile so user shows in Users list
+    if (newUserId) {
+      try {
+        await sb.from('sales_profiles').upsert({
+          user_id: newUserId, full_name: name, email: email, role: role,
+          territory_name: tname, territory_code: tcode,
+          client_id: clientId, active: true,
+          created_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+
+        var profR = await sb.from('sales_profiles').select('id').eq('user_id', newUserId).single();
+        if (profR.data && mkIds.length) {
+          await _saveProfileMarkets(profR.data.id, mkIds);
+        }
+      } catch(profErr) { console.warn('Could not auto-create profile:', profErr.message); }
+    }
+
+    // Backup pending invite record
+    try {
       await sb.from('pending_invites').upsert({
-        email, full_name: name, territory_name: tname, territory_code: 'LAS-ALL',
-        role: 'rep', client_id: clientId,
+        email, full_name: name, territory_name: tname, territory_code: tcode,
+        role: role, client_id: clientId,
         invited_by: currentProfile ? currentProfile.full_name : 'Vavan Admin',
         invited_at: new Date().toISOString()
       }, { onConflict: 'email' });
-    }
+    } catch(e){}
 
     statusEl.style.color = '#059669';
-    statusEl.textContent = '✓ User added! Invite sent to ' + email;
+    statusEl.textContent = '✓ User created! ' + name + ' can sign in now.';
     setTimeout(function(){ _cmManageClient(clientId, clientName); }, 1500);
 
   } catch(e) {
@@ -2236,7 +2290,7 @@ async function _cmCreateClient() {
     var fnOk = false;
     try {
       var result = await _callFn('create-user', {
-        full_name: adminName, email: adminEmail, role: 'client_admin',
+        full_name: adminName, email: adminEmail, role: 'account_admin',
         territory_name: tname, territory_code: 'LAS-ALL',
         market_ids: mkIds, client_id: newClientId
       });
@@ -2248,14 +2302,14 @@ async function _cmCreateClient() {
       await sb.from('pending_invites').upsert({
         email: adminEmail, full_name: adminName,
         territory_name: tname, territory_code: 'LAS-ALL',
-        role: 'client_admin', client_id: newClientId,
+        role: 'account_admin', client_id: newClientId,
         invited_by: 'Vavan', invited_at: new Date().toISOString()
       }, { onConflict: 'email' });
       var invR = await sb.auth.signInWithOtp({
         email: adminEmail,
         options: {
           shouldCreateUser: true,
-          data: { full_name: adminName, role: 'client_admin', client_id: newClientId, territory_name: tname, territory_code: 'LAS-ALL' }
+          data: { full_name: adminName, role: 'account_admin', client_id: newClientId, territory_name: tname, territory_code: 'LAS-ALL' }
         }
       });
       if (invR.error) throw invR.error;
@@ -2323,9 +2377,9 @@ function _updateAccountUI(fullName, isAdmin) {
   if (menuName) menuName.textContent = fullName || '—';
   var settingsRow = document.getElementById('account-menu-settings');
   if (settingsRow) {
-    // Show Admin Settings for account_owner and client_admin, not vavan_super
+    // Show Admin Settings for account_owner and account_admin, not vavan_admin
     var isClientAdmin = currentProfile && 
-      ['account_owner', 'client_admin', 'admin'].includes(currentProfile.role);
+      ['account_owner', 'account_admin'].includes(currentProfile.role);
     settingsRow.style.display = isClientAdmin ? 'flex' : 'none';
   }
 }
@@ -2433,7 +2487,7 @@ async function loadProfile() {
       var pendingTerr = userMeta.territory_code || 'LAS-ALL';
       var pendingTerrName = userMeta.territory_name || 'Las Vegas';
       // Only allow admin role if explicitly set — never default to admin
-      var pendingRole = (userMeta.role === 'admin') ? 'admin' : 'rep';
+      var pendingRole = (userMeta.role === 'account_admin') ? 'account_admin' : 'account_user';
       var pendingClientId = userMeta.client_id || null;
 
       // Check pending_invites table as fallback
@@ -2443,9 +2497,8 @@ async function loadProfile() {
           pendingName = pi.data.full_name || pendingName;
           pendingTerr = pi.data.territory_code || pendingTerr;
           pendingTerrName = pi.data.territory_name || pendingTerrName;
-          // NEVER grant admin via invite flow — only 'rep' allowed here
-          // Admin role must be set manually in Supabase or by another admin
-          pendingRole = 'rep';
+          // Use the role from the invite, defaulting to account_user
+          pendingRole = pi.data.role || 'account_user';
           pendingClientId = pi.data.client_id || pendingClientId;
         }
       } catch(e){}
@@ -2484,7 +2537,7 @@ async function loadProfile() {
       }
 
       var isFirstLogin = !!r.data._isFirstLogin;
-      var isAdmin = ['account_owner', 'client_admin', 'vavan_super', 'admin'].includes(currentProfile.role);
+      var isAdmin = ['account_owner', 'account_admin', 'vavan_admin'].includes(currentProfile.role);
 
       // Load client's purchased markets (for admin market assignment UI)
       if (currentProfile.client_id) {
@@ -2515,6 +2568,7 @@ async function loadProfile() {
 
       // Sync VAVAN_MARKETS from loaded data
       if (!_dbMarketsLoaded) await _loadMarketsFromDB();
+      await loadClientAssignableUsers();
 
       // Show market badge
       var badge = document.getElementById('filter-badge');
@@ -2702,9 +2756,10 @@ function _renderRepChips() {
 function _getMyAccountsRep() {
   if (!currentProfile) return null;
   var profileName = (currentProfile.full_name || '').trim().toLowerCase();
-  var matchedRep = ALL_REPS.find(function(r){ return r.toLowerCase() === profileName; });
+  var reps = getTerritoryReps();
+  var matchedRep = reps.find(function(r){ return r.toLowerCase() === profileName; });
   if (!matchedRep && profileName) {
-    matchedRep = ALL_REPS.find(function(r){
+    matchedRep = reps.find(function(r){
       var parts = r.toLowerCase().split(' ');
       var profileParts = profileName.split(' ');
       return parts.some(function(p){ return profileParts.indexOf(p) > -1; });
@@ -2767,15 +2822,24 @@ function filterMyAccounts() {
     if (host) {
       host.classList.add('open');
       _desktopSection = 'myaccounts';
+      _myAccActivityLoaded = false;
       host.innerHTML =
-        '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px 8px;border-bottom:1px solid var(--border);flex-shrink:0;">'+
+        '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px 8px;flex-shrink:0;">'+
           '<div style="font-size:14px;font-weight:700;color:var(--ink);font-family:Syne,sans-serif;">My Accounts ('+myData.length+')</div>'+
           '<button onclick="closeDesktopSection()" style="background:#f3f4f6;border:none;border-radius:50%;width:28px;height:28px;font-size:16px;cursor:pointer;color:#666;display:flex;align-items:center;justify-content:center;">✕</button>'+
         '</div>'+
-        '<div style="padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0;">'+
-          '<button onclick="applyMyAccountsToMap()" style="width:100%;padding:9px;background:var(--accent);border:none;border-radius:8px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;font-family:Inter,sans-serif;">Apply to Map</button>'+
+        '<div class="det-tabs">'+
+          '<div class="det-tab myacc-tab active" onclick="_switchMyAccTab(\'accounts\')">My Accounts</div>'+
+          '<div class="det-tab myacc-tab" onclick="_switchMyAccTab(\'activity\')">My Activity</div>'+
         '</div>'+
-        '<div style="flex:1;overflow-y:auto;" id="dsk-myacc-body"></div>';
+        '<div id="dsk-myacc-accounts" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">'+
+          '<div style="padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0;">'+
+            '<button onclick="applyMyAccountsToMap()" style="width:100%;padding:9px;background:var(--accent);border:none;border-radius:8px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;font-family:Inter,sans-serif;">Apply to Map</button>'+
+          '</div>'+
+          '<div style="flex:1;overflow-y:auto;" id="dsk-myacc-body"></div>'+
+        '</div>'+
+        '<div id="dsk-myacc-activity" style="flex:1;overflow-y:auto;display:none;"></div>';
+
       var body = host.querySelector('#dsk-myacc-body');
       if (body) {
         if (!myData.length) {
@@ -2801,16 +2865,14 @@ function filterMyAccounts() {
     var listEl = document.getElementById('biz-list');
     var rcountEl = document.getElementById('rcount');
     if (rcountEl) rcountEl.textContent = myData.length + ' of your accounts';
+    _myAccActivityLoaded = false;
     if (listEl) {
-      var applyBanner = '<div style="padding:8px 10px;background:var(--accent-light);border-bottom:1px solid var(--accent);display:flex;align-items:center;justify-content:space-between;">'+
-        '<span style="font-size:12px;font-weight:600;color:var(--accent);">My accounts — map not filtered yet</span>'+
-        '<button onclick="applyMyAccountsToMap()" style="padding:5px 12px;background:var(--accent);border:none;border-radius:6px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;font-family:Inter,sans-serif;">Apply to Map</button>'+
-      '</div>';
+      var accountsList = '';
       if (!myData.length) {
-        listEl.innerHTML = applyBanner + '<div style="padding:1.5rem;font-size:13px;color:var(--muted);text-align:center;">No accounts assigned to you yet.</div>';
+        accountsList = '<div style="padding:1.5rem;font-size:13px;color:var(--muted);text-align:center;">No accounts assigned to you yet.</div>';
       } else {
         var sorted2 = myData.slice().sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); });
-        listEl.innerHTML = applyBanner + sorted2.slice(0,200).map(function(b){
+        accountsList = sorted2.slice(0,200).map(function(b){
           var color = bizColor(b);
           return '<div class="bitem" onclick="selectBiz('+b._id+')">'+
             '<div class="bname"><span class="sdot" style="background:'+color+'"></span>'+b.name+'</div>'+
@@ -2819,6 +2881,19 @@ function filterMyAccounts() {
           '</div>';
         }).join('');
       }
+      listEl.innerHTML =
+        '<div class="det-tabs">'+
+          '<div class="det-tab myacc-tab active" onclick="_switchMyAccTab(\'accounts\')">My Accounts</div>'+
+          '<div class="det-tab myacc-tab" onclick="_switchMyAccTab(\'activity\')">My Activity</div>'+
+        '</div>'+
+        '<div id="mob-myacc-accounts" style="display:block;">'+
+          '<div style="padding:8px 10px;background:var(--accent-light);border-bottom:1px solid var(--accent);display:flex;align-items:center;justify-content:space-between;">'+
+            '<span style="font-size:12px;font-weight:600;color:var(--accent);">My accounts — map not filtered yet</span>'+
+            '<button onclick="applyMyAccountsToMap()" style="padding:5px 12px;background:var(--accent);border:none;border-radius:6px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;font-family:Inter,sans-serif;">Apply to Map</button>'+
+          '</div>'+
+          accountsList+
+        '</div>'+
+        '<div id="mob-myacc-activity" style="display:none;"></div>';
     }
     _bsOpen('results-panel', 'WORK', closeResults);
   }
@@ -2856,19 +2931,50 @@ async function startApp() {
   initOppFilterSliders();
   _initTagFilterDropdown();
   prog(80, 'Placing pins...');
-  if (map.isStyleLoaded()) {
-    renderPins();
-    prog(100, 'Ready!');
-    setTimeout(function(){
-      document.getElementById('loader').classList.add('hidden');
-      _restoreRouteSession();
-    }, 500);
-  } else {
-    map.once('load', function() {
+
+  // Helper: render pins and dismiss loader
+  function _finishStartup() {
+    try {
       renderPins();
       prog(100, 'Ready!');
-      setTimeout(function(){ document.getElementById('loader').classList.add('hidden'); }, 500);
-    });
+      setTimeout(function(){
+        document.getElementById('loader').classList.add('hidden');
+        _restoreRouteSession();
+      }, 500);
+    } catch (err) {
+      console.error('[Vavan] renderPins failed during startup:', err);
+      document.getElementById('loader').classList.add('hidden');
+    }
+  }
+
+  if (map.isStyleLoaded()) {
+    _finishStartup();
+  } else {
+    // Use both event listener AND polling fallback.
+    // The 'load' event may have already fired during async data loading,
+    // so relying on map.once('load') alone can leave the app stuck.
+    var _startupDone = false;
+    function _tryFinish() {
+      if (_startupDone) return;
+      _startupDone = true;
+      _finishStartup();
+    }
+    map.once('load', _tryFinish);
+    // Poll every 500ms as fallback — covers case where load already fired
+    var _pollCount = 0;
+    var _pollTimer = setInterval(function() {
+      _pollCount++;
+      if (map.isStyleLoaded()) { clearInterval(_pollTimer); _tryFinish(); }
+      else if (_pollCount > 30) { // 15 seconds max wait
+        clearInterval(_pollTimer);
+        console.warn('[Vavan] Map style did not load after 15s — showing app anyway');
+        if (!_startupDone) {
+          _startupDone = true;
+          prog(100, 'Ready');
+          document.getElementById('loader').classList.add('hidden');
+        }
+      }
+    }, 500);
   }
 }
 
@@ -3182,6 +3288,8 @@ async function loadData() {
       prog(60, 'Loaded ' + allData.length + ' businesses');
       var pcount = document.getElementById('pcount');
       if (pcount) pcount.textContent = allData.length.toLocaleString();
+      // Load suppliers table
+      await _loadSuppliers();
       return;
     }
 
@@ -3386,6 +3494,74 @@ function _bsAttach(panelId, snaps, closeFn) {
 var _soSelectedInds = [];
 var _soSelectedStatuses = [];
 
+function _soToggleInd(btn) {
+  var ind = btn.getAttribute('data-ind');
+  var idx = _soSelectedInds.indexOf(ind);
+  if (idx > -1) {
+    _soSelectedInds.splice(idx, 1);
+    btn.classList.remove('active');
+  } else {
+    _soSelectedInds.push(ind);
+    btn.classList.add('active');
+  }
+}
+
+function _soToggleStatus(btn) {
+  var st = btn.getAttribute('data-status');
+  var idx = _soSelectedStatuses.indexOf(st);
+  if (idx > -1) {
+    _soSelectedStatuses.splice(idx, 1);
+    btn.classList.remove('active');
+    btn.style.background = '';
+  } else {
+    _soSelectedStatuses.push(st);
+    btn.classList.add('active');
+    btn.style.background = 'var(--accent-light)';
+  }
+}
+
+function _soApply() {
+  // Apply industry filter
+  if (_soSelectedInds.length > 0) {
+    filters.industry = _soSelectedInds.slice();
+  } else {
+    filters.industry = 'all';
+  }
+  // Apply status filter
+  if (_soSelectedStatuses.length > 0) {
+    filters.statuses = _soSelectedStatuses.slice();
+  } else {
+    filters.statuses = [];
+  }
+  applyFilters();
+  updateFilterBadge();
+  // Close the search overlay
+  navTo('map');
+}
+
+function _soReset() {
+  _soSelectedInds = [];
+  _soSelectedStatuses = [];
+  document.querySelectorAll('.so-industry-btn').forEach(function(b){ b.classList.remove('active'); });
+  document.querySelectorAll('#so-status-chips .fchip').forEach(function(b){ b.classList.remove('active'); b.style.background=''; });
+}
+
+function _soSyncFromFilters() {
+  // Sync overlay buttons with current filter state
+  _soSelectedInds = Array.isArray(filters.industry) ? filters.industry.slice() : [];
+  _soSelectedStatuses = filters.statuses ? filters.statuses.slice() : [];
+  document.querySelectorAll('.so-industry-btn').forEach(function(btn){
+    var ind = btn.getAttribute('data-ind');
+    btn.classList.toggle('active', _soSelectedInds.indexOf(ind) > -1);
+  });
+  document.querySelectorAll('#so-status-chips .fchip').forEach(function(btn){
+    var st = btn.getAttribute('data-status');
+    var isActive = _soSelectedStatuses.indexOf(st) > -1;
+    btn.classList.toggle('active', isActive);
+    btn.style.background = isActive ? 'var(--accent-light)' : '';
+  });
+}
+
 
 
 
@@ -3569,7 +3745,7 @@ function closeDesktopSection() {
   var topControls = document.getElementById('desktop-top-controls');
   var host = document.getElementById('desktop-panel-host');
   if (topControls) topControls.classList.remove('panel-open');
-  if (host) { host.classList.remove('open'); host.innerHTML = ''; }
+  if (host) { host.classList.remove('open'); host.innerHTML = ''; host.style.minWidth = ''; }
   document.querySelectorAll('.dsk-mode-btn').forEach(function(b){ b.classList.remove('active'); });
   var txt = document.getElementById('desktop-topbar-text');
   if (txt) { txt.textContent = 'Search & Filter...'; txt.classList.toggle('has-filters', filtersApplied); }
@@ -3754,6 +3930,7 @@ async function _renderDesktopContacts(host) {
   if (src && dst) dst.innerHTML = src.innerHTML;
 }
 
+
 // ── INIT ALL PANELS ──
 function initAllSnapPanels() {
   // Attach BottomSheet engine to every mobile panel
@@ -3768,14 +3945,56 @@ function initAllSnapPanels() {
 
 
 
+// ── GEOLOCATION WRAPPER ──
+// On file:// URLs, browsers re-prompt for location on every call.
+// This wrapper asks once, caches the result, and shares it everywhere.
+var _geoPermission = null; // 'granted', 'denied', or null (not asked yet)
+var _geoWatchId = null;
+var _geoLastPos = null; // { lat, lon } — updated by watchPosition
+
+function _geoAsk(onSuccess, onError) {
+  if (!navigator.geolocation) { if (onError) onError(); return; }
+  if (_geoPermission === 'denied') { if (onError) onError(); return; }
+  // If we already have a cached position, use it immediately
+  if (_geoPermission === 'granted' && _geoLastPos) {
+    if (onSuccess) onSuccess(_geoLastPos);
+    return;
+  }
+  // First time — ask the browser once
+  navigator.geolocation.getCurrentPosition(function(pos) {
+    _geoPermission = 'granted';
+    _geoLastPos = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+    if (onSuccess) onSuccess(_geoLastPos);
+    // Start a persistent watch now that we have permission
+    _geoStartWatch();
+  }, function(err) {
+    _geoPermission = 'denied';
+    if (onError) onError(err);
+  }, { enableHighAccuracy: true, timeout: 8000 });
+}
+
+function _geoStartWatch() {
+  if (_geoWatchId !== null) return; // already watching
+  if (!navigator.geolocation) return;
+  _geoWatchId = navigator.geolocation.watchPosition(function(pos) {
+    _geoLastPos = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+    _userLat = pos.coords.latitude;
+    _userLon = pos.coords.longitude;
+    // Update user dot on map if source exists
+    if (map && map.getSource && map.getSource('user-loc')) {
+      map.getSource('user-loc').setData({
+        type:'Feature', geometry:{type:'Point', coordinates:[pos.coords.longitude, pos.coords.latitude]}
+      });
+    }
+  }, null, { enableHighAccuracy: true, maximumAge: 10000 });
+}
+
 function initMap() {
   // Start at user location if available, otherwise Las Vegas
 map = new mapboxgl.Map({ container:'map', style:'mapbox://styles/mapbox/dark-v11', center:[-115.1398, 36.1899], zoom:11, attributionControl: false });
-if (navigator.geolocation) {
-  navigator.geolocation.getCurrentPosition(function(pos) {
-    map.flyTo({ center:[pos.coords.longitude, pos.coords.latitude], zoom:12, speed:1.5 });
-  }, null, { enableHighAccuracy:true, timeout:5000 });
-}
+_geoAsk(function(pos) {
+  map.flyTo({ center:[pos.lon, pos.lat], zoom:12, speed:1.5 });
+});
   map.addControl(new mapboxgl.NavigationControl({ showZoom: false, showCompass: true }), 'bottom-right');
   map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right');
   draw = new MapboxDraw({ displayControlsDefault:false });
@@ -3783,10 +4002,13 @@ if (navigator.geolocation) {
   map.on('draw.create', onDraw);
   map.on('click', onMapClick);
   map.on('load', function() {
+    ensureSatelliteFadeLayer();
+    syncSatelliteFade();
     startLocationTracking();
     initAllSnapPanels();
     setTimeout(addHQMarker, 500);
   });
+  map.on('zoom', syncSatelliteFade);
 
 // Refresh list as map moves — shows only what's visible
 // Auto-refresh desktop list when map moves/zooms
@@ -3871,12 +4093,12 @@ function addHQMarker() {
 
 function startLocationTracking() {
   if (!navigator.geolocation) return;
-  navigator.geolocation.watchPosition(function(pos) {
-    var coords = [pos.coords.longitude, pos.coords.latitude];
-    // Make sure map style is loaded before adding layers
-    if (!map.isStyleLoaded()) { 
-      map.once('style.load', function(){ startLocationTracking(); });
-      return; 
+  // Use cached geo wrapper — no new permission prompts
+  function _initUserDot(pos) {
+    var coords = [pos.lon, pos.lat];
+    if (!map.isStyleLoaded()) {
+      map.once('style.load', function(){ _initUserDot(pos); });
+      return;
     }
     if (map.getSource('user-loc')) {
       map.getSource('user-loc').setData({
@@ -3911,14 +4133,11 @@ function startLocationTracking() {
         }
       });
     }
-    // Center map on first fix
-    if (!window._locatedOnce) {
-      window._locatedOnce = true;
-      map.flyTo({ center:coords, zoom:13, speed:1.5 });
-    }
-  }, function(err) {
-    console.warn('Geolocation error:', err.message);
-  }, { enableHighAccuracy:true, maximumAge:3000, timeout:10000 });
+  }
+  // Use _geoAsk which caches permission — won't re-prompt
+  _geoAsk(function(pos) {
+    _initUserDot(pos);
+  });
 }
 
 var _mapHandlersAttached = false;
@@ -5166,8 +5385,8 @@ async function _saveProfileMarkets(profileId, marketIds) {
 // ── USERS TAB ──
 async function renderUsersTab(body) {
   try {
-    // vavan_super manages clients via Client Management, not Admin Settings
-    if (currentProfile && currentProfile.role === 'vavan_super') {
+    // vavan_admin manages clients via Client Management, not Admin Settings
+    if (currentProfile && currentProfile.role === 'vavan_admin') {
       body.innerHTML = '<div class="det-empty" style="padding:24px;text-align:center;">'+
         '<div style="font-size:24px;margin-bottom:8px;">🏢</div>'+
         '<div style="font-weight:600;margin-bottom:6px;">You\'re a Vavan Super Admin</div>'+
@@ -5207,7 +5426,7 @@ async function renderUsersTab(body) {
       return;
     }
 
-    var roleColors = { account_owner:'#7c3aed', client_admin:'var(--accent)', admin:'var(--accent)', user:'var(--muted)', rep:'var(--muted)', vavan_super:'#d97706' };
+    var roleColors = { vavan_admin:'#d97706', account_owner:'#7c3aed', account_admin:'var(--accent)', account_user:'var(--muted)' };
 
     // Separate active and disabled users
     var activeProfiles = _allProfiles.filter(function(p){ return p.active !== false; });
@@ -5245,7 +5464,7 @@ async function renderUsersTab(body) {
               '</div>' +
             '</div>' +
             '<div style="display:flex;gap:5px;align-items:center;flex-shrink:0;">' +
-              '<span style="font-size:10px;background:'+(p.role==='account_owner'?'#f3e8ff':p.role==='client_admin'||p.role==='admin'?'var(--accent-light)':p.role==='vavan_super'?'#fff7e6':'var(--paper2)')+';color:'+(roleColors[p.role]||'var(--muted)')+';padding:3px 8px;border-radius:100px;font-weight:600;">'+(p.role||'rep')+'</span>' +
+              '<span style="font-size:10px;background:'+(p.role==='account_owner'?'#f3e8ff':p.role==='account_admin'?'var(--accent-light)':p.role==='vavan_admin'?'#fff7e6':'var(--paper2)')+';color:'+(roleColors[p.role]||'var(--muted)')+';padding:3px 8px;border-radius:100px;font-weight:600;">'+(p.role||'account_user')+'</span>' +
               '<button onclick="editUserInline(\''+p.id+'\')" style="background:var(--paper);border:1px solid var(--border);border-radius:6px;padding:4px 9px;font-size:11px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;color:var(--ink);">Edit</button>' +
               '<button onclick="toggleUserActive(\''+p.id+'\','+(isActive?'false':'true')+')" style="background:'+(isActive?'#fff5f5':'#f0fdf4')+';border:1px solid '+(isActive?'#fca5a5':'#6ee7b7')+';border-radius:6px;padding:4px 9px;font-size:11px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;color:'+(isActive?'#dc2626':'#059669')+'">'+(isActive?'Disable':'Enable')+'</button>' +
             '</div>' +
@@ -5267,16 +5486,22 @@ async function renderUsersTab(body) {
                 '<input class="settings-input" id="ue-name-'+p.id+'" value="'+(p.full_name||'')+'" style="margin:0;"></div>' +
               '<div><label class="abiz-label">Role</label>' +
                 '<select class="settings-select" id="ue-role-'+p.id+'" style="margin:0;">' +
-                  '<option value="user"'+(p.role==='user'||p.role==='rep'?' selected':'')+'>User</option>' +
-                  '<option value="client_admin"'+(['client_admin','admin'].indexOf(p.role)>-1?' selected':'')+'>Admin</option>' +
-                  '<option value="account_owner"'+(p.role==='account_owner'?' selected':'')+'>Account Owner</option>' +
+                  '<option value="account_user"'+(p.role==='account_user'?' selected':'')+'>Account User</option>' +
+                  (currentProfile && ['account_owner','vavan_admin'].indexOf(currentProfile.role)>-1 ?
+                    '<option value="account_admin"'+(p.role==='account_admin'?' selected':'')+'>Account Admin</option>' : '') +
+                  (currentProfile && ['account_owner','vavan_admin'].indexOf(currentProfile.role)>-1 ?
+                    '<option value="account_owner"'+(p.role==='account_owner'?' selected':'')+'>Account Owner</option>' : '') +
                 '</select></div>' +
 
-            // Email + Send Link
+            // Email
+            '<div><label class="abiz-label">Email Address</label>' +
+              '<input class="settings-input" id="ue-email-'+p.id+'" value="'+(p.email||'')+'" type="email" style="margin:0;" placeholder="user@company.com"></div>' +
+
+            // Set Password
             '<div style="display:grid;grid-template-columns:1fr auto;gap:.5rem;align-items:end;">' +
-              '<div><label class="abiz-label">Email Address</label>' +
-                '<input class="settings-input" id="ue-email-'+p.id+'" value="'+(p.email||'')+'" type="email" style="margin:0;" placeholder="user@company.com"></div>' +
-              '<button onclick="sendPasswordReset(\''+p.id+'\')" style="padding:9px 12px;background:var(--paper2);border:1px solid var(--border);border-radius:8px;font-size:11px;font-weight:600;color:var(--ink);cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;">Send Login Link</button>' +
+              '<div><label class="abiz-label">Set New Password <span style="font-size:10px;color:var(--muted);font-weight:400;">(leave blank to keep current)</span></label>' +
+                '<input class="settings-input" id="ue-password-'+p.id+'" type="password" style="margin:0;" placeholder="New password (min 8 chars)" autocomplete="new-password"></div>' +
+              '<button onclick="adminSetPassword(\''+p.id+'\')" style="padding:9px 12px;background:var(--accent);border:none;border-radius:8px;font-size:11px;font-weight:600;color:#fff;cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;">Set Password</button>' +
             '</div>' +
 
             // Markets
@@ -5300,7 +5525,7 @@ async function renderUsersTab(body) {
             // Permissions — admin can only grant what they have
             (function(){
               var adminPerms = currentProfile ? (currentProfile.permissions || {}) : {};
-              var isOwnerOrAdmin = currentProfile && ['account_owner','client_admin'].includes(currentProfile.role);
+              var isOwnerOrAdmin = currentProfile && ['account_owner','account_admin'].includes(currentProfile.role);
               // Group permissions
               var groups = {};
               PERM_DEFS.forEach(function(pd){
@@ -5391,7 +5616,7 @@ function cancelUserEdit(id) {
 async function saveUserEdit(id) {
   var name  = (document.getElementById('ue-name-'+id)||{}).value || '';
   var email = (document.getElementById('ue-email-'+id)||{}).value || '';
-  var role  = (document.getElementById('ue-role-'+id)||{}).value || 'rep';
+  var role  = (document.getElementById('ue-role-'+id)||{}).value || 'account_user';
   var marketsWrap = document.getElementById('ue-markets-'+id);
   var checkedEls  = marketsWrap ? Array.from(marketsWrap.querySelectorAll('input:checked')) : [];
   var marketIds   = checkedEls.map(function(cb){ return cb.value; }).filter(function(v){ return v.length > 10; });
@@ -5461,6 +5686,53 @@ async function toggleUserActive(profileId, makeActive) {
       _showToast(makeActive ? '✓ User enabled' : '✓ User disabled (sign out may take up to 1 hour)');
       renderUsersTab(document.getElementById('settings-body'));
     } catch(e2) { _showToast('Failed: ' + e2.message); }
+  }
+}
+
+async function adminSetPassword(profileId) {
+  var passEl = document.getElementById('ue-password-'+profileId);
+  var password = passEl ? passEl.value : '';
+  var statusEl = document.getElementById('ue-status-'+profileId);
+  if (!password || password.length < 8) {
+    statusEl.style.color = '#ef4444';
+    statusEl.textContent = 'Password must be at least 8 characters.';
+    return;
+  }
+  var profile = (_allProfiles||[]).find(function(p){ return p.id === profileId; });
+  statusEl.style.color = 'var(--muted)'; statusEl.textContent = 'Setting password...';
+  try {
+    // Try edge function (has admin privileges to set any user's password)
+    var fnOk = false;
+    try {
+      var result = await _callFn('hyper-api', {
+        action: 'set_password',
+        profile_id: profileId,
+        user_id: profile ? profile.user_id : null,
+        password: password
+      });
+      if (result.success) fnOk = true;
+    } catch(fnErr) { console.warn('hyper-api set_password not available:', fnErr.message); }
+
+    if (!fnOk) {
+      // Fallback: try direct Supabase admin update (may not work without service_role key)
+      // Send a password reset link instead so user can set it themselves
+      var email = profile ? profile.email : '';
+      if (!email) throw new Error('No email found for this user.');
+      await sb.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + window.location.pathname
+      });
+      statusEl.style.color = '#059669';
+      statusEl.textContent = 'Edge function not available. Password reset link sent to ' + email + ' instead.';
+      if (passEl) passEl.value = '';
+      return;
+    }
+
+    statusEl.style.color = '#059669';
+    statusEl.textContent = '✓ Password updated! User can sign in with the new password now.';
+    if (passEl) passEl.value = '';
+  } catch(e) {
+    statusEl.style.color = '#dc2626';
+    statusEl.textContent = 'Error: ' + e.message;
   }
 }
 
@@ -5549,13 +5821,17 @@ async function renderInviteTab(body) {
             '<input class="settings-input" id="inv-name" placeholder="First Last" style="margin:0;"></div>'+
           '<div><label class="abiz-label">Role</label>'+
             '<select class="settings-select" id="inv-role" style="margin:0;">'+
-              '<option value="user">User</option>'+
-              '<option value="client_admin">Admin</option>'+
+              '<option value="account_user">Account User</option>'+
+              (currentProfile && ['account_owner','vavan_admin'].indexOf(currentProfile.role)>-1 ?
+                '<option value="account_admin">Account Admin</option>' : '')+
             '</select></div>'+
         '</div>'+
 
         '<div><label class="abiz-label">Email Address *</label>'+
           '<input class="settings-input" id="inv-email" type="email" placeholder="user@company.com" style="margin:0;"></div>'+
+
+        '<div><label class="abiz-label">Password * <span style="font-size:10px;color:var(--muted);font-weight:400;">(min 8 characters — admin can change later)</span></label>'+
+          '<input class="settings-input" id="inv-password" type="password" placeholder="Set a password for this user" style="margin:0;" autocomplete="new-password"></div>'+
 
         '<div><label class="abiz-label">Markets — which can this user see?</label>'+
           '<div style="display:flex;flex-wrap:wrap;gap:6px;padding:.5rem;background:#fff;border:1px solid var(--border);border-radius:8px;" id="inv-markets">'+
@@ -5575,11 +5851,11 @@ async function renderInviteTab(body) {
       '<div style="margin-top:1rem;padding:.875rem;background:var(--paper);border-radius:10px;border:1px solid var(--border);">'+
         '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem;">How it works</div>'+
         '<div style="font-size:12px;color:var(--muted);line-height:1.7;">'+
-          '1. Fill in name, email, role, and markets.<br>'+
-          '2. A secure account is created on the server.<br>'+
-          '3. The rep receives a magic link to their email.<br>'+
-          '4. They log in and only see their assigned markets.<br>'+
-          '5. You can edit or disable them any time from Users.'+
+          '1. Fill in name, email, password, role, and markets.<br>'+
+          '2. The account is created instantly and shows in Users.<br>'+
+          '3. Share the email and password with the user.<br>'+
+          '4. They sign in and only see their assigned markets.<br>'+
+          '5. You can edit, change their password, or disable them any time from Users.'+
         '</div>'+
       '</div>'+
     '</div>';
@@ -5588,7 +5864,8 @@ async function renderInviteTab(body) {
 async function sendInvite() {
   var name        = (document.getElementById('inv-name')||{}).value || '';
   var email       = (document.getElementById('inv-email')||{}).value || '';
-  var role        = (document.getElementById('inv-role')||{}).value || 'rep';
+  var password    = (document.getElementById('inv-password')||{}).value || '';
+  var role        = (document.getElementById('inv-role')||{}).value || 'account_user';
   var marketsWrap = document.getElementById('inv-markets');
   var checkedEls  = marketsWrap ? Array.from(marketsWrap.querySelectorAll('input:checked')) : [];
   var marketIds   = checkedEls.map(function(cb){ return cb.value; }).filter(function(v){ return v.length > 10; }); // UUIDs only
@@ -5599,6 +5876,7 @@ async function sendInvite() {
   name = name.trim(); email = email.trim();
   if (!name)  { statusEl.style.color='#ef4444'; statusEl.textContent='Name required.'; return; }
   if (!email) { statusEl.style.color='#ef4444'; statusEl.textContent='Email required.'; return; }
+  if (!password || password.length < 8) { statusEl.style.color='#ef4444'; statusEl.textContent='Password must be at least 8 characters.'; return; }
 
   statusEl.style.color = 'var(--muted)'; statusEl.textContent = 'Creating user...';
   if (btn) { btn.disabled = true; btn.textContent = 'Creating...'; }
@@ -5606,59 +5884,87 @@ async function sendInvite() {
   try {
     var territoryName = marketNames.join(', ');
     var territoryCode = marketNames.length ? marketNames[0].toUpperCase().replace(/ /g,'-')+'-ALL' : 'LAS-ALL';
+    var clientId = currentProfile ? currentProfile.client_id : null;
 
     // Try Edge Function first (creates real auth user + profile + market access)
     var fnOk = false;
+    var newUserId = null;
     try {
       var result = await _callFn('create-user', {
-        full_name: name, email: email, role: role,
+        full_name: name, email: email, password: password, role: role,
         territory_name: territoryName, territory_code: territoryCode,
         market_ids: marketIds,
-        client_id: currentProfile ? currentProfile.client_id : null
+        client_id: clientId
       });
-      if (result.success) fnOk = true;
+      if (result.success) { fnOk = true; newUserId = result.user_id || null; }
     } catch(fnErr) {
-      console.warn('create-user function not available, falling back to OTP:', fnErr.message);
+      console.warn('create-user function not available, falling back to signUp:', fnErr.message);
     }
 
     if (!fnOk) {
-      // Step 1: Create the auth user with a temp password
-      // We use OTP to create the user, then immediately send a password reset
-      // so their first experience is setting their own password
-      var r = await sb.auth.signInWithOtp({
+      // Save current session before signUp (signUp may auto-sign-in the new user)
+      var currentSession = await sb.auth.getSession();
+      var currentToken = currentSession.data.session ? currentSession.data.session.refresh_token : null;
+
+      // Create auth user with password — user can log in immediately
+      var r = await sb.auth.signUp({
         email: email,
+        password: password,
         options: {
-          shouldCreateUser: true,
-          data: { full_name: name, territory_code: territoryCode, territory_name: territoryName, role: 'user', client_id: currentProfile ? currentProfile.client_id : null }
+          data: { full_name: name, territory_code: territoryCode, territory_name: territoryName, role: role, client_id: clientId }
         }
       });
       if (r.error) throw r.error;
+      newUserId = r.data.user ? r.data.user.id : null;
 
-      // Store pending invite so profile is ready on first login
-      try {
-        await sb.from('pending_invites').upsert({
-          email, full_name: name, territory_code: territoryCode, territory_name: territoryName,
-          role: 'user', client_id: currentProfile ? currentProfile.client_id : null,
-          invited_by: currentProfile ? currentProfile.full_name : '',
-          invited_at: new Date().toISOString()
-        }, { onConflict: 'email' });
-      } catch(e){}
-
-      // Step 2: Also send a password reset so they set a real password
-      // This means they get ONE email with a link that takes them to set password
-      try {
-        await sb.auth.resetPasswordForEmail(email, {
-          redirectTo: window.location.origin + window.location.pathname
-        });
-      } catch(e){ console.warn('Could not send password reset:', e.message); }
+      // Restore admin session if signUp switched it
+      if (currentToken) {
+        try { await sb.auth.refreshSession({ refresh_token: currentToken }); } catch(e){}
+      }
     }
 
+    // Immediately create sales_profiles row so user shows in Users list right away
+    if (newUserId) {
+      try {
+        await sb.from('sales_profiles').upsert({
+          user_id: newUserId,
+          full_name: name,
+          email: email,
+          role: role,
+          territory_name: territoryName,
+          territory_code: territoryCode,
+          client_id: clientId,
+          active: true,
+          created_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+
+        // Get the new profile ID for market access
+        var profR = await sb.from('sales_profiles').select('id').eq('user_id', newUserId).single();
+        if (profR.data && marketIds.length) {
+          await _saveProfileMarkets(profR.data.id, marketIds);
+        }
+      } catch(profErr) {
+        console.warn('Could not auto-create profile:', profErr.message);
+      }
+    }
+
+    // Also store pending invite as backup
+    try {
+      await sb.from('pending_invites').upsert({
+        email, full_name: name, territory_code: territoryCode, territory_name: territoryName,
+        role: role, client_id: clientId,
+        invited_by: currentProfile ? currentProfile.full_name : '',
+        invited_at: new Date().toISOString()
+      }, { onConflict: 'email' });
+    } catch(e){}
+
     statusEl.style.color = '#059669';
-    statusEl.textContent = '✓ Invite sent to ' + email + '. They\'ll receive an email to set their password.';
+    statusEl.textContent = '✓ User created! ' + name + ' can sign in with their email and password now.';
 
     // Reset form
     document.getElementById('inv-name').value = '';
     document.getElementById('inv-email').value = '';
+    document.getElementById('inv-password').value = '';
     if (marketsWrap) marketsWrap.querySelectorAll('input').forEach(function(cb){ cb.checked = false; });
 
     // Switch to users tab after 1.5s so admin can see the new user
@@ -6100,16 +6406,16 @@ function locateMe() {
   if (!navigator.geolocation) return;
   var btn = document.getElementById('locate-btn');
   if (btn) btn.classList.add('locating');
-  navigator.geolocation.getCurrentPosition(function(pos) {
+  _geoAsk(function(pos) {
     if (btn) btn.classList.remove('locating');
     map.flyTo({
-      center: [pos.coords.longitude, pos.coords.latitude],
+      center: [pos.lon, pos.lat],
       zoom: 14, speed: 1.5
     });
   }, function() {
     if (btn) btn.classList.remove('locating');
     alert('Location access denied. Please enable location in your browser settings.');
-  }, { enableHighAccuracy: true, timeout: 8000 });
+  });
 }
 
 // ── NAVIGATION SHEET ──
@@ -6557,6 +6863,14 @@ function fmtTime(ts){
   return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' '+
     d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
 }
+
+var SCORE_PRODUCTS = [
+  { key:'lubricants', label:'Lube', field:'lube' },
+  { key:'fuel_delivery', label:'Fuel', field:'fuel' },
+  { key:'cardlock', label:'Cardlock', field:'cardlock' },
+  { key:'uco', label:'UCO', field:'uco' }
+];
+
 
 function _fmtRelTime(ts) {
   if (!ts) return '';
@@ -7029,12 +7343,13 @@ async function toggleVisited() {
 
 async function saveInlineIndustry() {
   var sel = document.getElementById('inline-industry');
-  if (!sel || !b) return;
+  var biz = lastSelectedBiz;
+  if (!sel || !biz) return;
   var newInd = sel.value;
   try {
-    var r = await sb.from('businesses').update({industry: newInd||null, updated_at:new Date().toISOString()}).eq('id',b.id||b._id);
+    var r = await sb.from('businesses').update({industry: newInd||null, updated_at:new Date().toISOString()}).eq('id',biz.id||biz._id);
     if (r.error) throw r.error;
-    b.industry = newInd;
+    biz.industry = newInd;
     // Log the change
     _logChange('Industry → ' + (newInd||'removed'), 'edit');
     // Update sub-industry dropdown options
@@ -7044,9 +7359,27 @@ async function saveInlineIndustry() {
         (SUB_MAP[newInd]||[]).map(function(s){return '<option value="'+s.val+'">'+s.label+'</option>';}).join('');
     }
     // Update lookup
-    if (_bizById[b._id]) _bizById[b._id].industry = newInd;
+    if (_bizById[biz._id]) _bizById[biz._id].industry = newInd;
+    if (map && map.getSource('biz')) {
+      _refreshMapSource(filtersApplied ? filteredData : allData);
+    }
+    if (map && map.getSource('biz-selected') && biz.lat && biz.lon) {
+      map.getSource('biz-selected').setData({
+        type:'FeatureCollection',
+        features:[{
+          type:'Feature',
+          geometry:{type:'Point',coordinates:[biz.lon,biz.lat]},
+          properties:{industry:biz.industry||'',is_competitor:biz.is_competitor||false}
+        }]
+      });
+    }
+    renderDetailPanel(biz);
+    switchTab('profile');
     _showToast('Industry updated');
-  } catch(e) { _showToast('Save failed'); }
+  } catch(e) {
+    console.error('[Vavan] saveInlineIndustry failed:', e);
+    _showToast('Save failed');
+  }
 }
 
 async function saveInlineSubIndustry() {
@@ -7244,22 +7577,29 @@ async function loadContacts(b) {
     var contacts = r.data.slice().sort(function(a,b){ return (b.is_primary?1:0)-(a.is_primary?1:0); });
     el.innerHTML = contacts.map(function(c){
       var isPrimary = c.is_primary || false;
+      var cName = ((c.first_name||'')+' '+(c.last_name||'')).trim();
       return '<div class="contact-card" style="'+(isPrimary?'border-color:var(--accent);background:var(--accent-light);':'')+'" id="contact-'+c.id+'">'+
         '<div style="display:flex;justify-content:space-between;align-items:flex-start;">'+
-          '<div>'+
+          '<div style="flex:1;min-width:0;">'+
             '<div class="contact-card-name">'+
               (isPrimary?'<span style="color:var(--accent);font-size:11px;font-weight:700;background:var(--accent-light);padding:1px 6px;border-radius:4px;margin-right:4px;">Primary</span>':'')+
-              (c.first_name||'')+' '+(c.last_name||'')+
+              cName+
             '</div>'+
             '<div class="contact-card-title">'+(c.job_title||'')+'</div>'+
           '</div>'+
-          '<button onclick="setPrimaryContact(\''+c.id+'\',\''+String(b.id||b._id)+'\')" '+
-            'style="background:'+(isPrimary?'var(--accent)':'none')+';color:'+(isPrimary?'#fff':'#bbb')+';border:'+(isPrimary?'none':'1px solid #ddd')+';border-radius:100px;padding:3px 8px;font-size:11px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;">'+
-            (isPrimary?'Primary':'Set Primary')+ 
-          '</button>'+
+          '<div style="display:flex;gap:4px;align-items:center;flex-shrink:0;">'+
+            '<button onclick="setPrimaryContact(\''+c.id+'\',\''+String(b.id||b._id)+'\')" '+
+              'style="background:'+(isPrimary?'var(--accent)':'none')+';color:'+(isPrimary?'#fff':'#bbb')+';border:'+(isPrimary?'none':'1px solid #ddd')+';border-radius:100px;padding:3px 8px;font-size:11px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;">'+
+              (isPrimary?'Primary':'Set Primary')+
+            '</button>'+
+          '</div>'+
         '</div>'+
         (c.phone?'<div class="contact-card-row"><a href="tel:'+c.phone.replace(/\D/g,'')+'">'+c.phone+'</a></div>':'')+
         (c.email?'<div class="contact-card-row">✉️ <a href="mailto:'+c.email+'">'+c.email+'</a></div>':'')+
+        '<div style="display:flex;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid '+(isPrimary?'rgba(74,54,200,.15)':'var(--border)')+';">'+
+          '<button onclick="editContact(\''+c.id+'\')" style="flex:1;padding:6px;background:var(--paper2);border:1px solid var(--border);border-radius:8px;font-size:11px;font-weight:600;color:var(--ink);cursor:pointer;font-family:Inter,sans-serif;">Edit</button>'+
+          '<button onclick="deleteContact(\''+c.id+'\',\''+cName.replace(/'/g,"\\'")+'\')" style="padding:6px 12px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;font-size:11px;font-weight:600;color:#dc2626;cursor:pointer;font-family:Inter,sans-serif;">Delete</button>'+
+        '</div>'+
       '</div>';
     }).join('');
   } catch(e) {
@@ -7335,6 +7675,116 @@ async function saveContact() {
   }
 }
 
+// Edit contact — populate form with existing data
+var _editingContactId = null;
+async function editContact(contactId) {
+  var b = lastSelectedBiz; if (!b) return;
+  try {
+    var r = await sb.from('contacts').select('*').eq('id', contactId).single();
+    if (r.error) throw r.error;
+    var c = r.data;
+
+    // Show form and populate
+    var f = document.getElementById('contact-form');
+    if (!f.classList.contains('active')) f.classList.add('active');
+
+    document.getElementById('cf-first').value = c.first_name || '';
+    document.getElementById('cf-last').value = c.last_name || '';
+    document.getElementById('cf-phone').value = c.phone || '';
+    document.getElementById('cf-email').value = c.email || '';
+    var titleEl = document.getElementById('cf-title');
+    if (titleEl) titleEl.value = c.job_title || '';
+
+    // Change button to "Update"
+    _editingContactId = contactId;
+    var btn = document.querySelector('#contact-form .edit-save-btn');
+    if (btn) btn.textContent = 'Update Contact';
+  } catch(e) { alert('Could not load contact: ' + e.message); }
+}
+
+// Override saveContact to handle edits
+var _origSaveContact = saveContact;
+saveContact = async function() {
+  var b = lastSelectedBiz; if (!b) return;
+
+  if (!_editingContactId) {
+    // New contact — call original
+    return _origSaveContact();
+  }
+
+  // Editing existing contact
+  var first = document.getElementById('cf-first').value.trim();
+  var last  = document.getElementById('cf-last').value.trim();
+  var phone = document.getElementById('cf-phone').value.trim();
+  var email = document.getElementById('cf-email').value.trim();
+  var title = document.getElementById('cf-title').value;
+  var byName = currentProfile ? (currentProfile.full_name || 'Unknown') : 'Unknown';
+
+  if (!first && !last) { alert('Enter at least a first or last name.'); return; }
+
+  var btn = document.querySelector('#contact-form .edit-save-btn');
+  btn.textContent = 'Saving...'; btn.disabled = true;
+
+  try {
+    var r = await sb.from('contacts').update({
+      first_name: first, last_name: last,
+      phone: phone, email: email, job_title: title
+    }).eq('id', _editingContactId);
+    if (r.error) throw r.error;
+
+    await sb.from('activity').insert({
+      business_id: String(b.id||b._id),
+      type: 'contact',
+      client_id: currentProfile ? currentProfile.client_id : null,
+      note: 'Contact updated: ' + [first, last].filter(Boolean).join(' ') + (title ? ' (' + title + ')' : ''),
+      created_by: byName
+    });
+
+    _editingContactId = null;
+    toggleContactForm();
+    loadContacts(b);
+  } catch(e) {
+    alert('Update failed: ' + e.message);
+  } finally {
+    btn.textContent = 'Save Contact'; btn.disabled = false;
+  }
+};
+
+// Delete contact
+async function deleteContact(contactId, contactName) {
+  if (!confirm('Delete contact "' + contactName + '"? This cannot be undone.')) return;
+  var b = lastSelectedBiz; if (!b) return;
+  var byName = currentProfile ? (currentProfile.full_name || 'Unknown') : 'Unknown';
+
+  try {
+    var r = await sb.from('contacts').delete().eq('id', contactId);
+    if (r.error) throw r.error;
+
+    await sb.from('activity').insert({
+      business_id: String(b.id||b._id),
+      type: 'contact',
+      client_id: currentProfile ? currentProfile.client_id : null,
+      note: 'Contact deleted: ' + contactName,
+      created_by: byName
+    });
+
+    _showToast('Contact deleted');
+    loadContacts(b);
+  } catch(e) { alert('Delete failed: ' + e.message); }
+}
+
+// Reset editing state when form is toggled closed
+var _origToggleContactForm = toggleContactForm;
+toggleContactForm = function() {
+  _origToggleContactForm();
+  var f = document.getElementById('contact-form');
+  if (!f.classList.contains('active')) {
+    _editingContactId = null;
+    var btn = document.querySelector('#contact-form .edit-save-btn');
+    if (btn) btn.textContent = 'Save Contact';
+  }
+};
+
 // ── ACTIVITY / NOTES ──
 async function loadActivity(b) {
   var el = document.getElementById('activity-feed');
@@ -7349,17 +7799,123 @@ async function loadActivity(b) {
     el.innerHTML = '<div class="activity-feed">'+r.data.map(function(a){
       var icon    = a.type==='contacted'?'C':a.type==='visited'?'V':a.type==='pipeline'?'P':a.type==='contact'?'CT':a.type==='opportunities'?'OPP':a.type==='claimed'?'CL':a.type==='abandoned'?'X':a.type==='created'?'★':'N';
       var iconCls = a.type==='contacted'?'contacted':a.type==='visited'?'visited':a.type==='pipeline'||a.type==='opportunities'||a.type==='claimed'||a.type==='abandoned'||a.type==='created'?'pipeline':a.type==='contact'?'pipeline':'note';
-      var text    = (a.type==='note'||a.type==='pipeline'||a.type==='contact'||a.type==='created'||a.type==='edit'||a.type==='claimed'||a.type==='abandoned'||a.type==='opportunities') ? a.note : (a.type==='contacted'?'Contacted':a.type==='visited'?'Visited':a.type.charAt(0).toUpperCase()+a.type.slice(1));
+
+      // Build display text — show outcome + note for visited/contacted
+      var label = a.type.charAt(0).toUpperCase()+a.type.slice(1);
+      var noteText = '';
+      if (a.type === 'visited' || a.type === 'contacted') {
+        label = a.type === 'visited' ? 'Visited' : 'Contacted';
+        if (a.note) {
+          // note is stored as "Outcome: details" or just "Outcome"
+          var colonIdx = a.note.indexOf(': ');
+          if (colonIdx > -1) {
+            label = a.note.substring(0, colonIdx);
+            noteText = a.note.substring(colonIdx + 2);
+          } else {
+            label = a.note;
+          }
+        }
+      } else if (a.type==='note'||a.type==='pipeline'||a.type==='contact'||a.type==='created'||a.type==='edit'||a.type==='claimed'||a.type==='abandoned'||a.type==='opportunities') {
+        label = a.note || label;
+      }
+
       var byLine  = a.created_by ? '<span style="color:var(--accent);font-weight:600;">'+a.created_by+'</span> · ' : '';
       return '<div class="activity-item">'+
         '<div class="act-icon '+iconCls+'">'+icon+'</div>'+
         '<div class="act-content">'+
-          '<div class="act-text">'+text+'</div>'+
+          '<div class="act-text">'+label+'</div>'+
+          (noteText ? '<div style="font-size:12px;color:var(--muted);margin-top:2px;line-height:1.4;">'+noteText+'</div>' : '')+
           '<div class="act-time">'+byLine+fmtTime(a.created_at)+'</div>'+
         '</div></div>';
     }).join('')+'</div>';
   } catch(e) {
     el.innerHTML = '<div class="det-empty">Could not load activity.</div>';
+  }
+}
+
+// ── MY ACTIVITY (for My Accounts panel) ──
+var _myAccActivityLoaded = false;
+function _switchMyAccTab(tab) {
+  var accPanel = document.getElementById('dsk-myacc-accounts') || document.getElementById('mob-myacc-accounts');
+  var actPanel = document.getElementById('dsk-myacc-activity') || document.getElementById('mob-myacc-activity');
+  // Toggle tab active state — only target .myacc-tab so we don't touch business detail tabs
+  document.querySelectorAll('.myacc-tab').forEach(function(t, i) {
+    var isActive = (tab === 'accounts' && i === 0) || (tab === 'activity' && i === 1);
+    t.classList.toggle('active', isActive);
+  });
+  if (accPanel) accPanel.style.display = tab === 'accounts' ? 'flex' : 'none';
+  if (actPanel) actPanel.style.display = tab === 'activity' ? 'block' : 'none';
+  // Lazy-load activity on first switch
+  if (tab === 'activity' && !_myAccActivityLoaded && actPanel) {
+    _myAccActivityLoaded = true;
+    loadMyActivity(actPanel);
+  }
+}
+
+async function loadMyActivity(container) {
+  if (!container) return;
+  var byName = currentProfile ? (currentProfile.full_name || '') : '';
+  if (!byName) { container.innerHTML = '<div style="padding:1rem;font-size:12px;color:var(--muted);text-align:center;">No profile loaded.</div>'; return; }
+  container.innerHTML = '<div style="padding:1rem;text-align:center;color:var(--muted);font-size:12px;">Loading activity...</div>';
+  try {
+    var clientId = currentProfile ? currentProfile.client_id : null;
+    var query = sb.from('activity').select('*').eq('created_by', byName).order('created_at', {ascending:false}).limit(100);
+    if (clientId) query = query.eq('client_id', clientId);
+    var r = await query;
+    if (r.error) throw r.error;
+    if (!r.data || !r.data.length) {
+      container.innerHTML = '<div style="padding:1.5rem;font-size:12px;color:var(--muted);text-align:center;">No activity yet.</div>';
+      return;
+    }
+
+    // Build UUID→biz lookup from allData (business_id in activity is the Supabase UUID)
+    var _bizByUuid = {};
+    allData.forEach(function(b){ if (b.id) _bizByUuid[String(b.id)] = b; });
+
+    container.innerHTML = r.data.map(function(a) {
+      var icon    = a.type==='contacted'?'C':a.type==='visited'?'V':a.type==='pipeline'?'P':a.type==='contact'?'CT':a.type==='opportunities'?'OPP':a.type==='claimed'?'CL':a.type==='abandoned'?'X':a.type==='created'?'★':'N';
+      var iconCls = a.type==='contacted'?'contacted':a.type==='visited'?'visited':a.type==='pipeline'||a.type==='opportunities'||a.type==='claimed'||a.type==='abandoned'||a.type==='created'?'pipeline':a.type==='contact'?'pipeline':'note';
+
+      // Build label — show outcome for visited/contacted
+      var label = a.type.charAt(0).toUpperCase()+a.type.slice(1);
+      var noteText = '';
+      if (a.type === 'visited' || a.type === 'contacted') {
+        label = a.type === 'visited' ? 'Visited' : 'Contacted';
+        if (a.note) {
+          var colonIdx = a.note.indexOf(': ');
+          if (colonIdx > -1) { label = a.note.substring(0, colonIdx); noteText = a.note.substring(colonIdx + 2); }
+          else { label = a.note; }
+        }
+      } else if (a.type==='note'||a.type==='pipeline'||a.type==='contact'||a.type==='created'||a.type==='edit'||a.type==='claimed'||a.type==='abandoned'||a.type==='opportunities') {
+        label = a.note || label;
+      }
+
+      // Look up business by UUID or fallback to _bizById
+      var bid = String(a.business_id || '');
+      var biz = _bizByUuid[bid] || _bizById[bid] || _bizById[Number(bid)] || null;
+      var bizName = biz ? biz.name : '';
+      var bizId = biz ? biz._id : null;
+
+      // Build clickable row
+      var rowClick = bizId ? ' onclick="closeDesktopSection();closeResults();selectBiz('+bizId+')"' : '';
+      var rowStyle = bizId ? 'cursor:pointer;' : '';
+
+      return '<div class="activity-item" style="'+rowStyle+'"'+rowClick+'>'+
+        '<div class="act-icon '+iconCls+'" style="flex-shrink:0;">'+icon+'</div>'+
+        '<div class="act-content" style="flex:1;min-width:0;">'+
+          (bizName ? '<div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:2px;display:flex;align-items:center;gap:5px;">'+
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>'+
+            '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+bizName+'</span>'+
+          '</div>' : '')+
+          '<div class="act-text">'+label+'</div>'+
+          (noteText ? '<div style="font-size:11px;color:var(--muted);margin-top:1px;line-height:1.3;">'+noteText+'</div>' : '')+
+          '<div class="act-time">'+fmtTime(a.created_at)+'</div>'+
+        '</div>'+
+        (bizId ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;align-self:center;opacity:.5;"><polyline points="9 18 15 12 9 6"/></svg>' : '')+
+      '</div>';
+    }).join('');
+  } catch(e) {
+    container.innerHTML = '<div style="padding:1rem;font-size:12px;color:#ef4444;text-align:center;">Could not load activity.</div>';
   }
 }
 
@@ -7617,6 +8173,30 @@ var OPP_PRODUCTS = [
   { key:'uco',            label:'Used Cooking Oil', field:'uco',        unit:'Gallons / Month',  max:500,   maxLabel:'500+', step:10 }
 ];
 
+// ── SUPPLIERS (Supabase-backed) ──
+// Cached supplier data loaded from `suppliers` table
+var _suppliersCache = {}; // { productKey: [{id, name, sort_order, is_active}, ...] }
+
+async function _loadSuppliers() {
+  var cid = currentProfile ? currentProfile.client_id : null;
+  if (!cid) return;
+  try {
+    var r = await sb.from('suppliers').select('*').eq('client_id', cid).order('sort_order', {ascending: true});
+    if (r.error) { console.warn('Suppliers table not found, using fallback'); return; }
+    _suppliersCache = {};
+    (r.data || []).forEach(function(s) {
+      if (!_suppliersCache[s.product_line]) _suppliersCache[s.product_line] = [];
+      _suppliersCache[s.product_line].push(s);
+    });
+  } catch(e) { console.warn('Could not load suppliers:', e.message); }
+}
+
+// Get visible suppliers for a product line (sorted by sort_order)
+function _getVisibleSuppliers(productKey) {
+  var list = _suppliersCache[productKey] || [];
+  return list.filter(function(s){ return s.is_active !== false; }).map(function(s){ return s.name; });
+}
+
 function fmtGallons(n, maxVal) {
   if (!n || n === 0) return '0 gal/mo';
   if (maxVal && n >= maxVal) return (n >= 1000 ? (n/1000).toFixed(0)+'k' : n)+' gal/mo+';
@@ -7711,12 +8291,15 @@ function renderOpportunities(b, opp) {
         '</div>'+
         '<div class="opp-fields'+(isOn?' active':'')+'" id="opp-fields-'+p.key+'" data-stage="'+stage+'">'+
           miniPipeline(p.key, stage)+
-          // Current Supplier — multi-select chips
-          '<label class="opp-field-label">Current Supplier</label>'+
+          // Current Supplier — managed list with admin controls
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">'+
+            '<label class="opp-field-label" style="margin:0;">Current Supplier</label>'+
+            (_can('manage_suppliers') || (currentProfile && ['account_owner','account_admin','vavan_admin'].indexOf(currentProfile.role) >= 0) ?
+              '<button type="button" onclick="_openSupplierManager(\''+p.key+'\',\''+p.label+'\')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:10px;font-weight:600;color:var(--muted);cursor:pointer;font-family:Inter,sans-serif;">Manage</button>'
+            : '')+
+          '</div>'+
           (function(){
-            var BASE_SUPPLIERS = ['Shell','Chevron','Mobil','Valvoline','Castrol','Citgo','BP','Phillips 66','Sunoco','Local Co-op'];
-            var custom = _getCustomList('suppliers');
-            var SUPPLIERS = BASE_SUPPLIERS.concat(custom);
+            var visible = _getVisibleSuppliers(p.key);
             var selected = supplier ? supplier.split(',').map(function(s){return s.trim();}).filter(Boolean) : [];
             var chips = selected.map(function(s){
               return '<span style="display:inline-flex;align-items:center;gap:3px;background:var(--accent-light);color:var(--accent);border-radius:100px;padding:3px 9px;font-size:11px;font-weight:600;white-space:nowrap;margin:2px;">'+
@@ -7725,14 +8308,13 @@ function renderOpportunities(b, opp) {
                 '<button type="button" onclick="_removeOppChip(\'sup\',\''+p.key+'\',\''+s.replace(/'/g,"\\'")+'\')" style="background:none;border:none;cursor:pointer;color:var(--accent);font-size:13px;line-height:1;padding:0 0 0 1px;">×</button>'+
               '</span>';
             }).join('');
-            var available = SUPPLIERS.filter(function(s){ return selected.indexOf(s)<0; });
+            var available = visible.filter(function(s){ return selected.indexOf(s)<0; });
             return '<div id="opp-sup-chips-'+p.key+'" style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:6px;min-height:24px;">'+chips+'</div>'+
               '<select onchange="_addOppChipOrCustom(\'sup\',\''+p.key+'\',\'suppliers\',this)" style="width:100%;border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;font-family:Inter,sans-serif;color:var(--muted);background:#fff;cursor:pointer;margin-bottom:.75rem;" id="opp-sup-'+p.key+'">'+
               '<option value="">+ Add supplier</option>'+
               available.map(function(s){ return '<option value="'+s+'">'+s+'</option>'; }).join('')+
               '<option disabled style="border-top:1px solid #eee;">──────────</option>'+
               '<option value="__custom__">+ Add new supplier...</option>'+
-              (custom.length ? '<option value="__edit__">Edit custom suppliers...</option>' : '')+
               '</select>';
           })()+
           // Brands Used — lubricants only
@@ -7765,6 +8347,9 @@ function renderOpportunities(b, opp) {
             '<input type="range" id="opp-vol-'+p.key+'" min="0" max="'+p.max+'" step="'+(p.step || (p.max>=10000?500:p.max>=1000?100:25))+'" value="'+gallons+'" oninput="updateVolLabel(\''+p.key+'\','+p.max+')">'+
             '<span class="opp-volume-val" id="opp-vol-lbl-'+p.key+'">'+fmtGallons(gallons,p.max)+'</span>'+
           '</div>'+
+          // Competitor Notes
+          '<label class="opp-field-label" style="margin-top:.5rem;">Competitor Notes</label>'+
+          '<textarea id="opp-notes-'+p.key+'" placeholder="Competitor pricing, contract details, notes..." style="width:100%;min-height:64px;border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;font-family:Inter,sans-serif;color:var(--ink);resize:vertical;background:#fff;line-height:1.5;box-sizing:border-box;">'+(opp[p.field+'_notes']||'').replace(/</g,'&lt;')+'</textarea>'+
         '</div>'+
       '</div>';
   });
@@ -7967,6 +8552,158 @@ function _openCustomListEditor(listName, type, key) {
   document.body.appendChild(modal);
 }
 
+// ── ADMIN SUPPLIER MANAGEMENT (Supabase-backed) ──
+
+// Admin modal to manage suppliers per product line (Supabase CRUD)
+function _openSupplierManager(productKey, productLabel) {
+  var cid = currentProfile ? currentProfile.client_id : null;
+  if (!cid) { alert('No client ID found'); return; }
+  var existing = document.getElementById('supplier-mgr-modal');
+  if (existing) existing.remove();
+
+  var modal = document.createElement('div');
+  modal.id = 'supplier-mgr-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9900;display:flex;align-items:center;justify-content:center;font-family:Inter,sans-serif;padding:20px;';
+
+  var box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:14px;width:100%;max-width:420px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.2);';
+
+  function render() {
+    var list = (_suppliersCache[productKey] || []).slice();
+    list.sort(function(a,b){ return (a.sort_order||999) - (b.sort_order||999); });
+    var active = list.filter(function(s){ return s.is_active !== false; });
+    var hidden = list.filter(function(s){ return s.is_active === false; });
+
+    var esc = function(s){ return s.replace(/'/g,"\\'").replace(/"/g,'&quot;'); };
+    var arrowBtn = 'background:none;border:1px solid var(--border);border-radius:5px;width:24px;height:24px;font-size:12px;cursor:pointer;color:var(--muted);display:flex;align-items:center;justify-content:center;padding:0;line-height:1;';
+
+    box.innerHTML =
+      '<div style="padding:16px 20px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">'+
+        '<div>'+
+          '<div style="font-size:16px;font-weight:700;color:#0d0d14;">Manage Suppliers</div>'+
+          '<div style="font-size:11px;color:var(--muted);margin-top:2px;">'+productLabel+' · '+active.length+' visible / '+list.length+' total</div>'+
+        '</div>'+
+        '<button onclick="_closeSupplierManager()" style="background:#f3f4f6;border:none;border-radius:50%;width:28px;height:28px;font-size:16px;cursor:pointer;color:#666;">×</button>'+
+      '</div>'+
+      '<div style="overflow-y:auto;flex:1;min-height:0;">'+
+        (active.length === 0 && hidden.length === 0 ?
+          '<div style="padding:24px;text-align:center;color:#999;font-size:13px;">No suppliers yet. Add one below.</div>' : '')+
+        (active.length > 0 ?
+          '<div style="padding:8px 16px 4px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Visible</div>'+
+          active.map(function(s, idx){
+            return '<div style="display:flex;align-items:center;gap:6px;padding:8px 16px;border-bottom:1px solid #f5f5f5;">'+
+              '<span style="font-size:10px;font-weight:700;color:var(--muted);min-width:18px;text-align:center;">'+(idx+1)+'</span>'+
+              '<div style="display:flex;flex-direction:column;gap:2px;">'+
+                (idx > 0 ?
+                  '<button onclick="_smMove(\''+s.id+'\',-1)" style="'+arrowBtn+'">▲</button>'
+                : '<div style="width:24px;height:24px;"></div>')+
+                (idx < active.length - 1 ?
+                  '<button onclick="_smMove(\''+s.id+'\',1)" style="'+arrowBtn+'">▼</button>'
+                : '<div style="width:24px;height:24px;"></div>')+
+              '</div>'+
+              '<div style="flex:1;min-width:0;">'+
+                '<div style="font-size:13px;font-weight:500;color:#0d0d14;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+s.name+'</div>'+
+              '</div>'+
+              '<button onclick="_smEdit(\''+s.id+'\',\''+esc(s.name)+'\')" style="padding:5px 10px;background:#f3f4f6;border:none;border-radius:6px;font-size:11px;font-weight:600;color:#555;cursor:pointer;">Edit</button>'+
+              '<button onclick="_smHide(\''+s.id+'\')" style="padding:5px 10px;background:#fef2f2;border:none;border-radius:6px;font-size:11px;font-weight:600;color:#ef4444;cursor:pointer;">Hide</button>'+
+              '<button onclick="_smDelete(\''+s.id+'\',\''+esc(s.name)+'\')" style="padding:5px 8px;background:#fef2f2;border:none;border-radius:6px;font-size:11px;font-weight:600;color:#ef4444;cursor:pointer;" title="Delete permanently">✕</button>'+
+            '</div>';
+          }).join('')
+        : '')+
+        (hidden.length > 0 ?
+          '<div style="padding:12px 16px 4px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;border-top:2px solid #f0f0f0;margin-top:4px;">Hidden</div>'+
+          hidden.map(function(s){
+            return '<div style="display:flex;align-items:center;gap:6px;padding:8px 16px;border-bottom:1px solid #f5f5f5;opacity:.5;">'+
+              '<span style="min-width:18px;"></span>'+
+              '<div style="width:24px;"></div>'+
+              '<div style="flex:1;min-width:0;">'+
+                '<div style="font-size:13px;font-weight:500;color:#0d0d14;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+s.name+'</div>'+
+              '</div>'+
+              '<button onclick="_smShow(\''+s.id+'\')" style="padding:5px 10px;background:#f0fdf4;border:none;border-radius:6px;font-size:11px;font-weight:600;color:#059669;cursor:pointer;">Show</button>'+
+              '<button onclick="_smDelete(\''+s.id+'\',\''+esc(s.name)+'\')" style="padding:5px 8px;background:#fef2f2;border:none;border-radius:6px;font-size:11px;font-weight:600;color:#ef4444;cursor:pointer;" title="Delete permanently">✕</button>'+
+            '</div>';
+          }).join('')
+        : '')+
+      '</div>'+
+      '<div style="padding:12px 16px;border-top:1px solid #f0f0f0;flex-shrink:0;">'+
+        '<button onclick="_smAdd()" style="width:100%;padding:10px;background:var(--accent);border:none;border-radius:8px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;">+ Add Supplier to '+productLabel+'</button>'+
+      '</div>';
+  }
+
+  // Swap sort_order of two suppliers in Supabase
+  window._smMove = async function(id, direction) {
+    var list = (_suppliersCache[productKey] || []).filter(function(s){ return s.is_active !== false; });
+    list.sort(function(a,b){ return (a.sort_order||999) - (b.sort_order||999); });
+    var idx = list.findIndex(function(s){ return s.id === id; });
+    if (idx < 0) return;
+    var newIdx = idx + direction;
+    if (newIdx < 0 || newIdx >= list.length) return;
+    var a = list[idx], b = list[newIdx];
+    var tmpOrder = a.sort_order; a.sort_order = b.sort_order; b.sort_order = tmpOrder;
+    await sb.from('suppliers').update({sort_order: a.sort_order, updated_at: new Date().toISOString()}).eq('id', a.id);
+    await sb.from('suppliers').update({sort_order: b.sort_order, updated_at: new Date().toISOString()}).eq('id', b.id);
+    render();
+  };
+  window._smHide = async function(id) {
+    var s = (_suppliersCache[productKey] || []).find(function(s){ return s.id === id; });
+    if (!s) return;
+    s.is_active = false;
+    await sb.from('suppliers').update({is_active: false, updated_at: new Date().toISOString()}).eq('id', id);
+    render();
+  };
+  window._smShow = async function(id) {
+    var s = (_suppliersCache[productKey] || []).find(function(s){ return s.id === id; });
+    if (!s) return;
+    s.is_active = true;
+    await sb.from('suppliers').update({is_active: true, updated_at: new Date().toISOString()}).eq('id', id);
+    render();
+  };
+  window._smEdit = async function(id, oldName) {
+    var newName = prompt('Edit supplier name:', oldName);
+    if (!newName || !newName.trim() || newName.trim() === oldName) return;
+    newName = newName.trim();
+    var s = (_suppliersCache[productKey] || []).find(function(s){ return s.id === id; });
+    if (!s) return;
+    s.name = newName;
+    await sb.from('suppliers').update({name: newName, updated_at: new Date().toISOString()}).eq('id', id);
+    render();
+  };
+  window._smDelete = async function(id, name) {
+    if (!confirm('Delete "'+name+'" permanently?')) return;
+    var list = _suppliersCache[productKey] || [];
+    _suppliersCache[productKey] = list.filter(function(s){ return s.id !== id; });
+    await sb.from('suppliers').delete().eq('id', id);
+    render();
+  };
+  window._smAdd = async function() {
+    var nv = prompt('New supplier name for '+productLabel+':');
+    if (!nv || !nv.trim()) return;
+    nv = nv.trim();
+    var maxOrder = 0;
+    (_suppliersCache[productKey] || []).forEach(function(s){ if (s.sort_order > maxOrder) maxOrder = s.sort_order; });
+    var r = await sb.from('suppliers').insert({
+      client_id: cid, name: nv, product_line: productKey,
+      sort_order: maxOrder + 1, is_active: true
+    }).select().single();
+    if (r.error) { alert('Error: '+r.error.message); return; }
+    if (!_suppliersCache[productKey]) _suppliersCache[productKey] = [];
+    _suppliersCache[productKey].push(r.data);
+    render();
+  };
+
+  window._closeSupplierManager = function() {
+    var m = document.getElementById('supplier-mgr-modal');
+    if (m) m.parentNode.removeChild(m);
+    var biz = lastSelectedBiz;
+    if (biz) loadOpportunities(biz);
+  };
+
+  render();
+  modal.appendChild(box);
+  modal.addEventListener('click', function(e){ if(e.target===modal) _closeSupplierManager(); });
+  document.body.appendChild(modal);
+}
+
 // Read chip values from a chip container as comma-separated string
 function _getOppChips(type, key) {
   var id = type === 'sup' ? 'opp-sup-chips-'+key : 'opp-brand-chips-'+key;
@@ -8045,10 +8782,12 @@ async function saveOpportunities() {
     var cb     = document.getElementById('opp-on-'+p.key);
     var vol    = document.getElementById('opp-vol-'+p.key);
     var fields = document.getElementById('opp-fields-'+p.key);
+    var notesEl = document.getElementById('opp-notes-'+p.key);
     payload['uses_'+p.key]       = cb  ? cb.checked : false;
     payload[p.field+'_supplier'] = _getOppChips('sup', p.key);
     payload[p.field+'_gallons']  = vol ? parseInt(vol.value)||0 : 0;
     payload[p.field+'_stage']    = fields && fields.dataset.stage ? fields.dataset.stage : 'Lead Captured';
+    payload[p.field+'_notes']    = notesEl ? notesEl.value : '';
   });
   // Lube brands — only for lubricants
   payload['lube_brands'] = _getOppChips('brand', 'lubricants');
@@ -8059,7 +8798,18 @@ async function saveOpportunities() {
 
     var r = await sb.from('business_opportunities')
       .upsert(payload, { onConflict: 'business_id,client_id' });
-    if (r.error) throw r.error;
+    if (r.error) {
+      // If notes columns don't exist yet, strip them and retry
+      if (r.error.message && r.error.message.indexOf('_notes') > -1) {
+        var cleanPayload = {};
+        Object.keys(payload).forEach(function(k){ if (k.indexOf('_notes') < 0) cleanPayload[k] = payload[k]; });
+        var r2 = await sb.from('business_opportunities')
+          .upsert(cleanPayload, { onConflict: 'business_id,client_id' });
+        if (r2.error) throw r2.error;
+      } else {
+        throw r.error;
+      }
+    }
 
     // Update cache
     _oppCache[String(b.id||b._id)] = payload;
@@ -8117,6 +8867,12 @@ async function saveOpportunities() {
         }
         if (newStg !== prevStg && prevStg) {
           changes.push('Stage: ' + prevStg + ' → ' + newStg);
+        }
+        var prevNotes = prevOpp[p.field+'_notes'] || '';
+        var newNotes  = payload[p.field+'_notes'] || '';
+        if (newNotes !== prevNotes) {
+          var snippet = newNotes.length > 120 ? newNotes.substring(0, 120) + '…' : newNotes;
+          changes.push('Notes: ' + (snippet || '(cleared)'));
         }
         if (changes.length) {
           logEntries.push({ note: p.label + ' updated — ' + changes.join(' · ') });
@@ -8176,14 +8932,12 @@ function _renderOppFilterProducts() {
   var STAGES_FULL = ['all','Lead Captured','Qualified','Fact-Finding','Proposal Sent','Credit Application','Won Opportunity','Lost'];
   var STAGE_COLORS = {'all':'var(--muted)','Lead Captured':'#9b93d4','Qualified':'#4a36c8','Fact-Finding':'#d97706','Proposal Sent':'#16a34a','Credit Application':'#9333ea','Won Opportunity':'#059669','Lost':'#dc2626'};
   var LABELS = ['All','Lead','Qualified','Fact-Find','Proposal','Credit','Won','Lost'];
-  var BASE_SUPPLIERS = ['Shell','Chevron','Mobil','Valvoline','Castrol','Citgo','BP','Phillips 66','Sunoco','Local Co-op'];
   var BASE_BRANDS = ['Mobil 1','Castrol EDGE','Valvoline Full Synthetic','Shell Rotella','Pennzoil Platinum','Royal Purple','Amsoil','Delo','Rotella T6','Kendall'];
   var PRODUCT_LABELS = {lubricants:'Lubricants',fuel_delivery:'Fuel Delivery',cardlock:'Cardlock',propane:'Propane',uco:'Used Cooking Oil'};
 
   wrap.innerHTML = OPP_FILTER_PRODUCTS.map(function(p){
     var state = _oppFilterState[p.key] || {enabled:false, stage:'all', suppliers:[], brands:[]};
-    var customSup = _getCustomList('suppliers');
-    var allSup = BASE_SUPPLIERS.concat(customSup);
+    var allSup = _getVisibleSuppliers(p.key);
     var selSups = state.suppliers || [];
     var selBrands = state.brands || [];
 
@@ -8324,11 +9078,16 @@ function _syncOppFilters() {
 function _initSupplierFilterDropdown() {
   var sel = document.getElementById('supplier-filter-sel');
   if (!sel) return;
-  var BASE_SUPPLIERS = ['Shell','Chevron','Mobil','Valvoline','Castrol','Citgo','BP','Phillips 66','Sunoco','Local Co-op'];
-  var custom = _getCustomList('suppliers');
-  var all = BASE_SUPPLIERS.concat(custom);
+  // Gather all supplier names from _suppliersCache across all product lines
+  var unique = [];
+  Object.keys(_suppliersCache).forEach(function(pk) {
+    (_suppliersCache[pk] || []).forEach(function(s) {
+      if (s.is_active !== false && s.name && unique.indexOf(s.name) < 0) unique.push(s.name);
+    });
+  });
+  unique.sort();
   while (sel.options.length > 1) sel.remove(1);
-  all.forEach(function(s){
+  unique.forEach(function(s){
     var opt = document.createElement('option');
     opt.value = s; opt.textContent = s;
     sel.appendChild(opt);
@@ -8420,6 +9179,65 @@ var MAP_STYLES = {
   dark:      'mapbox://styles/mapbox/dark-v11',
   satellite: 'mapbox://styles/mapbox/satellite-streets-v12'
 };
+var SATELLITE_FADE_SOURCE_ID = 'satellite-fade-source';
+var SATELLITE_FADE_LAYER_ID = 'satellite-fade-layer';
+var SATELLITE_FADE_START_ZOOM = 16;
+var SATELLITE_FADE_END_ZOOM = 18.5;
+
+function ensureSatelliteFadeLayer() {
+  try {
+    if (!map || !map.getStyle()) return;
+
+    if (!map.getSource(SATELLITE_FADE_SOURCE_ID)) {
+      map.addSource(SATELLITE_FADE_SOURCE_ID, {
+        type: 'raster',
+        url: 'mapbox://mapbox.satellite',
+        tileSize: 256
+      });
+    }
+
+    if (!map.getLayer(SATELLITE_FADE_LAYER_ID)) {
+      var firstLabelLayerId = null;
+      var layers = map.getStyle().layers || [];
+      for (var i = 0; i < layers.length; i++) {
+        if (layers[i].type === 'symbol') {
+          firstLabelLayerId = layers[i].id;
+          break;
+        }
+      }
+
+      map.addLayer({
+        id: SATELLITE_FADE_LAYER_ID,
+        type: 'raster',
+        source: SATELLITE_FADE_SOURCE_ID,
+        paint: {
+          'raster-opacity': 0,
+          'raster-fade-duration': 300
+        }
+      }, firstLabelLayerId || undefined);
+    }
+  } catch (err) {
+    console.warn('[Vavan] Could not create satellite fade layer:', err);
+  }
+}
+
+function syncSatelliteFade() {
+  try {
+    if (!map || !map.getLayer(SATELLITE_FADE_LAYER_ID)) return;
+
+    var opacity = 0;
+    if (_currentMapLayer === 'dark') {
+      var zoom = map.getZoom();
+      if (zoom > SATELLITE_FADE_START_ZOOM) {
+        opacity = Math.min(1, (zoom - SATELLITE_FADE_START_ZOOM) / (SATELLITE_FADE_END_ZOOM - SATELLITE_FADE_START_ZOOM));
+      }
+    }
+
+    map.setPaintProperty(SATELLITE_FADE_LAYER_ID, 'raster-opacity', opacity);
+  } catch (err) {
+    console.warn('[Vavan] Could not sync satellite fade:', err);
+  }
+}
 
 function setMapLayer(layer) {
   if (_currentMapLayer === layer) return;
@@ -8432,6 +9250,8 @@ function setMapLayer(layer) {
 
   map.setStyle(MAP_STYLES[layer]);
   map.once('style.load', function() {
+    ensureSatelliteFadeLayer();
+    syncSatelliteFade();
     _mapHandlersAttached = false;
     // Small delay ensures satellite style is fully committed before adding layers
     setTimeout(_rebuildAllMapLayers, 50);
@@ -8520,11 +9340,7 @@ var _currentSort = 'default';
 var _userLat = null, _userLon = null;
 
 // Keep GPS position updated for "closest" sort
-if (navigator.geolocation) {
-  navigator.geolocation.watchPosition(function(p){
-    _userLat = p.coords.latitude; _userLon = p.coords.longitude;
-  }, null, {enableHighAccuracy:true, maximumAge:10000});
-}
+// (handled by _geoStartWatch — _userLat/_userLon updated there)
 
 function toggleRouteMode() {
   _routeMode = !_routeMode;
@@ -8692,12 +9508,12 @@ async function confirmRouteStart() {
       callback();
     } else {
       if (!navigator.geolocation) { _routeStartPoint = BRANCH_ADDRESS; callback(); return; }
-      navigator.geolocation.getCurrentPosition(function(p){
-        _routeStartPoint = {lat:p.coords.latitude, lon:p.coords.longitude, label:'My Location'};
+      _geoAsk(function(pos){
+        _routeStartPoint = {lat:pos.lat, lon:pos.lon, label:'My Location'};
         callback();
       }, function(){
         _routeStartPoint = BRANCH_ADDRESS; callback();
-      }, {enableHighAccuracy:true, timeout:8000});
+      });
     }
   }
 
@@ -9845,6 +10661,14 @@ function onMapClick(e) {
 <span id="nm-list" style="display:none;"><span id="nm-list-badge" style="display:none;"></span></span>
 
 <!-- SEARCH OVERLAY -->
+<div id="search-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:900;background:#fff;overflow-y:auto;">
+  <div style="position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid var(--border);flex-shrink:0;">
+    <div class="sheet-handle-wrap"><div class="sheet-handle"></div></div>
+    <div class="sheet-topbar">
+      <div class="sheet-title">Filters</div>
+      <button class="sheet-close" onclick="navTo('map')">✕</button>
+    </div>
+  </div>
     <!-- Industry Filter -->
     <div class="so-section-title">Filter by Industry</div>
     <div class="so-industry-grid" id="so-industry-grid">
@@ -9862,7 +10686,7 @@ function onMapClick(e) {
 
     <!-- Status Filter -->
     <div class="so-section-title">Filter by Status</div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;padding:0 16px 16px;">
+    <div id="so-status-chips" style="display:flex;flex-wrap:wrap;gap:8px;padding:0 16px 16px;">
       <button class="fchip" data-status="Lead" onclick="_soToggleStatus(this)" style="font-size:12px;">Lead</button>
       <button class="fchip" data-status="Customer" onclick="_soToggleStatus(this)" style="font-size:12px;color:#059669;border-color:#059669;">Customer</button>
       <button class="fchip" data-status="Lost Customer" onclick="_soToggleStatus(this)" style="font-size:12px;color:#dc2626;border-color:#dc2626;">Lost Customer</button>
@@ -9876,7 +10700,6 @@ function onMapClick(e) {
     <div class="so-apply-btn">
       <button onclick="_soApply()" id="so-apply-btn">Apply Filters</button>
     </div>
-  </div>
 </div>
 
 <!-- CONTACTS PANEL -->
@@ -9892,5 +10715,6 @@ function onMapClick(e) {
     <div class="det-empty">Loading contacts...</div>
   </div>
 </div>
+
 </body>
 </html>
