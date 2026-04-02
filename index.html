@@ -7077,6 +7077,19 @@ function _fmtRelTime(ts) {
   return Math.floor(days/365) + 'y ago';
 }
 
+function _getDetBody() {
+  // On desktop, there are two #det-body elements; pick the one inside the visible panel
+  var all = document.querySelectorAll('#det-body');
+  if (all.length <= 1) return all[0] || null;
+  // Prefer the one inside #desktop-panel-host if it's open (desktop mode)
+  var host = document.getElementById('desktop-panel-host');
+  if (host && host.classList.contains('open')) {
+    var inside = host.querySelector('#det-body');
+    if (inside) return inside;
+  }
+  return all[0];
+}
+
 function renderDetailPanel(b) {
   var color = bizColor(b);
   var status = b.status||'Lead';
@@ -7105,7 +7118,9 @@ function renderDetailPanel(b) {
     '</div>';
   }).join('');
 
-  document.getElementById('det-body').innerHTML =
+  var _detEl = _getDetBody();
+  if (!_detEl) return;
+  _detEl.innerHTML =
     // ── HERO ──
     '<div class="det-hero">'+
       '<div class="det-hero-top">'+
