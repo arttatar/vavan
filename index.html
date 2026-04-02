@@ -4147,10 +4147,12 @@ function initMapHandlers() {
   _mapHandlersAttached = true;
   map.on('click', 'biz', function(e) {
     if (mapIsMoving) return;
+    if (_movePinActive) return; // Don't select biz while moving pin
     selectBiz(e.features[0].properties._id);
   });
   map.on('touchend', function(e) {
     if (mapIsMoving) return;
+    if (_movePinActive) return; // Don't select biz while moving pin
     // If radius tool is active, place circle on tap
     if (activeTool === 'radius') {
       onMapClick(e);
@@ -6948,17 +6950,19 @@ function renderDetailPanel(b) {
       (function(){
         var opp = _oppCache[String(b.id||b._id)];
         if (!opp) return '';
-        var OPP_SC = {'Lead Captured':'#9b93d4','Qualified':'#4a36c8','Fact-Finding':'#d97706','Proposal Sent':'#16a34a','Credit Application':'#9333ea','Won Opportunity':'#059669','Lost':'#dc2626'};
-        var STAGES = ['Lead Captured','Qualified','Fact-Finding','Proposal Sent','Credit Application','Won Opportunity','Lost'];
-        var SHORT  = {'Lead Captured':'Lead','Qualified':'Qualified','Fact-Finding':'Fact-Find','Proposal Sent':'Proposal','Credit Application':'Credit','Won Opportunity':'Won','Lost':'Lost'};
+        var OPP_SC = {'Lead Captured':'#9b93d4','Qualified':'#4a36c8','Fact-Finding':'#d97706','Proposal Sent':'#16a34a','Credit Application':'#9333ea','Won Opportunity':'#059669','Uses Oil':'#d97706','Lost':'#dc2626'};
+        var STD_STAGES = ['Lead Captured','Qualified','Fact-Finding','Proposal Sent','Credit Application','Won Opportunity','Lost'];
+        var UCO_STAGES_H = ['Lead Captured','Uses Oil','Won Opportunity'];
+        var SHORT  = {'Lead Captured':'Lead','Qualified':'Qualified','Fact-Finding':'Fact-Find','Proposal Sent':'Proposal','Credit Application':'Credit','Won Opportunity':'Won','Uses Oil':'Uses Oil','Lost':'Lost'};
         var active = OPP_PRODUCTS.filter(function(p){ return opp['uses_'+p.key]; });
         if (!active.length) return '';
         var rows = active.map(function(p){
+          var pStages = p.key === 'uco' ? UCO_STAGES_H : STD_STAGES;
           var stg = opp[p.field+'_stage'] || 'Lead Captured';
           var sc  = OPP_SC[stg] || '#9b93d4';
-          var idx = STAGES.indexOf(stg);
-          var pct = idx < 0 ? 0 : Math.round((idx/(STAGES.length-1))*100);
-          var dots = STAGES.map(function(s,i){
+          var idx = pStages.indexOf(stg);
+          var pct = idx < 0 ? 0 : Math.round((idx/(pStages.length-1))*100);
+          var dots = pStages.map(function(s,i){
             var isA = i===idx, isP = i<idx, isW = s==='Won Opportunity'&&isA, isL = s==='Lost'&&isA;
             var bg  = isA?(isL?'#dc2626':isW?'#059669':sc):isP?sc:'#fff';
             var bdr = (isA||isP)?(isL?'#dc2626':isW?'#059669':sc):'#ddd';
@@ -8332,18 +8336,22 @@ function renderOpportunities(b, opp) {
 
   var STAGES = ['Lead Captured','Qualified','Fact-Finding','Proposal Sent','Credit Application','Won Opportunity'];
   var STAGE_SHORT = ['Lead','Qualified','Fact-Find','Proposal','Credit','Won'];
+  var UCO_STAGES = ['Lead Captured','Uses Oil','Won Opportunity'];
+  var UCO_SHORT  = ['Lead','Uses Oil','Won'];
   var STAGE_COLORS = {
     'Lead Captured':'#9b93d4','Qualified':'#4a36c8','Fact-Finding':'#d97706',
     'Proposal Sent':'#16a34a','Credit Application':'#9333ea','Won Opportunity':'#059669',
-    'Lost':'#dc2626'
+    'Uses Oil':'#d97706','Lost':'#dc2626'
   };
 
   function miniPipeline(key, currentStage) {
-    var stageIdx = STAGES.indexOf(currentStage);
+    var stages = key === 'uco' ? UCO_STAGES : STAGES;
+    var shorts = key === 'uco' ? UCO_SHORT : STAGE_SHORT;
+    var stageIdx = stages.indexOf(currentStage);
     if (stageIdx < 0) stageIdx = 0;
     var stageColor = currentStage === 'Won Opportunity' ? '#059669' : (STAGE_COLORS[currentStage] || '#9b93d4');
-    var pct = Math.round((stageIdx / (STAGES.length-1)) * 100);
-    var dots = STAGES.map(function(s, i){
+    var pct = Math.round((stageIdx / (stages.length-1)) * 100);
+    var dots = stages.map(function(s, i){
       var isActive = i === stageIdx;
       var isPast = i < stageIdx;
       var isWon = s === 'Won Opportunity' && isActive;
@@ -8353,7 +8361,7 @@ function renderOpportunities(b, opp) {
       return '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;position:relative;z-index:1;" '+
         'onclick="setOppStage(\''+key+'\',\''+s+'\')" title="'+s+'">'+
         '<div style="width:14px;height:14px;border-radius:50%;border:2px solid '+dotBorder+';background:'+dotBg+';transition:all .2s;flex-shrink:0;box-shadow:0 0 0 2px #fff;opacity:'+opacity+'"></div>'+
-        '<div style="font-size:8px;font-weight:600;color:'+(isActive?stageColor:'var(--muted)')+';white-space:nowrap;text-align:center;line-height:1.2;">'+STAGE_SHORT[i]+'</div>'+
+        '<div style="font-size:8px;font-weight:600;color:'+(isActive?stageColor:'var(--muted)')+';white-space:nowrap;text-align:center;line-height:1.2;">'+shorts[i]+'</div>'+
       '</div>';
     }).join('');
 
@@ -8824,9 +8832,11 @@ function setOppStage(key, stage) {
   var STAGE_COLORS = {
     'Lead Captured':'#9b93d4','Qualified':'#4a36c8','Fact-Finding':'#d97706',
     'Proposal Sent':'#16a34a','Credit Application':'#9333ea','Won Opportunity':'#059669',
-    'Lost':'#dc2626'
+    'Uses Oil':'#d97706','Lost':'#dc2626'
   };
-  var STAGES = ['Lead Captured','Qualified','Fact-Finding','Proposal Sent','Credit Application','Won Opportunity'];
+  var STAGES = key === 'uco'
+    ? ['Lead Captured','Uses Oil','Won Opportunity']
+    : ['Lead Captured','Qualified','Fact-Finding','Proposal Sent','Credit Application','Won Opportunity'];
   var stageColor = stage === 'Won Opportunity' ? '#059669' : (STAGE_COLORS[stage] || '#9b93d4');
   var stageIdx = STAGES.indexOf(stage);
   var pct = Math.round((stageIdx / (STAGES.length-1)) * 100);
@@ -9036,8 +9046,10 @@ function _renderOppFilterProducts() {
   var wrap = document.getElementById('opp-filter-products');
   if (!wrap) return;
   var STAGES_FULL = ['all','Lead Captured','Qualified','Fact-Finding','Proposal Sent','Credit Application','Won Opportunity','Lost'];
-  var STAGE_COLORS = {'all':'var(--muted)','Lead Captured':'#9b93d4','Qualified':'#4a36c8','Fact-Finding':'#d97706','Proposal Sent':'#16a34a','Credit Application':'#9333ea','Won Opportunity':'#059669','Lost':'#dc2626'};
+  var UCO_STAGES_FULL = ['all','Lead Captured','Uses Oil','Won Opportunity'];
+  var STAGE_COLORS = {'all':'var(--muted)','Lead Captured':'#9b93d4','Qualified':'#4a36c8','Fact-Finding':'#d97706','Proposal Sent':'#16a34a','Credit Application':'#9333ea','Won Opportunity':'#059669','Uses Oil':'#d97706','Lost':'#dc2626'};
   var LABELS = ['All','Lead','Qualified','Fact-Find','Proposal','Credit','Won','Lost'];
+  var UCO_LABELS = ['All','Lead','Uses Oil','Won'];
   var BASE_BRANDS = ['Mobil 1','Castrol EDGE','Valvoline Full Synthetic','Shell Rotella','Pennzoil Platinum','Royal Purple','Amsoil','Delo','Rotella T6','Kendall'];
   var PRODUCT_LABELS = {lubricants:'Lubricants',fuel_delivery:'Fuel Delivery',cardlock:'Cardlock',propane:'Propane',uco:'Used Cooking Oil'};
 
@@ -9046,13 +9058,15 @@ function _renderOppFilterProducts() {
     var allSup = _getVisibleSuppliers(p.key);
     var selSups = state.suppliers || [];
     var selBrands = state.brands || [];
+    var pStages = p.key === 'uco' ? UCO_STAGES_FULL : STAGES_FULL;
+    var pLabels = p.key === 'uco' ? UCO_LABELS : LABELS;
 
-    var stageDotsHtml = STAGES_FULL.map(function(s,i){
+    var stageDotsHtml = pStages.map(function(s,i){
       var isActive = (state.stage||'all') === s;
       var color = STAGE_COLORS[s] || 'var(--muted)';
       return '<div onclick="_setOppFilterStage(\''+p.key+'\',\''+s+'\')" title="'+(s==='all'?'All Stages':s)+'" style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;flex:1;">'+
         '<div style="width:12px;height:12px;border-radius:50%;border:2px solid '+(isActive?color:'var(--border)')+';background:'+(isActive?color:'#fff')+';transition:all .15s;margin:0 auto;"></div>'+
-        '<div style="font-size:8px;font-weight:600;color:'+(isActive?color:'var(--muted)')+';white-space:nowrap;text-align:center;">'+LABELS[i]+'</div>'+
+        '<div style="font-size:8px;font-weight:600;color:'+(isActive?color:'var(--muted)')+';white-space:nowrap;text-align:center;">'+pLabels[i]+'</div>'+
       '</div>';
     }).join('');
 
