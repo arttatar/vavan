@@ -313,19 +313,20 @@ body{
 .leader-list{
   display:flex;
   flex-direction:column;
-  gap:14px;
+  gap:8px;
 }
 .leader-row{
   display:grid;
-  grid-template-columns:auto 1fr auto;
-  gap:14px;
-  align-items:flex-start;
-  padding:16px;
-  border-radius:24px;
+  grid-template-columns:56px 1fr auto 20px;
+  gap:12px;
+  align-items:center;
+  padding:12px 14px;
+  border-radius:18px;
   border:1px solid rgba(255,255,255,.06);
   background:linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.02));
   position:relative;
   overflow:hidden;
+  cursor:pointer;
 }
 .leader-row::after{
   content:"";
@@ -375,7 +376,7 @@ body{
   color:#2f1704;
 }
 .rep-name{
-  font-size:26px;
+  font-size:18px;
   line-height:1.05;
   font-weight:800;
   color:var(--text);
@@ -383,13 +384,18 @@ body{
 .rep-sub{
   margin-top:4px;
   color:var(--muted);
-  font-size:12px;
+  font-size:11px;
 }
 .rep-topline{
   display:flex;
   gap:10px;
   flex-wrap:wrap;
   align-items:center;
+}
+.leader-chevron{
+  color:var(--muted);
+  font-size:22px;
+  font-weight:700;
 }
 .rank-title{
   display:inline-flex;
@@ -411,8 +417,8 @@ body{
   color:#ffe8ae;
 }
 .progress-track{
-  margin-top:12px;
-  height:10px;
+  margin-top:10px;
+  height:8px;
   width:100%;
   border-radius:999px;
   background:rgba(255,255,255,.06);
@@ -431,10 +437,10 @@ body{
   font-size:11px;
 }
 .total-box{
-  min-width:120px;
+  min-width:92px;
   text-align:center;
-  padding:12px 16px;
-  border-radius:20px;
+  padding:10px 12px;
+  border-radius:16px;
   border:1px solid rgba(255,255,255,.08);
   background:rgba(255,255,255,.04);
 }
@@ -451,13 +457,73 @@ body{
 }
 .total-value{
   margin-top:6px;
-  font-size:40px;
+  font-size:28px;
   line-height:1;
   font-weight:900;
   color:var(--accent2);
 }
+.leader-detail{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.detail-top{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:flex-start;
+}
+.detail-back{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border:1px solid rgba(255,255,255,.08);
+  background:rgba(255,255,255,.04);
+  color:var(--sand);
+  border-radius:999px;
+  padding:8px 12px;
+  font:inherit;
+  font-size:12px;
+  font-weight:800;
+  cursor:pointer;
+}
+.detail-title{
+  font-size:26px;
+  font-weight:900;
+  color:var(--text);
+}
+.detail-sub{
+  margin-top:4px;
+  color:var(--muted);
+  font-size:12px;
+}
+.detail-summary{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:12px;
+  align-items:center;
+  padding:14px;
+  border-radius:18px;
+  border:1px solid rgba(255,255,255,.06);
+  background:rgba(255,255,255,.03);
+}
+.detail-total{
+  text-align:right;
+}
+.detail-total .label{
+  font-size:10px;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--muted);
+  font-weight:800;
+}
+.detail-total .value{
+  margin-top:6px;
+  font-size:34px;
+  color:var(--accent2);
+  font-weight:900;
+}
 .stat-grid{
-  grid-column:2 / 4;
   display:grid;
   grid-template-columns:repeat(5,minmax(0,1fr));
   gap:10px;
@@ -667,9 +733,9 @@ body{
   .pill{padding:8px 11px;font-size:11px}
   .brand h1{font-size:34px}
   .header-tools{width:100%}
-  .header-tools .view-btn{flex:1 1 calc(50% - 8px);justify-content:center}
+  .header-tools .view-btn{flex:1 1 calc(33.33% - 8px);justify-content:center}
   .header-tools .control{flex:1 1 calc(50% - 8px);min-width:0}
-  .header-tools .btn{width:100%;justify-content:center}
+  .header-tools .btn{flex:1 1 calc(50% - 8px);justify-content:center}
   .metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   .metric{padding:14px;border-radius:16px}
   .metric .value{font-size:28px}
@@ -678,17 +744,20 @@ body{
   .view-switch{display:none}
   .quick-nav .quick-tab-btn{flex:1 1 calc(33.33% - 8px);justify-content:center}
   .rules{grid-template-columns:1fr}
-  .leader-row{grid-template-columns:56px 1fr;gap:12px;padding:14px;border-radius:18px}
+  .leader-row{grid-template-columns:48px 1fr auto 16px;gap:10px;padding:12px;border-radius:16px}
   .rank{width:50px;height:50px;border-radius:15px;font-size:20px}
-  .rep-name{font-size:22px}
+  .rep-name{font-size:17px}
   .rank-title{font-size:9px;padding:4px 8px}
   .progress-copy{font-size:10px}
-  .total-box{grid-column:1 / -1;min-width:0;padding:10px 12px}
-  .total-value{font-size:32px}
-  .stat-grid{grid-column:1 / -1;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .total-box{min-width:84px;padding:8px 10px}
+  .total-value{font-size:24px}
+  .stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .stat-chip{min-height:74px;padding:10px 9px;border-radius:14px}
   .stat-value{font-size:24px}
   .stat-points{font-size:10px}
+  .detail-top{flex-direction:column}
+  .detail-summary{grid-template-columns:1fr}
+  .detail-total{text-align:left}
   .audit-controls{width:100%}
   .audit-filter-chip{flex:1 1 calc(50% - 8px);justify-content:center}
   .audit-row{grid-template-columns:1fr;gap:10px;padding:12px}
@@ -698,11 +767,12 @@ body{
   .shell{padding:16px 10px 24px}
   .brand h1{font-size:30px}
   .metrics{grid-template-columns:1fr}
-  .quick-nav .quick-tab-btn,
-  .quick-nav a{flex:1 1 100%}
-  .header-tools .view-btn,
+  .quick-nav .quick-tab-btn{flex:1 1 calc(33.33% - 8px)}
+  .header-tools .view-btn{flex:1 1 calc(33.33% - 8px)}
   .header-tools .control,
-  .header-tools .btn{flex:1 1 100%}
+  .header-tools .btn{flex:1 1 calc(50% - 8px)}
+  .header-tools .control,
+  .header-tools .btn{min-width:0}
   .stat-grid{grid-template-columns:1fr}
   .rep-name{font-size:20px}
   .audit-filter-chip{flex:1 1 100%}
@@ -867,7 +937,10 @@ var _boardView = 'team';
 var _auditEvents = [];
 var _auditFilterKey = 'all';
 var _businessNameMap = {};
+var _allBusinessNamesLoaded = false;
 var _contentTab = 'leaderboard';
+var _leaderRowsCache = [];
+var _selectedLeaderKey = '';
 
 document.getElementById('login-btn').addEventListener('click', doLogin);
 document.getElementById('password').addEventListener('keydown', function(e){
@@ -876,6 +949,10 @@ document.getElementById('password').addEventListener('keydown', function(e){
 
 function normalizeName(value) {
   return String(value || '').trim();
+}
+
+function normalizeBizId(value) {
+  return String(value || '').trim().toLowerCase();
 }
 
 function escapeHtml(value) {
@@ -941,19 +1018,117 @@ function addScore(row, key, count) {
 function pushAuditEvent(entry) {
   if (!entry || !entry.key || !POINT_RULES[entry.key]) return;
   var count = entry.count || 1;
-  var businessId = entry.business_id ? String(entry.business_id) : '';
+  var businessId = normalizeBizId(entry.business_id);
+  var normalizedUser = normalizeName(entry.user) || 'Unknown';
+  var normalizedBusinessName = normalizeName(entry.business_name) || (businessId && _businessNameMap[businessId] ? _businessNameMap[businessId] : '');
+  var normalizedDetail = String(entry.detail || '').trim();
+  var normalizedCreated = entry.created_at || new Date().toISOString();
+  var dedupeKey = [
+    normalizedUser,
+    entry.key,
+    businessId || 'no-business'
+  ].join('|');
+  var exists = _auditEvents.some(function(event){
+    return event._dedupeKey === dedupeKey;
+  });
+  if (exists) return;
   _auditEvents.push({
-    user: normalizeName(entry.user) || 'Unknown',
+    _dedupeKey: dedupeKey,
+    user: normalizedUser,
     key: entry.key,
     label: POINT_RULES[entry.key].label,
     count: count,
     points: count * POINT_RULES[entry.key].points,
-    detail: entry.detail || '',
+    detail: normalizedDetail,
     business_id: businessId,
-    business_name: businessId && _businessNameMap[businessId] ? _businessNameMap[businessId] : '',
+    business_name: normalizedBusinessName,
     source: entry.source || 'activity',
-    created_at: entry.created_at || new Date().toISOString()
+    created_at: normalizedCreated
   });
+}
+
+async function hydrateAuditBusinessNames() {
+  var missingIds = [];
+  _auditEvents.forEach(function(event){
+    var id = normalizeBizId(event.business_id);
+    if (!id || event.business_name) return;
+    if (_businessNameMap[id]) {
+      event.business_name = _businessNameMap[id];
+      return;
+    }
+    if (missingIds.indexOf(id) < 0) missingIds.push(id);
+  });
+
+  if (!missingIds.length) return;
+
+  try {
+    var res = await sb.from('businesses')
+      .select('id, name, business_name')
+      .in('id', missingIds);
+    if (!res.error) {
+      (res.data || []).forEach(function(biz){
+        _businessNameMap[normalizeBizId(biz.id)] = biz.name || biz.business_name || '';
+      });
+    }
+  } catch (e) {}
+
+  _auditEvents.forEach(function(event){
+    var id = normalizeBizId(event.business_id);
+    if (id && !event.business_name && _businessNameMap[id]) {
+      event.business_name = _businessNameMap[id];
+    }
+  });
+}
+
+async function preloadBusinessNamesByIds(ids) {
+  var wanted = (ids || [])
+    .map(normalizeBizId)
+    .filter(Boolean)
+    .filter(function(id){ return !_businessNameMap[id]; });
+
+  if (!wanted.length) return;
+
+  try {
+    var res = await sb.from('businesses')
+      .select('id, name, business_name')
+      .in('id', wanted);
+    if (!res.error) {
+      (res.data || []).forEach(function(biz){
+        _businessNameMap[normalizeBizId(biz.id)] = biz.name || biz.business_name || '';
+      });
+    }
+  } catch (e) {
+    console.warn('Targeted business lookup failed:', e);
+  }
+
+  var stillMissing = wanted.filter(function(id){ return !_businessNameMap[id]; });
+  if (stillMissing.length) {
+    await loadAllBusinessNamesFallback();
+  }
+}
+
+async function loadAllBusinessNamesFallback() {
+  if (_allBusinessNamesLoaded) return;
+  _allBusinessNamesLoaded = true;
+
+  try {
+    var from = 0;
+    var pageSize = 1000;
+    while (true) {
+      var res = await sb.from('businesses')
+        .select('id, name, business_name')
+        .range(from, from + pageSize - 1);
+      if (res.error) throw res.error;
+      var rows = res.data || [];
+      rows.forEach(function(biz){
+        _businessNameMap[normalizeBizId(biz.id)] = biz.name || biz.business_name || '';
+      });
+      if (rows.length < pageSize) break;
+      from += pageSize;
+    }
+  } catch (e) {
+    console.warn('Full business-name fallback failed:', e);
+  }
 }
 
 function mergeRowInto(target, source) {
@@ -1044,6 +1219,25 @@ function renderSummary(rows) {
   }).join('');
 }
 
+function eventMatchesSelectedLeader(event) {
+  if (!_selectedLeaderKey) return true;
+  var eventUser = normalizeName(event && event.user);
+  if (!eventUser) return false;
+
+  if (_boardView === 'user' || _boardView === 'lone') {
+    return eventUser === _selectedLeaderKey;
+  }
+
+  var team = TEAM_GROUPS.find(function(item){ return item.name === _selectedLeaderKey; });
+  if (team) {
+    return team.members.some(function(member){
+      return matchMemberName(eventUser, member);
+    });
+  }
+
+  return eventUser === _selectedLeaderKey;
+}
+
 function renderAuditLog() {
   var host = document.getElementById('audit-list');
   if (!host) return;
@@ -1058,6 +1252,7 @@ function renderAuditLog() {
   }
 
   var events = _auditEvents.filter(function(event){
+    if (!eventMatchesSelectedLeader(event)) return false;
     return _auditFilterKey === 'all' || event.key === _auditFilterKey;
   }).slice().sort(function(a, b){
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
@@ -1069,11 +1264,12 @@ function renderAuditLog() {
   }
 
   host.innerHTML = events.map(function(event){
+    var bizLabel = event.business_name || 'Unknown Business';
     return '<div class="audit-row">'+
       '<div class="audit-points">+'+event.points+'<span>Points</span></div>'+
       '<div>'+
         '<div class="audit-title">'+escapeHtml(event.user)+' · '+escapeHtml(event.label)+'</div>'+
-        (event.business_name ? '<div class="audit-meta"><strong style="color:#fff7ef;">Business:</strong> '+escapeHtml(event.business_name)+'</div>' : '')+
+        '<div class="audit-meta"><strong style="color:#fff7ef;">Business:</strong> '+escapeHtml(bizLabel)+'</div>'+
         '<div class="audit-meta">'+escapeHtml(event.detail || 'Scored event')+'</div>'+
       '</div>'+
       '<div style="text-align:right;">'+
@@ -1136,6 +1332,8 @@ function updateBoardHeadings() {
 
 function setBoardView(view) {
   _boardView = view === 'user' ? 'user' : view === 'lone' ? 'lone' : 'team';
+  _selectedLeaderKey = '';
+  setContentTab('leaderboard');
   updateBoardHeadings();
   if (window._lastRowsCache) {
     renderActiveBoard(window._lastRowsCache);
@@ -1215,6 +1413,16 @@ function renderActiveBoard(userRows) {
   renderLeaders(rows);
 }
 
+function openLeaderDetail(name) {
+  _selectedLeaderKey = name || '';
+  renderLeaders(_leaderRowsCache);
+}
+
+function closeLeaderDetail() {
+  _selectedLeaderKey = '';
+  renderLeaders(_leaderRowsCache);
+}
+
 function renderLeaders(rows) {
   var host = document.getElementById('leader-list');
   if (!rows.length) {
@@ -1222,23 +1430,52 @@ function renderLeaders(rows) {
     return;
   }
 
+  _leaderRowsCache = rows.slice();
+  if (_selectedLeaderKey) {
+    var selected = rows.find(function(row){ return row.user === _selectedLeaderKey; });
+    if (selected) {
+      var stats = CATEGORY_ORDER.map(function(key){
+        var label = POINT_RULES[key].label;
+        var count = selected.counts[key] || 0;
+        var pts = selected.points[key] || 0;
+        var chipClass = 'stat-chip clickable' + (pts ? ' hot' : '') + (_auditFilterKey === key ? ' active-filter' : '');
+        return '<div class="'+chipClass+'" onclick="setAuditFilter(\''+key+'\')">'+
+          '<div class="stat-label">'+escapeHtml(label)+'</div>'+
+          '<div class="stat-value">'+count+'</div>'+
+          '<div class="stat-points">'+pts+' pts</div>'+
+        '</div>';
+      }).join('');
+
+      host.innerHTML = '<div class="leader-detail">'+
+        '<div class="detail-top">'+
+          '<div>'+
+            '<button class="detail-back" onclick="closeLeaderDetail()">Back To List</button>'+
+            '<div class="detail-title" style="margin-top:12px;">'+escapeHtml(selected.user)+'</div>'+
+            '<div class="detail-sub">'+escapeHtml(getBoardTitle())+' detail view</div>'+
+          '</div>'+
+        '</div>'+
+        '<div class="detail-summary">'+
+          '<div>'+
+            '<div class="progress-track"><div class="progress-fill" style="width:100%;"></div></div>'+
+            '<div class="progress-copy">Detailed score breakdown</div>'+
+          '</div>'+
+          '<div class="detail-total">'+
+            '<div class="label">Total</div>'+
+            '<div class="value">'+selected.total+'</div>'+
+          '</div>'+
+        '</div>'+
+        '<div class="stat-grid">'+stats+'</div>'+
+      '</div>';
+      return;
+    }
+    _selectedLeaderKey = '';
+  }
+
   var leaderScore = rows[0].total || 0;
   host.innerHTML = rows.map(function(row, idx){
     var rowClass = idx === 0 ? 'leader-row top-1' : idx === 1 ? 'leader-row top-2' : idx === 2 ? 'leader-row top-3' : 'leader-row';
     var percent = leaderScore ? Math.max(10, Math.round((row.total / leaderScore) * 100)) : 0;
-    var stats = CATEGORY_ORDER.map(function(key){
-      var label = POINT_RULES[key].label;
-      var count = row.counts[key] || 0;
-      var pts = row.points[key] || 0;
-      var chipClass = 'stat-chip clickable' + (pts ? ' hot' : '') + (_auditFilterKey === key ? ' active-filter' : '');
-      return '<div class="'+chipClass+'" onclick="setAuditFilter(\''+key+'\')">'+
-        '<div class="stat-label">'+escapeHtml(label)+'</div>'+
-        '<div class="stat-value">'+count+'</div>'+
-        '<div class="stat-points">'+pts+' pts</div>'+
-      '</div>';
-    }).join('');
-
-    return '<div class="'+rowClass+'">'+
+    return '<div class="'+rowClass+'" onclick="openLeaderDetail(\''+row.user.replace(/'/g,"\\'")+'\')">'+
       '<div class="rank">#'+(idx + 1)+'</div>'+
       '<div>'+
         '<div class="rep-topline">'+
@@ -1253,7 +1490,7 @@ function renderLeaders(rows) {
         '<div class="total-label">Total</div>'+
         '<div class="total-value">'+row.total+'</div>'+
       '</div>'+
-      '<div class="stat-grid">'+stats+'</div>'+
+      '<div class="leader-chevron">›</div>'+
     '</div>';
   }).join('');
 }
@@ -1321,20 +1558,12 @@ async function loadBoard() {
   try {
     _auditEvents = [];
     _businessNameMap = {};
+    _allBusinessNamesLoaded = false;
     var usersRes = await sb.from('sales_profiles')
       .select('id, full_name, role, active')
       .eq('client_id', _currentProfile.client_id)
       .order('full_name', { ascending:true });
     if (usersRes.error) throw usersRes.error;
-
-    var bizRes = await sb.from('businesses')
-      .select('id, business_name')
-      .eq('client_id', _currentProfile.client_id);
-    if (!bizRes.error) {
-      (bizRes.data || []).forEach(function(biz){
-        _businessNameMap[String(biz.id)] = biz.business_name || '';
-      });
-    }
 
     var rows = buildSeedRows(usersRes.data || []);
 
@@ -1345,25 +1574,29 @@ async function loadBoard() {
     var activityRes = await activityQuery;
     if (activityRes.error) throw activityRes.error;
 
+    await preloadBusinessNamesByIds((activityRes.data || []).map(function(item){
+      return item.business_id;
+    }));
+
     (activityRes.data || []).forEach(function(item){
       var row = ensureRow(rows, item.created_by);
       if (!row) return;
       var note = normalizeName(item.note);
       if (item.type === 'visited') {
         addScore(row, 'visit', 1);
-        pushAuditEvent({ user:item.created_by, key:'visit', detail:note || 'Visited logged', source:'activity', created_at:item.created_at, business_id:item.business_id });
+        pushAuditEvent({ user:item.created_by, key:'visit', detail:note || 'Visited logged', source:'activity', created_at:item.created_at, business_id:item.business_id, business_name:_businessNameMap[normalizeBizId(item.business_id)] || '' });
       }
       if (item.type === 'contact' && /^Contact added:/i.test(note)) {
         addScore(row, 'contact_added', 1);
-        pushAuditEvent({ user:item.created_by, key:'contact_added', detail:note, source:'activity', created_at:item.created_at, business_id:item.business_id });
+        pushAuditEvent({ user:item.created_by, key:'contact_added', detail:note, source:'activity', created_at:item.created_at, business_id:item.business_id, business_name:_businessNameMap[normalizeBizId(item.business_id)] || '' });
       }
       if (CREDIT_LEFT_RX.test(note)) {
         addScore(row, 'credit_app_left', 1);
-        pushAuditEvent({ user:item.created_by, key:'credit_app_left', detail:note, source:'activity', created_at:item.created_at, business_id:item.business_id });
+        pushAuditEvent({ user:item.created_by, key:'credit_app_left', detail:note, source:'activity', created_at:item.created_at, business_id:item.business_id, business_name:_businessNameMap[normalizeBizId(item.business_id)] || '' });
       }
       if (CREDIT_COLLECTED_RX.test(note)) {
         addScore(row, 'credit_app_collected', 1);
-        pushAuditEvent({ user:item.created_by, key:'credit_app_collected', detail:note, source:'activity', created_at:item.created_at, business_id:item.business_id });
+        pushAuditEvent({ user:item.created_by, key:'credit_app_collected', detail:note, source:'activity', created_at:item.created_at, business_id:item.business_id, business_name:_businessNameMap[normalizeBizId(item.business_id)] || '' });
       }
     });
 
@@ -1375,16 +1608,20 @@ async function loadBoard() {
       var photoRes = await photoQuery;
       if (photoRes.error) throw photoRes.error;
 
+      await preloadBusinessNamesByIds((photoRes.data || []).map(function(photo){
+        return photo.business_id;
+      }));
+
       (photoRes.data || []).forEach(function(photo){
         var row = ensureRow(rows, photo.uploaded_by);
         if (!row) return;
         var hay = [photo.caption, photo.file_name].filter(Boolean).join(' ');
         if (INVOICE_RX.test(hay)) {
           addScore(row, 'competitor_invoice', 1);
-          pushAuditEvent({ user:photo.uploaded_by, key:'competitor_invoice', detail:hay || 'Competitor invoice photo', source:'photo', created_at:photo.created_at, business_id:photo.business_id });
+          pushAuditEvent({ user:photo.uploaded_by, key:'competitor_invoice', detail:hay || 'Competitor invoice photo', source:'photo', created_at:photo.created_at, business_id:photo.business_id, business_name:_businessNameMap[normalizeBizId(photo.business_id)] || '' });
         } else if (EQUIPMENT_RX.test(hay)) {
           addScore(row, 'equipment_photo', 1);
-          pushAuditEvent({ user:photo.uploaded_by, key:'equipment_photo', detail:hay || 'Equipment photo', source:'photo', created_at:photo.created_at, business_id:photo.business_id });
+          pushAuditEvent({ user:photo.uploaded_by, key:'equipment_photo', detail:hay || 'Equipment photo', source:'photo', created_at:photo.created_at, business_id:photo.business_id, business_name:_businessNameMap[normalizeBizId(photo.business_id)] || '' });
         }
       });
     } catch (photoErr) {
@@ -1399,6 +1636,10 @@ async function loadBoard() {
     var oppRes = await oppQuery;
     if (oppRes.error) throw oppRes.error;
 
+    await preloadBusinessNamesByIds((oppRes.data || []).map(function(opp){
+      return opp.business_id;
+    }));
+
     (oppRes.data || []).forEach(function(opp){
       var row = ensureRow(rows, opp.updated_by);
       if (!row) return;
@@ -1410,11 +1651,11 @@ async function loadBoard() {
         var stage = opp[product.field + '_stage'] || '';
         if (supplier) {
           addScore(row, 'supplier_captured', 1);
-          pushAuditEvent({ user:opp.updated_by, key:'supplier_captured', detail:product.label + ' supplier: ' + supplier, source:'opportunity', created_at:opp.updated_at, business_id:opp.business_id });
+          pushAuditEvent({ user:opp.updated_by, key:'supplier_captured', detail:product.label + ' supplier: ' + supplier, source:'opportunity', created_at:opp.updated_at, business_id:opp.business_id, business_name:_businessNameMap[normalizeBizId(opp.business_id)] || '' });
         }
         if (stage === 'Credit Application') {
           addScore(row, 'credit_app', 1);
-          pushAuditEvent({ user:opp.updated_by, key:'credit_app', detail:product.label + ' moved to Credit Application', source:'opportunity', created_at:opp.updated_at, business_id:opp.business_id });
+          pushAuditEvent({ user:opp.updated_by, key:'credit_app', detail:product.label + ' moved to Credit Application', source:'opportunity', created_at:opp.updated_at, business_id:opp.business_id, business_name:_businessNameMap[normalizeBizId(opp.business_id)] || '' });
         }
         if (PAIN_POINT_STAGES[stage]) {
           painPointProducts.push(product.label + ' (' + stage + ')');
@@ -1429,19 +1670,21 @@ async function loadBoard() {
           detail:'Pipeline reached qualifying stage: ' + painPointProducts.join(' · '),
           source:'opportunity',
           created_at:opp.updated_at,
-          business_id:opp.business_id
+          business_id:opp.business_id,
+          business_name:_businessNameMap[normalizeBizId(opp.business_id)] || ''
         });
       }
 
       if (splitMulti(opp.lube_brands).length) {
         addScore(row, 'brands_captured', 1);
-        pushAuditEvent({ user:opp.updated_by, key:'brands_captured', detail:'Lube brands: ' + splitMulti(opp.lube_brands).join(', '), source:'opportunity', created_at:opp.updated_at, business_id:opp.business_id });
+        pushAuditEvent({ user:opp.updated_by, key:'brands_captured', detail:'Lube brands: ' + splitMulti(opp.lube_brands).join(', '), source:'opportunity', created_at:opp.updated_at, business_id:opp.business_id, business_name:_businessNameMap[normalizeBizId(opp.business_id)] || '' });
       }
     });
 
     var sorted = sortRows(rows);
     window._lastRowsCache = sorted;
     renderActiveBoard(sorted);
+    await hydrateAuditBusinessNames();
     renderAuditLog();
     document.getElementById('updated-at').textContent = fmtTime(new Date());
   } catch (err) {
