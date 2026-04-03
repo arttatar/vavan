@@ -1417,6 +1417,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
             <div class="ind-opt" data-val="Construction"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#D97706;margin-right:8px;flex-shrink:0;"></span>Infrastructure</div>
             <div class="ind-opt" data-val="Industrial"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#6B7280;margin-right:8px;flex-shrink:0;"></span>Industrial</div>
             <div class="ind-opt" data-val="Services"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#8B5CF6;margin-right:8px;flex-shrink:0;"></span>Services Business</div>
+            <div class="ind-opt" data-val="RestaurantServices"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#F59E0B;margin-right:8px;flex-shrink:0;"></span>Restaurant Services</div>
             <div class="ind-opt" data-val="Hospitality"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#EC4899;margin-right:8px;flex-shrink:0;"></span>Hospitality &amp; Leisure</div>
             <div class="ind-opt" data-val="Government"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#0EA5E9;margin-right:8px;flex-shrink:0;"></span>Government &amp; Institutions</div>
             <div class="ind-opt" data-val="Energy"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#EAB308;margin-right:8px;flex-shrink:0;"></span>Energy, Utilities &amp; Environmental</div>
@@ -3057,6 +3058,7 @@ function normalizeRecord(b) {
     'transport':'Transport','transportation':'Transport',
     'construction':'Construction','infrastructure':'Construction',
     'industrial':'Industrial','services':'Services',
+    'restaurant services':'RestaurantServices','restaurantservices':'RestaurantServices',
     'hospitality':'Hospitality','government':'Government',
     'energy':'Energy','realestate':'RealEstate','real estate':'RealEstate',
     'competitors':'Competitors','competitor':'Competitors'  // kept for legacy data migration
@@ -3174,9 +3176,33 @@ var SUB_RULES = [
   {val:'mobile-tech',          rx:/mobile technician|mobile equipment|on.?site tech/i},
   {val:'snow-removal',         rx:/snow removal|ice control|striping|pavement marking/i},
   {val:'event-services',       rx:/event service|tent rental|event rental|catering|portable restroom/i},
+  // RESTAURANT SERVICES — ordered specific-to-general so narrower matches win
+  {val:'rs-fast-food',         rx:/fast food|mcdonald|burger king|wendy|chick.?fil|taco bell|subway|jack in the box|carl.?s jr|sonic drive|popeyes|five guys|in.?n.?out|whataburger|arby|panda express|raising cane|zaxby|checkers|rally|white castle|del taco|dairy queen|qsr/i},
+  {val:'rs-chicken',           rx:/chicken|wingstop|wing zone|wings|buffalo wild|zaxby|raising cane|popeye/i},
+  {val:'rs-burger',            rx:/burger(?! king)|smash burger|smashburger|shake shack|fatburger|habit burger/i},
+  {val:'rs-mexican',           rx:/mexican|taqueria|burrito|enchilada|tamale|taco(?! bell)|cantina|chipotle|baja fresh|el pollo|torta/i},
+  {val:'rs-chinese',           rx:/chinese|szechuan|sichuan|mandarin|cantonese|dim sum|wok|china|hunan|peking|chow mein/i},
+  {val:'rs-sushi',             rx:/sushi|japanese|ramen|teriyaki|izakaya|hibachi|poke|sake/i},
+  {val:'rs-pizza',             rx:/pizza|pizzeria|domino|papa john|little caesars|papa murphy|round table|marco.?s pizza/i},
+  {val:'rs-bbq',               rx:/bbq|barbecue|barbeque|smokehouse|smokey|pit boss|ribs|pulled pork/i},
+  {val:'rs-coffee',            rx:/coffee|espresso|starbucks|dutch bros|peets|caribou|dunkin|donut|doughnut|boba|tea house|cafe(?!teria)/i},
+  {val:'rs-bakery',            rx:/bakery|bake shop|pastry|cupcake|cake shop|bread|bagel|panera/i},
+  {val:'rs-sandwich',          rx:/sandwich|deli|sub shop|jimmy john|jersey mike|firehouse sub|potbelly|quiznos|jason.?s deli/i},
+  {val:'rs-italian',           rx:/italian|trattoria|pasta|ristorante|olive garden|carrabba|buca di beppo|maggiano/i},
+  {val:'rs-thai',              rx:/thai|pad thai|basil.*rice|curry.*thai/i},
+  {val:'rs-vietnamese',        rx:/vietnamese|pho|banh mi|viet/i},
+  {val:'rs-korean',            rx:/korean|bibimbap|bulgogi|kimchi|kbbq|korean bbq/i},
+  {val:'rs-indian',            rx:/indian|curry house|tandoori|tikka|naan|masala|biryani/i},
+  {val:'rs-mediterranean',     rx:/mediterranean|greek|gyro|falafel|hummus|shawarma|kebab|kabob|hookah/i},
+  {val:'rs-seafood',           rx:/seafood|fish|oyster|lobster|crab|shrimp|clam|ceviche/i},
+  {val:'rs-steakhouse',        rx:/steakhouse|chophouse|steak house|ruth.?s chris|morton|outback|longhorn|texas roadhouse/i},
+  {val:'rs-buffet',            rx:/buffet|all you can eat|wicked spoon|bacchanal/i},
+  {val:'rs-bar-grill',         rx:/bar & grill|bar and grill|sports bar|pub |tap house|tavern|gastropub|ale house/i},
+  {val:'rs-american',          rx:/american|diner|comfort food|homestyle|soul food|southern/i},
+  {val:'rs-food-truck',        rx:/food truck|food cart|mobile kitchen|food trailer|street food/i},
+  {val:'rs-full-service',      rx:/restaurant|grill|bistro|brasserie|eatery|kitchen|dining/i},
   // HOSPITALITY
-  {val:'restaurants',          rx:/restaurant|cafe|diner|eatery|fast food|pizza|burger|taco|sushi|qsr|donut|coffee|bakery|food truck/i},
-  {val:'bars-nightlife',       rx:/bar |nightclub|lounge|tavern|brewery|pub /i},
+  {val:'bars-nightlife',       rx:/bar |nightclub|lounge|brewery|pub |winery|wine bar|hookah|cocktail/i},
   {val:'catering',             rx:/catering|banquet|event catering/i},
   {val:'grocery-supply',       rx:/grocery|supermarket|food distributor|produce distributor|meat distributor/i},
   {val:'food-processing-hosp', rx:/food pack|food processing|cold storage logistic/i},
@@ -4251,6 +4277,7 @@ function renderPins() {
         ['in',['get','industry'],['literal',['Construction','Infrastructure']]],'#D97706',
         ['==',['get','industry'],'Industrial'],'#6B7280',
         ['==',['get','industry'],'Services'],'#8B5CF6',
+        ['==',['get','industry'],'RestaurantServices'],'#F59E0B',
         ['==',['get','industry'],'Hospitality'],'#EC4899',
         ['==',['get','industry'],'Government'],'#0EA5E9',
         ['in',['get','industry'],['literal',['Energy','Fuel Stations']]],'#EAB308',
@@ -4692,6 +4719,7 @@ document.addEventListener('click', function(e) {
 var IND_LABELS = {
   Automotive:'Automotive', Agribusiness:'Agribusiness', Transport:'Transportation',
   Construction:'Infrastructure', Industrial:'Industrial', Services:'Services Business',
+  RestaurantServices:'Restaurant Services',
   Hospitality:'Hospitality & Leisure', Government:'Government & Institutions',
   Energy:'Energy, Utilities & Environmental', RealEstate:'Real Estate'
 };
@@ -4865,8 +4893,33 @@ var SUB_MAP = {
     {val:'event-services',      label:'Event / Temporary Services'},
     {val:'snow-removal',        label:'Snow Removal / Striping'},
   ],
+  RestaurantServices: [
+    {val:'rs-full-service',     label:'Full Service / Diner / Grill'},
+    {val:'rs-mexican',          label:'Mexican / Taqueria'},
+    {val:'rs-bar-grill',        label:'Bar & Grill / Gastropub'},
+    {val:'rs-sushi',            label:'Sushi / Japanese / Ramen'},
+    {val:'rs-coffee',           label:'Coffee Shop / Café'},
+    {val:'rs-italian',          label:'Italian / Trattoria'},
+    {val:'rs-chinese',          label:'Chinese / Dim Sum'},
+    {val:'rs-american',         label:'American / Comfort Food'},
+    {val:'rs-bakery',           label:'Bakery / Pastry'},
+    {val:'rs-sandwich',         label:'Sandwich / Deli'},
+    {val:'rs-bbq',              label:'BBQ / Smokehouse'},
+    {val:'rs-seafood',          label:'Seafood'},
+    {val:'rs-vietnamese',       label:'Vietnamese / Pho'},
+    {val:'rs-fast-food',        label:'Fast Food / QSR'},
+    {val:'rs-thai',             label:'Thai'},
+    {val:'rs-pizza',            label:'Pizza / Pizzeria'},
+    {val:'rs-buffet',           label:'Buffet'},
+    {val:'rs-chicken',          label:'Chicken / Wings'},
+    {val:'rs-korean',           label:'Korean / Korean BBQ'},
+    {val:'rs-mediterranean',    label:'Mediterranean / Greek'},
+    {val:'rs-indian',           label:'Indian / Curry'},
+    {val:'rs-steakhouse',       label:'Steakhouse / Chophouse'},
+    {val:'rs-food-truck',       label:'Food Truck / Mobile Kitchen'},
+    {val:'rs-burger',           label:'Burger / Smash Burger'},
+  ],
   Hospitality: [
-    {val:'restaurants',         label:'Restaurants / QSR / Cafés / Food Trucks'},
     {val:'bars-nightlife',      label:'Bars / Nightlife Venues'},
     {val:'catering',            label:'Catering / Banquet Halls'},
     {val:'grocery-supply',      label:'Grocery / Food Distributors'},
@@ -4948,7 +5001,7 @@ function renderSubDropdown() {
   var industryLabels = {
     Automotive:'Automotive', Transport:'Transportation', Construction:'Infrastructure',
     Industrial:'Industrial', Agribusiness:'Agribusiness', Energy:'Energy & Utilities',
-    Services:'Services', Hospitality:'Hospitality', Government:'Government',
+    Services:'Services', RestaurantServices:'Restaurant Services', Hospitality:'Hospitality', Government:'Government',
     RealEstate:'Real Estate'
   };
 
@@ -6664,6 +6717,7 @@ var IND_COLORS = {
   Infrastructure:'#D97706',
   Industrial:   '#6B7280',
   Services:     '#8B5CF6',
+  RestaurantServices:'#F59E0B',
   Hospitality:  '#EC4899',
   Government:   '#0EA5E9',
   Energy:       '#EAB308',
@@ -7505,8 +7559,8 @@ function renderDetailPanel(b) {
           '<span class="det-field-value">'+
             '<select id="inline-industry" onchange="saveInlineIndustry()" style="border:none;background:transparent;font-size:13px;font-weight:600;color:var(--ink);cursor:pointer;font-family:Inter,sans-serif;text-align:right;max-width:180px;">'+
               '<option value="">— Select —</option>'+
-              ['Automotive','Transport','Construction','Industrial','Agribusiness','Energy','Services','Hospitality','Government','RealEstate'].map(function(ind){
-                return '<option value="'+ind+'"'+((b.industry||'')=== ind?' selected':'')+'>'+ind+'</option>';
+              ['Automotive','Transport','Construction','Industrial','Agribusiness','Energy','Services','RestaurantServices','Hospitality','Government','RealEstate'].map(function(ind){
+                return '<option value="'+ind+'"'+((b.industry||'')=== ind?' selected':'')+'>'+(IND_LABELS[ind] || ind)+'</option>';
               }).join('')+
             '</select>'+
           '</span></div>'+
@@ -9991,6 +10045,7 @@ function _rebuildAllMapLayers() {
         ['in',['get','industry'],['literal',['Construction','Infrastructure']]],'#D97706',
         ['==',['get','industry'],'Industrial'],'#6B7280',
         ['==',['get','industry'],'Services'],'#8B5CF6',
+        ['==',['get','industry'],'RestaurantServices'],'#F59E0B',
         ['==',['get','industry'],'Hospitality'],'#EC4899',
         ['==',['get','industry'],'Government'],'#0EA5E9',
         ['in',['get','industry'],['literal',['Energy','Fuel Stations']]],'#EAB308',
@@ -11158,6 +11213,7 @@ function onMapClick(e) {
             <option value="Agribusiness">Agribusiness</option>
             <option value="Energy">Energy</option>
             <option value="Services">Services</option>
+            <option value="RestaurantServices">Restaurant Services</option>
             <option value="Hospitality">Hospitality</option>
             <option value="Government">Government</option>
             <option value="RealEstate">Real Estate</option>
@@ -11381,6 +11437,7 @@ function onMapClick(e) {
       <button class="so-industry-btn" data-ind="Agribusiness" onclick="_soToggleInd(this)"><span class="so-industry-dot" style="background:#84CC16"></span><span class="so-industry-name">Agribusiness</span></button>
       <button class="so-industry-btn" data-ind="Energy" onclick="_soToggleInd(this)"><span class="so-industry-dot" style="background:#EAB308"></span><span class="so-industry-name">Energy</span></button>
       <button class="so-industry-btn" data-ind="Services" onclick="_soToggleInd(this)"><span class="so-industry-dot" style="background:#8B5CF6"></span><span class="so-industry-name">Services</span></button>
+      <button class="so-industry-btn" data-ind="RestaurantServices" onclick="_soToggleInd(this)"><span class="so-industry-dot" style="background:#F59E0B"></span><span class="so-industry-name">Restaurant Services</span></button>
       <button class="so-industry-btn" data-ind="Hospitality" onclick="_soToggleInd(this)"><span class="so-industry-dot" style="background:#EC4899"></span><span class="so-industry-name">Hospitality</span></button>
       <button class="so-industry-btn" data-ind="Government" onclick="_soToggleInd(this)"><span class="so-industry-dot" style="background:#0EA5E9"></span><span class="so-industry-name">Government</span></button>
       <button class="so-industry-btn" data-ind="RealEstate" onclick="_soToggleInd(this)"><span class="so-industry-dot" style="background:#14B8A6"></span><span class="so-industry-name">Real Estate</span></button>
