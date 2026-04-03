@@ -128,6 +128,13 @@ body{
   display:flex;
   width:100%;
 }
+.mobile-nav-tools{
+  display:none;
+}
+.mobile-view-switch,
+.mobile-date-tools{
+  display:contents;
+}
 .topbar{
   display:flex;
   justify-content:space-between;
@@ -711,6 +718,23 @@ body{
   .shell{padding:20px 14px 28px}
   .quick-nav{border-radius:16px}
   .quick-nav-group{width:100%}
+  .mobile-nav-tools{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    padding:12px;
+    border-top:1px solid rgba(255,255,255,.08);
+  }
+  .mobile-view-switch{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:8px;
+  }
+  .mobile-date-tools{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:10px;
+  }
   .topbar{flex-direction:column}
   .meta{width:100%;justify-content:flex-start}
   .pill{padding:8px 11px;font-size:11px}
@@ -735,6 +759,30 @@ body{
   }
   .header-tools .btn{
     grid-column:1 / -1;
+    width:100%;
+    justify-content:center;
+  }
+  .topbar .header-tools{display:none}
+  .mobile-nav-tools .view-btn{
+    min-width:0;
+    justify-content:center;
+    text-align:center;
+    line-height:1.15;
+    padding:11px 8px;
+    width:100%;
+  }
+  .mobile-nav-tools .control{
+    min-width:0;
+    width:100%;
+  }
+  .mobile-nav-tools .control label{
+    display:block;
+    margin-bottom:6px;
+  }
+  .mobile-nav-tools .date-input{
+    width:100%;
+  }
+  .mobile-nav-tools .btn{
     width:100%;
     justify-content:center;
   }
@@ -771,10 +819,13 @@ body{
   .metrics{grid-template-columns:1fr}
   .quick-nav .quick-tab-btn{font-size:12px;padding:13px 6px 12px}
   .header-tools{grid-template-columns:1fr 1fr}
+  .mobile-view-switch{grid-template-columns:1fr}
+  .mobile-date-tools{grid-template-columns:1fr}
   .stat-grid{grid-template-columns:1fr}
   .rep-name{font-size:20px}
   .audit-filter-chip{flex:1 1 100%}
 }
+.hidden-tab-copy{display:none !important}
 </style>
 </head>
 <body>
@@ -805,12 +856,32 @@ body{
         <button class="quick-tab-btn" id="tab-rules-btn" onclick="setContentTab('rules')">Rules</button>
         <button class="quick-tab-btn" id="tab-audit-btn" onclick="setContentTab('audit')">Audit Log</button>
       </div>
+      <div class="mobile-nav-tools">
+        <div class="mobile-view-switch">
+          <button class="view-btn active" id="view-team-btn-mobile" onclick="setBoardView('team')">Team Leader Board</button>
+          <button class="view-btn" id="view-user-btn-mobile" onclick="setBoardView('user')">User Leader Board</button>
+          <button class="view-btn" id="view-lone-btn-mobile" onclick="setBoardView('lone')">Lone Wolf</button>
+        </div>
+        <div class="mobile-date-tools">
+          <div class="control">
+            <label for="start-date-mobile">Start</label>
+            <input class="date-input" id="start-date-mobile" type="date" onchange="syncDateInput('start')">
+          </div>
+          <div class="control">
+            <label for="end-date-mobile">End</label>
+            <input class="date-input" id="end-date-mobile" type="date" onchange="syncDateInput('end')">
+          </div>
+        </div>
+        <button class="btn" id="reload-btn-mobile" onclick="loadBoard()">Reload</button>
+      </div>
     </div>
 
     <div class="topbar">
       <div class="brand">
-        <div class="eyebrow">InterState Oil Market Blitz</div>
-        <h1>Desert Strike Leader Board</h1>
+        <div id="leaderboard-copy">
+          <div class="eyebrow">InterState Oil Market Blitz</div>
+          <h1>Desert Strike Leader Board</h1>
+        </div>
         <div class="header-tools">
           <button class="view-btn active" id="view-team-btn" onclick="setBoardView('team')">Team Leader Board</button>
           <button class="view-btn" id="view-user-btn" onclick="setBoardView('user')">User Leader Board</button>
@@ -1404,6 +1475,8 @@ function setContentTab(tab) {
     if (panel) panel.classList.toggle('active', id === _contentTab);
     if (btn) btn.classList.toggle('active', id === _contentTab);
   });
+  var copy = document.getElementById('leaderboard-copy');
+  if (copy) copy.classList.toggle('hidden-tab-copy', _contentTab !== 'leaderboard');
 }
 
 function getBoardTitle() {
@@ -1428,11 +1501,25 @@ function updateBoardHeadings() {
   var teamBtn = document.getElementById('view-team-btn');
   var userBtn = document.getElementById('view-user-btn');
   var loneBtn = document.getElementById('view-lone-btn');
+  var teamBtnMobile = document.getElementById('view-team-btn-mobile');
+  var userBtnMobile = document.getElementById('view-user-btn-mobile');
+  var loneBtnMobile = document.getElementById('view-lone-btn-mobile');
   if (title) title.textContent = getBoardTitle();
   if (copy) copy.textContent = getBoardCopy();
   if (teamBtn) teamBtn.classList.toggle('active', _boardView === 'team');
   if (userBtn) userBtn.classList.toggle('active', _boardView === 'user');
   if (loneBtn) loneBtn.classList.toggle('active', _boardView === 'lone');
+  if (teamBtnMobile) teamBtnMobile.classList.toggle('active', _boardView === 'team');
+  if (userBtnMobile) userBtnMobile.classList.toggle('active', _boardView === 'user');
+  if (loneBtnMobile) loneBtnMobile.classList.toggle('active', _boardView === 'lone');
+}
+
+function syncDateInput(which) {
+  var desktop = document.getElementById(which + '-date');
+  var mobile = document.getElementById(which + '-date-mobile');
+  if (!desktop || !mobile) return;
+  if (document.activeElement === mobile) desktop.value = mobile.value;
+  else mobile.value = desktop.value;
 }
 
 function setBoardView(view) {
@@ -1657,8 +1744,10 @@ async function loadBoard() {
   }
 
   var btn = document.getElementById('reload-btn');
+  var btnMobile = document.getElementById('reload-btn-mobile');
   btn.disabled = true;
   btn.textContent = 'Loading...';
+  if (btnMobile) { btnMobile.disabled = true; btnMobile.textContent = 'Loading...'; }
 
   try {
     _auditEvents = [];
@@ -1814,6 +1903,7 @@ async function loadBoard() {
   } finally {
     btn.disabled = false;
     btn.textContent = 'Reload';
+    if (btnMobile) { btnMobile.disabled = false; btnMobile.textContent = 'Reload'; }
   }
 }
 
@@ -1836,9 +1926,12 @@ async function boot() {
   var monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
   document.getElementById('start-date').value = fmtDate(monthStart);
   document.getElementById('end-date').value = fmtDate(today);
+  syncDateInput('start');
+  syncDateInput('end');
 
   renderRules();
   updateBoardHeadings();
+  setContentTab('leaderboard');
   document.getElementById('client-name').textContent = _clientName;
   document.getElementById('viewer-name').textContent = profile.full_name || 'Unknown';
   document.getElementById('updated-at').textContent = fmtTime(new Date());
