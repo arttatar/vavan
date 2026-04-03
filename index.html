@@ -9563,12 +9563,23 @@ async function saveOpportunities() {
       }
     });
 
+    var prevBrands = prevOpp['lube_brands'] || '';
+    var newBrands = payload['lube_brands'] || '';
+    if (newBrands !== prevBrands) {
+      var brandList = splitMulti(newBrands);
+      logEntries.push({
+        note: brandList.length
+          ? 'Lube brands updated — Brands: ' + brandList.join(', ')
+          : 'Lube brands cleared'
+      });
+    }
+
     // Insert all log entries
     for (var i = 0; i < logEntries.length; i++) {
       await sb.from('activity').insert({
         business_id: _bizUuid(b),
         type: 'opportunities',
-        note: logEntries[i].note,
+        note: _withBizNote(b, logEntries[i].note),
         client_id: currentProfile ? currentProfile.client_id : null,
         created_by: byName
       });
