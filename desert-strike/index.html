@@ -210,11 +210,16 @@ body{
   gap:8px;
 }
 .metric{
+  appearance:none;
+  width:100%;
+  text-align:left;
   padding:12px;
   border-radius:16px;
   border:1px solid rgba(255,255,255,.06);
   background:rgba(255,255,255,.03);
+  cursor:pointer;
 }
+.metric:hover{border-color:rgba(255,180,76,.4)}
 .metric .label{
   font-size:11px;
   text-transform:uppercase;
@@ -796,6 +801,7 @@ body{
     <div class="quick-nav">
       <div class="quick-nav-group">
         <button class="quick-tab-btn active" id="tab-leader-btn" onclick="setContentTab('leaderboard')">Leader Board</button>
+        <button class="quick-tab-btn" id="tab-totals-btn" onclick="setContentTab('totals')">Totals</button>
         <button class="quick-tab-btn" id="tab-rules-btn" onclick="setContentTab('rules')">Rules</button>
         <button class="quick-tab-btn" id="tab-audit-btn" onclick="setContentTab('audit')">Audit Log</button>
       </div>
@@ -827,10 +833,6 @@ body{
       </div>
     </div>
 
-    <div class="panel" style="margin-bottom:10px;">
-      <div class="metrics" id="summary-grid"></div>
-    </div>
-
     <div class="panel content-panel">
       <div class="content-section active" id="leaderboard">
         <div class="section-head">
@@ -839,6 +841,15 @@ body{
           </div>
         </div>
         <div id="leader-list" class="leader-list"></div>
+      </div>
+
+      <div class="content-section" id="totals">
+        <div class="section-head">
+          <div>
+            <h2>Totals</h2>
+          </div>
+        </div>
+        <div class="metrics" id="summary-grid"></div>
       </div>
 
       <div class="content-section" id="rules">
@@ -1299,12 +1310,17 @@ function renderSummary(rows) {
     var rule = POINT_RULES[key];
     var count = totals.counts[key] || 0;
     var pts = totals.points[key] || 0;
-    return '<div class="metric">'+
+    return '<button class="metric" type="button" onclick="openTotalsAudit(\''+key+'\')">'+
       '<div class="label">'+escapeHtml(rule.label)+'</div>'+
       '<div class="value">'+count+'</div>'+
       '<div class="sub">'+pts+' pts</div>'+
-    '</div>';
+    '</button>';
   }).join('');
+}
+
+function openTotalsAudit(key) {
+  _selectedLeaderKey = '';
+  setAuditFilter(key || 'all');
 }
 
 function eventMatchesSelectedLeader(event) {
@@ -1380,10 +1396,11 @@ function clearAuditFilter() {
 
 function setContentTab(tab) {
   _contentTab = tab || 'leaderboard';
-  var tabs = ['leaderboard', 'rules', 'audit'];
+  var tabs = ['leaderboard', 'totals', 'rules', 'audit'];
   tabs.forEach(function(id){
     var panel = document.getElementById(id);
-    var btn = document.getElementById('tab-' + (id === 'leaderboard' ? 'leader' : id) + '-btn');
+    var btnMap = { leaderboard:'leader', totals:'totals', rules:'rules', audit:'audit' };
+    var btn = document.getElementById('tab-' + btnMap[id] + '-btn');
     if (panel) panel.classList.toggle('active', id === _contentTab);
     if (btn) btn.classList.toggle('active', id === _contentTab);
   });
