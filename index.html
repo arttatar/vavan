@@ -457,6 +457,12 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
 .rp-hdr{padding:.875rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
 .rp-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--ink);}
 .rp-close{width:26px;height:26px;border-radius:50%;background:var(--paper2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;color:var(--muted);}
+@keyframes route-spin{to{transform:rotate(360deg)}}
+@keyframes route-pulse{0%,100%{opacity:.4}50%{opacity:1}}
+.route-loader{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2.5rem 1rem;gap:14px;}
+.route-loader .rl-spinner{width:36px;height:36px;border-radius:50%;border:3px solid var(--border);border-top-color:var(--accent,#4a36c8);animation:route-spin .8s linear infinite;}
+.route-loader .rl-label{font-size:13px;font-weight:700;color:var(--ink);text-align:center;}
+.route-loader .rl-sub{font-size:11px;color:var(--muted);text-align:center;animation:route-pulse 1.8s ease-in-out infinite;}
 #rcount{font-size:11px;color:var(--muted);padding:.5rem 1rem .25rem;flex-shrink:0;border-bottom:1px solid var(--border);}
 #biz-list{flex:1;overflow-y:auto;height:0;}
 #sidebar.open{transform:translateX(0);}
@@ -3980,7 +3986,7 @@ var _rpPendingSelection = null; // saved selection before modal opens
 function _dskBuildRoute() {
   var sel = Object.values(_routeSelected);
   if (!sel.length) { _showToast('Select at least one stop first'); return; }
-  if (sel.length > 50) { _showToast('Max 50 stops per route'); return; }
+  if (sel.length > 100) { _showToast('Max 100 stops per route'); return; }
   // Save selection before closing panel (panel close can clear _routeSelected)
   _rpPendingSelection = sel.slice();
   _routeMode = false;
@@ -10325,7 +10331,7 @@ function routeClearSelection() {
 function buildRouteFromSelection() {
   var sel = Object.values(_routeSelected);
   if (!sel.length) { _showToast('Select at least one stop first'); return; }
-  if (sel.length > 50) { _showToast('Max 50 stops per route'); return; }
+  if (sel.length > 100) { _showToast('Max 100 stops per route'); return; }
   _rpPendingSelection = sel.slice();
   document.getElementById('route-start-modal').classList.add('open');
 }
@@ -10419,12 +10425,12 @@ async function _buildRoute() {
   _routeStops = stops;
   _routeGeomCache = null;
   openRoutePanel();
-  _setRPSubtitle('Optimizing route…');
+  _setRPSubtitle('Optimizing '+stops.length+' stops…');
   document.getElementById('rp-stops-list').innerHTML =
-    '<div style="padding:2rem;text-align:center;">'+
-    ''+
-    '<div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:4px;">Building route…</div>'+
-    '<div style="font-size:11px;color:var(--muted);">Checking real roads &amp; traffic</div></div>';
+    '<div class="route-loader">'+
+    '<div class="rl-spinner"></div>'+
+    '<div class="rl-label">Building route — '+stops.length+' stops</div>'+
+    '<div class="rl-sub" id="rl-status">Optimizing with real roads &amp; traffic</div></div>';
 
   try {
     if (stops.length <= 11) {
@@ -10434,7 +10440,8 @@ async function _buildRoute() {
       _routeTotalDur  = r.dur;
       _routeTotalDist = r.dist;
     } else {
-      _routeStops = _distNNN(_routeStartPoint, stops);
+      // >11 stops: chunk-optimize (free tier) then stitch with Directions
+      _routeStops = await _chunkOptimize(_routeStartPoint, stops, _routeFinishPoint);
       var wpts = [{lat:_routeStartPoint.lat,lon:_routeStartPoint.lon}]
         .concat(_routeStops.map(function(s){ return {lat:s.biz.lat,lon:s.biz.lon}; }));
       if (_routeFinishPoint) wpts.push({lat:_routeFinishPoint.lat,lon:_routeFinishPoint.lon});
@@ -10464,6 +10471,119 @@ async function _buildRoute() {
   );
 }
 
+// ── SLIDING-WINDOW ROUTE OPTIMIZER (free tier, up to 100 stops) ──
+// Strategy:
+//   1. NNN rough sort → geographically sequential order
+//   2. Pass 1 — chunk optimize: split into groups of 11, optimize each via free Optimization API
+//   3. Pass 2 — boundary smooth: take overlapping 11-stop windows at chunk seams, re-optimize
+//   Result: near-optimal ordering using only free API calls
+//
+// API budget examples (all free tier):
+//   20 stops → 2 optimize + 1 smooth + 1 directions = 4 calls
+//   50 stops → 5 optimize + 4 smooth + 3 directions = 12 calls
+//  100 stops → 10 optimize + 9 smooth + 5 directions = 24 calls
+
+async function _chunkOptimize(startPt, stops, finishPt) {
+  var WIN = 11; // max stops per free optimization call
+  var total = stops.length;
+  function _prog(msg) {
+    var el = document.getElementById('rl-status');
+    if (el) { el.textContent = msg; return; }
+    // Fallback if loader was replaced
+    var statusEl = document.getElementById('rp-stops-list');
+    if (statusEl) statusEl.innerHTML =
+      '<div class="route-loader">'+
+      '<div class="rl-spinner"></div>'+
+      '<div class="rl-label">Building route — '+total+' stops</div>'+
+      '<div class="rl-sub" id="rl-status">'+msg+'</div></div>';
+  }
+
+  // ── Pass 0: NNN rough sort ──
+  _prog('Sorting by proximity…');
+  var arr = _distNNN(startPt, stops);
+
+  // ── Pass 1: chunk optimize ──
+  var numChunks = Math.ceil(arr.length / WIN);
+  var result = [];
+  for (var c = 0; c < numChunks; c++) {
+    var si = c * WIN;
+    var chunk = arr.slice(si, si + WIN);
+    var cStart = (c === 0)
+      ? startPt
+      : {lat: result[result.length-1].biz.lat, lon: result[result.length-1].biz.lon, label:'prev'};
+    _prog('Optimizing group '+(c+1)+' of '+numChunks+'…');
+    try {
+      var r = await _optimizeAPI(cStart, chunk, null);
+      result = result.concat(r.ordered);
+    } catch(e) {
+      console.warn('Chunk '+c+' optimize failed:', e);
+      result = result.concat(chunk);
+    }
+  }
+
+  // ── Pass 2: boundary smoothing ──
+  // For each seam between chunks, re-optimize an 11-stop window centered on the boundary
+  if (numChunks > 1) {
+    for (var b = 1; b < numChunks; b++) {
+      var seam = b * WIN; // index in result where chunks meet
+      // Take 5 stops before seam + up to 6 after (or whatever is available)
+      var lo = Math.max(0, seam - 5);
+      var hi = Math.min(result.length, seam + 6);
+      if (hi - lo < 3) continue; // too small to bother
+      var window = result.slice(lo, hi);
+      var wStart = (lo === 0)
+        ? startPt
+        : {lat: result[lo-1].biz.lat, lon: result[lo-1].biz.lon, label:'prev'};
+      _prog('Smoothing boundary '+ b +' of '+(numChunks-1)+'…');
+      try {
+        var r2 = await _optimizeAPI(wStart, window, null);
+        // Splice the re-optimized window back into the result
+        var args = [lo, hi - lo].concat(r2.ordered);
+        Array.prototype.splice.apply(result, args);
+      } catch(e) {
+        console.warn('Boundary '+b+' smooth failed:', e);
+        // keep original order at this seam
+      }
+    }
+  }
+
+  _prog('Getting driving directions…');
+  return result;
+}
+
+// ── RATE-LIMITED FETCH ──
+// Shared queue ensures all Mapbox calls (across route builds) stay under rate limits.
+// Retries on 429 with exponential backoff. Small stagger between calls.
+var _mbQueue = Promise.resolve();
+var _MB_STAGGER = 120; // ms between calls — keeps 13 concurrent users under 300 req/min per token
+
+function _rateLimitedFetch(url, retries) {
+  retries = retries || 3;
+  return new Promise(function(resolve, reject) {
+    _mbQueue = _mbQueue.then(function() {
+      return new Promise(function(next) { setTimeout(next, _MB_STAGGER); });
+    }).then(function() {
+      return _fetchWithRetry(url, retries);
+    }).then(resolve).catch(reject);
+  });
+}
+
+async function _fetchWithRetry(url, retries) {
+  for (var attempt = 0; attempt <= retries; attempt++) {
+    var res = await fetch(url);
+    if (res.status === 429 && attempt < retries) {
+      // Rate limited — back off exponentially (1s, 2s, 4s)
+      var wait = Math.pow(2, attempt) * 1000;
+      console.warn('Mapbox rate limited, retrying in '+wait+'ms (attempt '+(attempt+1)+')');
+      await new Promise(function(r){ setTimeout(r, wait); });
+      continue;
+    }
+    if (!res.ok && res.status !== 200) throw new Error('Mapbox API error: '+res.status);
+    return res;
+  }
+  throw new Error('Mapbox rate limit exceeded after '+retries+' retries');
+}
+
 // Mapbox Optimization API — ≤11 stops
 async function _optimizeAPI(startPt, stops, finishPt) {
   var allPts = [startPt.lon+','+startPt.lat]
@@ -10476,14 +10596,16 @@ async function _optimizeAPI(startPt, stops, finishPt) {
   var isRoundtrip = _routeFinishType === 'start';
   var destParam = hasFinish ? 'any' : 'last';
   var params = 'roundtrip='+(isRoundtrip?'true':'false')+'&source=first&destination='+destParam+'&overview=full&geometries=geojson&steps=false&access_token='+MBOX;
-  var res = await fetch('https://api.mapbox.com/optimized-trips/v1/mapbox/driving-traffic/'+coords+'?'+params);
+  var res = await _rateLimitedFetch('https://api.mapbox.com/optimized-trips/v1/mapbox/driving-traffic/'+coords+'?'+params);
   var data = await res.json();
   if (!data.trips||!data.trips[0]) throw new Error('No trip');
   var trip = data.trips[0];
+  var numCoords = allPts.length;
   var ordered = data.waypoints
-    .filter(function(w){ return w.waypoint_index>0; })
-    .sort(function(a,b){ return a.trip_index-b.trip_index; })
-    .map(function(w){ return stops[w.waypoint_index-1]; });
+    .map(function(w, i){ return {optIdx: w.waypoint_index, inputIdx: i}; })
+    .filter(function(item){ return item.inputIdx > 0 && (!hasFinish || item.inputIdx < numCoords - 1); })
+    .sort(function(a, b){ return a.optIdx - b.optIdx; })
+    .map(function(item){ return stops[item.inputIdx - 1]; });
   if (trip.legs) trip.legs.forEach(function(leg,i){
     if (ordered[i]) { ordered[i]._legDur=leg.duration; ordered[i]._legDist=leg.distance; }
   });
@@ -10496,7 +10618,7 @@ async function _directionsAPI(waypoints) {
   for (var i=0;i<waypoints.length-1;i+=CHUNK-1) {
     var chunk=waypoints.slice(i,Math.min(i+CHUNK,waypoints.length));
     if (chunk.length<2) break;
-    var res=await fetch('https://api.mapbox.com/directions/v5/mapbox/driving-traffic/'+
+    var res=await _rateLimitedFetch('https://api.mapbox.com/directions/v5/mapbox/driving-traffic/'+
       chunk.map(function(p){ return p.lon+','+p.lat; }).join(';')+
       '?access_token='+MBOX+'&overview=full&geometries=geojson&steps=false');
     var d=await res.json();
