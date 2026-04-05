@@ -3362,8 +3362,9 @@ async function loadData() {
       prog(60, 'Loaded ' + allData.length + ' businesses');
       var pcount = document.getElementById('pcount');
       if (pcount) pcount.textContent = allData.length.toLocaleString();
-      // Load suppliers table
+      // Load suppliers and brands tables
       await _loadSuppliers();
+      await _loadBrands();
       return;
     }
 
@@ -8970,6 +8971,7 @@ var OPP_PRODUCTS = [
 // ── SUPPLIERS (Supabase-backed) ──
 // Cached supplier data loaded from `suppliers` table
 var _suppliersCache = {}; // { productKey: [{id, name, sort_order, is_active}, ...] }
+var _brandsCache = {};    // { productKey: [{id, name, sort_order, is_active}, ...] }
 
 async function _loadSuppliers() {
   var cid = currentProfile ? currentProfile.client_id : null;
@@ -8989,6 +8991,29 @@ async function _loadSuppliers() {
 function _getVisibleSuppliers(productKey) {
   var list = _suppliersCache[productKey] || [];
   return list.filter(function(s){ return s.is_active !== false; }).map(function(s){ return s.name; });
+}
+
+// ─── Brands (DB-backed, same pattern as suppliers) ──────────
+async function _loadBrands() {
+  var cid = currentProfile ? currentProfile.client_id : null;
+  if (!cid) return;
+  try {
+    var r = await sb.from('brands').select('*').eq('client_id', cid).order('sort_order', {ascending: true});
+    if (r.error) { console.warn('Brands table not found, using fallback'); return; }
+    _brandsCache = {};
+    (r.data || []).forEach(function(s) {
+      if (!_brandsCache[s.product_line]) _brandsCache[s.product_line] = [];
+      _brandsCache[s.product_line].push(s);
+    });
+  } catch(e) { console.warn('Could not load brands:', e.message); }
+}
+
+function _getVisibleBrands(productKey) {
+  var list = _brandsCache[productKey] || [];
+  var dbBrands = list.filter(function(s){ return s.is_active !== false; }).map(function(s){ return s.name; });
+  if (dbBrands.length > 0) return dbBrands;
+  // Fallback to hardcoded if DB is empty
+  return ['76 Lubricants','Amsoil','Castrol','Chevron','CITGO','Conoco','Delo','ExxonMobil','Ford Motorcraft','Fuchs','Gulf Oil','Havoline','Kendall','Liqui Moly','Lucas Oil','MAG 1','Mobil 1','Motul','Mystik','NAPA',"O'Reilly",'Pennzoil','Pennzoil Platinum','Petro-Canada','Phillips 66','Purus','Quaker State','Red Line Oil','Royal Purple',"Schaeffer's",'Service Pro','Shell','Shell Rotella','STP','Syntec','TotalEnergies','Valucraft','Valvoline','Viscosity'];
 }
 
 function fmtGallons(n, maxVal) {
@@ -9117,9 +9142,9 @@ function renderOpportunities(b, opp) {
           })()+
           // Brands Used — lubricants only
           (p.key === 'lubricants' ? (function(){
-            var BASE_BRANDS = ['Mobil 1','Castrol EDGE','Valvoline Full Synthetic','Shell Rotella','Pennzoil Platinum','Royal Purple','Amsoil','Delo','Rotella T6','Kendall'];
+            var BRANDS = _getVisibleBrands('lubricants');
             var custom = _getCustomList('brands');
-            var BRANDS = BASE_BRANDS.concat(custom);
+            BRANDS = BRANDS.concat(custom.filter(function(c){ return BRANDS.indexOf(c)<0; }));
             var brandVal = opp['lube_brands'] || '';
             var selected = brandVal ? brandVal.split(',').map(function(s){return s.trim();}).filter(Boolean) : [];
             var chips = selected.map(function(s){
@@ -9745,7 +9770,6 @@ function _renderOppFilterProducts() {
   var STAGE_COLORS = {'all':'var(--muted)','Lead Captured':'#9b93d4','Qualified':'#4a36c8','Fact-Finding':'#d97706','Proposal Sent':'#16a34a','Credit Application':'#9333ea','Won Opportunity':'#059669','Uses Oil':'#d97706','Lost':'#dc2626'};
   var LABELS = ['All','Lead','Qualified','Fact-Find','Proposal','Credit','Won','Lost'];
   var UCO_LABELS = ['All','Lead','Uses Oil','Won'];
-  var BASE_BRANDS = ['Mobil 1','Castrol EDGE','Valvoline Full Synthetic','Shell Rotella','Pennzoil Platinum','Royal Purple','Amsoil','Delo','Rotella T6','Kendall'];
   var PRODUCT_LABELS = {lubricants:'Lubricants',fuel_delivery:'Fuel Delivery',cardlock:'Cardlock',propane:'Propane',uco:'Used Cooking Oil'};
 
   wrap.innerHTML = OPP_FILTER_PRODUCTS.map(function(p){
@@ -9776,7 +9800,8 @@ function _renderOppFilterProducts() {
     var brandsHtml = '';
     if (p.key === 'lubricants') {
       var customBrands = _getCustomList('brands');
-      var allBrands = BASE_BRANDS.concat(customBrands);
+      var dbBrands = _getVisibleBrands('lubricants');
+      var allBrands = dbBrands.concat(customBrands.filter(function(c){ return dbBrands.indexOf(c)<0; }));
       var availBrands = allBrands.filter(function(s){ return selBrands.indexOf(s)<0; });
       var brandChipsHtml = selBrands.map(function(s){
         return '<span style="display:inline-flex;align-items:center;gap:3px;background:#f0fdf4;color:#059669;border-radius:100px;padding:2px 8px;font-size:11px;font-weight:600;white-space:nowrap;">'+
@@ -11556,3 +11581,4 @@ function onMapClick(e) {
 
 </body>
 </html>
+
