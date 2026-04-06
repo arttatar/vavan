@@ -6775,8 +6775,31 @@ var IND_COLORS = {
 var IND_DEFAULT = '#9b93d4';
 
 // ── TAGS ──
+var _OLD_ZONE_TAGS = [
+  'rsd-zone-1--west','rsd-zone-2--central--north-east','rsd-zone-3--south-east',
+  'zone-1---south-henderson--s-las-vegas-sunset-rd','zone-2---central-south-sunset-to-flamingo',
+  'zone-3---central-flamingo-to-altastewart','zone-4---north-central-alta-to-gowan',
+  'zone-5---north-gowan-n-las-vegas'
+];
 function _getTagsKey() {
   return 'vavan_tags_' + (currentProfile ? currentProfile.client_id||'default' : 'default');
+}
+var _TEAM_TAGS = [
+  'luck7/uriah','bio-cam/cameron','hurricane-ozzy',
+  'desert-ninjas/brent/chad','the-teaminators/DJ/Tiger',
+  'beauty&the-beasts/scotty/kylie','high-roller-hustlers/steve/art',
+  'oil-team6/chris/brian'
+];
+function _purgeOldZoneTags() {
+  // Cleanup: remove old zone tags + seed new team tags into localStorage
+  try {
+    var key = _getTagsKey();
+    var ls = JSON.parse(localStorage.getItem(key)||'[]');
+    var cleaned = ls.filter(function(t){ return _OLD_ZONE_TAGS.indexOf(t) < 0; });
+    // Ensure all team tags exist as options
+    _TEAM_TAGS.forEach(function(t){ if (cleaned.indexOf(t) < 0) cleaned.push(t); });
+    localStorage.setItem(key, JSON.stringify(cleaned));
+  } catch(e){}
 }
 function _getAllTags() {
   // Build tag list from actual business data + any localStorage extras
@@ -6784,12 +6807,12 @@ function _getAllTags() {
   // Scan all loaded businesses for tags in DB
   (allData||[]).forEach(function(b){
     var bt = _getBizTags(b);
-    bt.forEach(function(t){ if(t) tagSet[t]=true; });
+    bt.forEach(function(t){ if(t && _OLD_ZONE_TAGS.indexOf(t) < 0) tagSet[t]=true; });
   });
   // Also include any from localStorage (user-created tags not yet assigned)
   try {
     var ls = JSON.parse(localStorage.getItem(_getTagsKey())||'[]');
-    ls.forEach(function(t){ if(t) tagSet[t]=true; });
+    ls.forEach(function(t){ if(t && _OLD_ZONE_TAGS.indexOf(t) < 0) tagSet[t]=true; });
   } catch(e){}
   return Object.keys(tagSet).sort();
 }
@@ -6969,6 +6992,7 @@ async function _applyTagArea() {
 }
 
 function _initTagFilterDropdown() {
+  _purgeOldZoneTags();
   var sel = document.getElementById('tag-filter-sel');
   if (!sel) return;
   var tags = _getAllTags();
@@ -11750,4 +11774,3 @@ function onMapClick(e) {
 
 </body>
 </html>
-
