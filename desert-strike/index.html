@@ -991,28 +991,24 @@ var PRODUCT_LINES = [
 ];
 
 var POINT_RULES = {
-  visit:                 { label:'Visit Logged', points:2, note:'Counts each activity record logged as visited.' },
-  competitor_invoice:    { label:'Competitor Invoice', points:10, note:'Detected from photo captions or filenames mentioning invoices or competitors.' },
-  contact_added:         { label:'Contact Added', points:3, note:'Counts activity logs created when a new contact is added to a business.' },
-  supplier_captured:     { label:'Supplier Captured', points:3, note:'Counts each product line where a supplier is filled in on the opportunity record.' },
-  brands_captured:       { label:'Brands Captured', points:3, note:'Counts a lubricants brand entry on the opportunity record.' },
-  equipment_photo:       { label:'Equipment Photo', points:4, note:'Detected from photo captions or filenames that look like tank, pump, truck, dispenser, or equipment photos.' },
-  pain_points:           { label:'Pain Points', points:5, note:'Counts one event per business when any product reaches Fact-Finding, Proposal Sent, Credit Application, or Won Opportunity.' },
-  credit_app:            { label:'Credit App', points:8, note:'Counts each product line currently sitting in Credit Application stage.' },
-  credit_app_left:       { label:'Credit App Left', points:5, note:'Inferred from activity notes mentioning that a credit app was left behind.' },
-  credit_app_collected:  { label:'Credit App Collected', points:10, note:'Inferred from activity notes mentioning collected, completed, filled-out, or received credit apps.' }
+  visit:                 { label:'Visit Logged', points:1, note:'1 point per business visited. Extra visits at the same business do not count.' },
+  competitor_invoice:    { label:'Competitor Invoice', points:10, note:'10 points when you upload a competitor invoice photo.' },
+  contact_added:         { label:'Contact Added', points:1, note:'1 point when you add a contact to a business.' },
+  supplier_captured:     { label:'Supplier Captured', points:1, note:'1 point when you capture the supplier being used at a business.' },
+  brands_captured:       { label:'Brands Captured', points:1, note:'1 point when you capture the brands being used at a business.' },
+  equipment_photo:       { label:'Equipment Photo', points:1, note:'1 point when you upload an equipment photo with a clear label.' },
+  pain_points:           { label:'Pain Points', points:1, note:'1 point when the pipeline reaches a qualifying stage (Fact-Finding, Proposal, Credit App, or Won).' },
+  credit_app_collected:  { label:'Credit App Collected', points:10, note:'10 points when a credit app is collected and logged.' }
 };
 
 var CATEGORY_ORDER = [
   'visit',
-  'competitor_invoice',
   'contact_added',
   'supplier_captured',
   'brands_captured',
-  'equipment_photo',
   'pain_points',
-  'credit_app',
-  'credit_app_left',
+  'equipment_photo',
+  'competitor_invoice',
   'credit_app_collected'
 ];
 var PAIN_POINT_STAGES = {
@@ -1130,8 +1126,15 @@ function ensureRow(rows, name) {
   return rows[userName];
 }
 
-function addScore(row, key, count) {
+var _scoredSet = {};
+function addScore(row, key, count, businessId) {
   if (!row || !POINT_RULES[key] || !count) return;
+  // Enforce: each rule scores once per business per user
+  if (businessId) {
+    var dk = row.user + '|' + key + '|' + normalizeBizId(businessId);
+    if (_scoredSet[dk]) return;
+    _scoredSet[dk] = true;
+  }
   row.counts[key] += count;
   row.points[key] += count * POINT_RULES[key].points;
   row.total += count * POINT_RULES[key].points;
@@ -1767,6 +1770,7 @@ async function loadBoard() {
 
   try {
     _auditEvents = [];
+    _scoredSet = {};
     _businessNameMap = {};
     _allBusinessNamesLoaded = false;
     _allowedMarketNamesCache = null;
@@ -1794,35 +1798,27 @@ async function loadBoard() {
       if (!row) return;
       var note = normalizeName(item.note);
       if (item.type === 'visited') {
-        addScore(row, 'visit', 1);
+        addScore(row, 'visit', 1, item.business_id);
         pushAuditEvent({ user:item.created_by, key:'visit', detail:note || 'Visited logged', source:'activity', created_at:item.created_at, business_id:item.business_id, business_name:_businessNameMap[normalizeBizId(item.business_id)] || '' });
       }
       if (item.type === 'contact' && /^Contact added:/i.test(note)) {
-        addScore(row, 'contact_added', 1);
+        addScore(row, 'contact_added', 1, item.business_id);
         pushAuditEvent({ user:item.created_by, key:'contact_added', detail:note, source:'activity', created_at:item.created_at, business_id:item.business_id, business_name:_businessNameMap[normalizeBizId(item.business_id)] || '' });
       }
-      if (CREDIT_LEFT_RX.test(note)) {
-        addScore(row, 'credit_app_left', 1);
-        pushAuditEvent({ user:item.created_by, key:'credit_app_left', detail:note, source:'activity', created_at:item.created_at, business_id:item.business_id, business_name:_businessNameMap[normalizeBizId(item.business_id)] || '' });
-      }
       if (CREDIT_COLLECTED_RX.test(note)) {
-        addScore(row, 'credit_app_collected', 1);
+        addScore(row, 'credit_app_collected', 1, item.business_id);
         pushAuditEvent({ user:item.created_by, key:'credit_app_collected', detail:note, source:'activity', created_at:item.created_at, business_id:item.business_id, business_name:_businessNameMap[normalizeBizId(item.business_id)] || '' });
       }
       if (item.type === 'opportunities' && /supplier:/i.test(note)) {
-        addScore(row, 'supplier_captured', 1);
+        addScore(row, 'supplier_captured', 1, item.business_id);
         pushAuditEvent({ user:item.created_by, key:'supplier_captured', detail:note, source:'activity', created_at:item.created_at, business_id:item.business_id, business_name:_businessNameMap[normalizeBizId(item.business_id)] || '' });
       }
       if (item.type === 'opportunities' && /brands:/i.test(note)) {
-        addScore(row, 'brands_captured', 1);
+        addScore(row, 'brands_captured', 1, item.business_id);
         pushAuditEvent({ user:item.created_by, key:'brands_captured', detail:note, source:'activity', created_at:item.created_at, business_id:item.business_id, business_name:_businessNameMap[normalizeBizId(item.business_id)] || '' });
       }
-      if (item.type === 'opportunities' && /stage:\s*credit application/i.test(note)) {
-        addScore(row, 'credit_app', 1);
-        pushAuditEvent({ user:item.created_by, key:'credit_app', detail:note, source:'activity', created_at:item.created_at, business_id:item.business_id, business_name:_businessNameMap[normalizeBizId(item.business_id)] || '' });
-      }
       if (item.type === 'opportunities' && /stage:\s*(fact-finding|proposal sent|credit application|won opportunity)/i.test(note)) {
-        addScore(row, 'pain_points', 1);
+        addScore(row, 'pain_points', 1, item.business_id);
         pushAuditEvent({ user:item.created_by, key:'pain_points', detail:note, source:'activity', created_at:item.created_at, business_id:item.business_id, business_name:_businessNameMap[normalizeBizId(item.business_id)] || '' });
       }
     });
@@ -1844,10 +1840,10 @@ async function loadBoard() {
         if (!row) return;
         var hay = [photo.caption, photo.file_name].filter(Boolean).join(' ');
         if (INVOICE_RX.test(hay)) {
-          addScore(row, 'competitor_invoice', 1);
+          addScore(row, 'competitor_invoice', 1, photo.business_id);
           pushAuditEvent({ user:photo.uploaded_by, key:'competitor_invoice', detail:hay || 'Competitor invoice photo', source:'photo', created_at:photo.created_at, business_id:photo.business_id, business_name:_businessNameMap[normalizeBizId(photo.business_id)] || '' });
         } else if (EQUIPMENT_RX.test(hay)) {
-          addScore(row, 'equipment_photo', 1);
+          addScore(row, 'equipment_photo', 1, photo.business_id);
           pushAuditEvent({ user:photo.uploaded_by, key:'equipment_photo', detail:hay || 'Equipment photo', source:'photo', created_at:photo.created_at, business_id:photo.business_id, business_name:_businessNameMap[normalizeBizId(photo.business_id)] || '' });
         }
       });
@@ -1877,12 +1873,8 @@ async function loadBoard() {
         var supplier = normalizeName(opp[product.field + '_supplier']);
         var stage = opp[product.field + '_stage'] || '';
         if (supplier) {
-          addScore(row, 'supplier_captured', 1);
+          addScore(row, 'supplier_captured', 1, opp.business_id);
           pushAuditEvent({ user:opp.updated_by, key:'supplier_captured', detail:product.label + ' supplier: ' + supplier, source:'opportunity', created_at:opp.updated_at, business_id:opp.business_id, business_name:_businessNameMap[normalizeBizId(opp.business_id)] || '' });
-        }
-        if (stage === 'Credit Application') {
-          addScore(row, 'credit_app', 1);
-          pushAuditEvent({ user:opp.updated_by, key:'credit_app', detail:product.label + ' moved to Credit Application', source:'opportunity', created_at:opp.updated_at, business_id:opp.business_id, business_name:_businessNameMap[normalizeBizId(opp.business_id)] || '' });
         }
         if (PAIN_POINT_STAGES[stage]) {
           painPointProducts.push(product.label + ' (' + stage + ')');
@@ -1890,7 +1882,7 @@ async function loadBoard() {
       });
 
       if (painPointProducts.length) {
-        addScore(row, 'pain_points', 1);
+        addScore(row, 'pain_points', 1, opp.business_id);
         pushAuditEvent({
           user:opp.updated_by,
           key:'pain_points',
@@ -1902,9 +1894,10 @@ async function loadBoard() {
         });
       }
 
-      if (splitMulti(opp.lube_brands).length) {
-        addScore(row, 'brands_captured', 1);
-        pushAuditEvent({ user:opp.updated_by, key:'brands_captured', detail:'Lube brands: ' + splitMulti(opp.lube_brands).join(', '), source:'opportunity', created_at:opp.updated_at, business_id:opp.business_id, business_name:_businessNameMap[normalizeBizId(opp.business_id)] || '' });
+      var lubeBrands = opp.lube_brands ? String(opp.lube_brands).split(/[,;|]+/).map(function(s){return s.trim();}).filter(Boolean) : [];
+      if (lubeBrands.length) {
+        addScore(row, 'brands_captured', 1, opp.business_id);
+        pushAuditEvent({ user:opp.updated_by, key:'brands_captured', detail:'Lube brands: ' + lubeBrands.join(', '), source:'opportunity', created_at:opp.updated_at, business_id:opp.business_id, business_name:_businessNameMap[normalizeBizId(opp.business_id)] || '' });
       }
     });
 
