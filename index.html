@@ -9785,7 +9785,7 @@ async function saveOpportunities() {
     var prevBrands = prevOpp['lube_brands'] || '';
     var newBrands = payload['lube_brands'] || '';
     if (newBrands !== prevBrands) {
-      var brandList = splitMulti(newBrands);
+      var brandList = newBrands ? newBrands.split(/[,;|]+/).map(function(s){return s.trim();}).filter(Boolean) : [];
       logEntries.push({
         note: brandList.length
           ? 'Lube brands updated — Brands: ' + brandList.join(', ')
