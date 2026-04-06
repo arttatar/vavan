@@ -1412,6 +1412,15 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
         </div>
       </div>
 
+      <!-- TAGS FILTER -->
+      <div class="sb-sec">
+        <div class="sb-title">Tags</div>
+        <div id="tag-filter-chips" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;"></div>
+        <select id="tag-filter-sel" onchange="_tagFilterAdd(this)" style="width:100%;border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;font-family:'Inter',sans-serif;color:var(--muted);background:var(--paper);cursor:pointer;">
+          <option value="">+ Filter by tag</option>
+        </select>
+      </div>
+
       <!-- INDUSTRY -->
       <div class="sb-sec">
         <div class="sb-title">Industry</div>
@@ -1522,14 +1531,6 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
         </select>
       </div>
 
-      <!-- TAGS FILTER -->
-      <div class="sb-sec">
-        <div class="sb-title">Tags</div>
-        <div id="tag-filter-chips" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;"></div>
-        <select id="tag-filter-sel" onchange="_tagFilterAdd(this)" style="width:100%;border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;font-family:'Inter',sans-serif;color:var(--muted);background:var(--paper);cursor:pointer;">
-          <option value="">+ Filter by tag</option>
-        </select>
-      </div>
 
     </div><!-- end filter-scroll -->
 
@@ -11750,4 +11751,3 @@ function onMapClick(e) {
 </body>
 </html>
 
-    
