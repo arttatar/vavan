@@ -1801,7 +1801,7 @@ async function loadBoard() {
         addScore(row, 'visit', 1, item.business_id);
         pushAuditEvent({ user:item.created_by, key:'visit', detail:note || 'Visited logged', source:'activity', created_at:item.created_at, business_id:item.business_id, business_name:_businessNameMap[normalizeBizId(item.business_id)] || '' });
       }
-      if (item.type === 'contact' && /^Contact added:/i.test(note)) {
+      if (item.type === 'contact' && /Contact added:/i.test(note)) {
         addScore(row, 'contact_added', 1, item.business_id);
         pushAuditEvent({ user:item.created_by, key:'contact_added', detail:note, source:'activity', created_at:item.created_at, business_id:item.business_id, business_name:_businessNameMap[normalizeBizId(item.business_id)] || '' });
       }
