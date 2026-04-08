@@ -9216,8 +9216,6 @@ function renderOpportunities(b, opp) {
               '<select onchange="_addOppChipOrCustom(\'sup\',\''+p.key+'\',\'suppliers\',this)" style="width:100%;border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;font-family:Inter,sans-serif;color:var(--muted);background:#fff;cursor:pointer;margin-bottom:.75rem;" id="opp-sup-'+p.key+'">'+
               '<option value="">+ Add supplier</option>'+
               available.map(function(s){ return '<option value="'+s+'">'+s+'</option>'; }).join('')+
-              '<option disabled style="border-top:1px solid #eee;">──────────</option>'+
-              '<option value="__custom__">+ Add new supplier...</option>'+
               '</select>';
           })()+
           // Brands Used — lubricants only
@@ -9240,9 +9238,6 @@ function renderOpportunities(b, opp) {
               '<select onchange="_addOppChipOrCustom(\'brand\',\'lubricants\',\'brands\',this)" style="width:100%;border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;font-family:Inter,sans-serif;color:var(--muted);background:#fff;cursor:pointer;margin-bottom:.75rem;" id="opp-brand-lubricants">'+
               '<option value="">+ Add brand</option>'+
               available.map(function(s){ return '<option value="'+s+'">'+s+'</option>'; }).join('')+
-              '<option disabled style="border-top:1px solid #eee;">──────────</option>'+
-              '<option value="__custom__">+ Add new brand...</option>'+
-              (custom.length ? '<option value="__edit__">Edit custom brands...</option>' : '')+
               '</select>';
           })() : '')+
           '<label class="opp-field-label">Volume ('+p.unit+')</label>'+
@@ -11782,3 +11777,4 @@ function onMapClick(e) {
 
 </body>
 </html>
+
