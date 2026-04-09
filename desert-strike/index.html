@@ -1354,7 +1354,20 @@ function matchMemberName(fullName, shortName) {
   var user = normalizeName(fullName).toLowerCase();
   var short = normalizeName(shortName).toLowerCase();
   if (!user || !short) return false;
-  return user === short || user.indexOf(short + ' ') === 0;
+  if (user === short) return true;
+  if (user.indexOf(short + ' ') === 0) return true;
+  // Handle parenthesized nicknames like "(DJ) Dennis DeMille" matching "DJ"
+  var parenMatch = user.match(/^\(([^)]+)\)/);
+  if (parenMatch && parenMatch[1].toLowerCase() === short) return true;
+  // Handle name aliases (e.g. Tiger = Logan)
+  var ALIASES = { 'tiger':'logan', 'logan':'tiger' };
+  if (ALIASES[short]) {
+    var alt = ALIASES[short];
+    if (user === alt || user.indexOf(alt + ' ') === 0) return true;
+    var pm = user.match(/^\(([^)]+)\)/);
+    if (pm && pm[1].toLowerCase() === alt) return true;
+  }
+  return false;
 }
 
 function makeDateRange() {
