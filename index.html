@@ -1630,21 +1630,21 @@ async function _callFn(fnName, body) {
   return data;
 }
 
-// ── GHL SYNC MODULE ──────────────────────────────────────────
+// ── CRM SYNC MODULE ──────────────────────────────────────────
 // Pushes business changes and activity notes to GoHighLevel CRM
-// via the sync-to-ghl Edge Function. All calls are fire-and-forget
+// via the CRM-sync Edge Function. All calls are fire-and-forget
 // so they never block the UI.
-var _ghlSyncEnabled = true; // flip to false to disable sync
+var _crmSyncEnabled = true; // flip to false to disable sync
 
-function _syncToGHL(businessId) {
-  if (!_ghlSyncEnabled || !businessId) return;
+function _syncToCRM(businessId) {
+  if (!_crmSyncEnabled || !businessId) return;
   _callFn('sync-to-ghl', { business_id: String(businessId), action: 'sync' })
-    .then(function(r) { console.log('GHL sync:', r); })
-    .catch(function(e) { console.warn('GHL sync failed (non-blocking):', e.message); });
+    .then(function(r) { console.log("CRM sync:", r); })
+    .catch(function(e) { console.warn("CRM sync failed (non-blocking):", e.message); });
 }
 
-function _syncNoteToGHL(businessId, note, createdBy, type) {
-  if (!_ghlSyncEnabled || !businessId || !note) return;
+function _syncNoteToCRM(businessId, note, createdBy, type) {
+  if (!_crmSyncEnabled || !businessId || !note) return;
   _callFn('sync-to-ghl', {
     business_id: String(businessId),
     action: 'note',
@@ -1652,8 +1652,8 @@ function _syncNoteToGHL(businessId, note, createdBy, type) {
     created_by: createdBy || 'Unknown',
     type: type || 'note'
   })
-    .then(function(r) { console.log('GHL note sync:', r); })
-    .catch(function(e) { console.warn('GHL note sync failed (non-blocking):', e.message); });
+    .then(function(r) { console.log("CRM note sync:", r); })
+    .catch(function(e) { console.warn("CRM note sync failed (non-blocking):", e.message); });
 }
 // ─────────────────────────────────────────────────────────────
 
@@ -6354,7 +6354,7 @@ async function _quickMarkCustomer() {
     await sb.from('businesses').update({status:'Customer', updated_at:new Date().toISOString()}).eq('id',biz.id||biz._id);
     biz.status = 'Customer';
     if (_bizById[biz._id]) _bizById[biz._id].status = 'Customer';
-    _syncToGHL(biz.id || biz._id);
+    _syncToCRM(biz.id || biz._id);
     _logChange('Status → Customer', 'edit');
     _showToast('Marked as Customer');
     renderDetailPanel(biz);
@@ -6369,7 +6369,7 @@ async function _quickMarkDead() {
     await sb.from('businesses').update({status:'Lost Customer', updated_at:new Date().toISOString()}).eq('id',biz.id||biz._id);
     biz.status = 'Lost Customer';
     if (_bizById[biz._id]) _bizById[biz._id].status = 'Lost Customer';
-    _syncToGHL(biz.id || biz._id);
+    _syncToCRM(biz.id || biz._id);
     _logChange('Status → Dead Lead', 'edit');
     _showToast('Marked as Dead Lead');
     renderDetailPanel(biz);
@@ -6566,8 +6566,8 @@ async function saveNewBusiness() {
       created_by: creatorName || 'Unknown'
     });
 
-    // ── Create contact in GHL ──
-    _syncToGHL(String(r.data.id));
+    // ── Create contact in CRM ──
+    _syncToCRM(String(r.data.id));
 
     var pcount = document.getElementById('pcount');
     if (pcount) pcount.textContent = allData.length.toLocaleString();
@@ -8041,8 +8041,8 @@ async function claimAccount() {
       client_id: currentProfile ? currentProfile.client_id : null,
       created_by: repName
     });
-    _syncToGHL(b.id || b._id);
-    _syncNoteToGHL(_bizUuid(b), repName + ' claimed this account', repName, 'claimed');
+    _syncToCRM(b.id || b._id);
+    _syncNoteToCRM(_bizUuid(b), repName + ' claimed this account', repName, 'claimed');
     b.assigned_rep = repName;
     renderDetailPanel(b);
     switchTab('profile');
@@ -8073,7 +8073,7 @@ async function saveInlineIndustry() {
     var r = await sb.from('businesses').update({industry: newInd||null, updated_at:new Date().toISOString()}).eq('id',biz.id||biz._id);
     if (r.error) throw r.error;
     biz.industry = newInd;
-    _syncToGHL(biz.id || biz._id);
+    _syncToCRM(biz.id || biz._id);
     // Log the change
     _logChange('Industry → ' + (newInd||'removed'), 'edit');
     // Update sub-industry dropdown options
@@ -8224,8 +8224,8 @@ async function saveBusinessEdits() {
 
     if (r.error) throw r.error;
 
-    // ── Push to GHL ──
-    _syncToGHL(b.id || b._id);
+    // ── Push to CRM ──
+    _syncToCRM(b.id || b._id);
 
     // Build change log
     var changes = [];
@@ -8392,9 +8392,9 @@ async function setDetailStage(stage) {
       created_by: currentProfile ? (currentProfile.full_name || 'Unknown') : 'Unknown'
     });
 
-    // ── Push pipeline + status change to GHL ──
-    _syncToGHL(b.id || b._id);
-    _syncNoteToGHL(_bizUuid(b), noteText, currentProfile ? (currentProfile.full_name||'Unknown') : 'Unknown', 'pipeline');
+    // ── Push pipeline + status change to CRM ──
+    _syncToCRM(b.id || b._id);
+    _syncNoteToCRM(_bizUuid(b), noteText, currentProfile ? (currentProfile.full_name||'Unknown') : 'Unknown', 'pipeline');
 
     b.pipeline_stage = stage;
     b.status = newStatus;
@@ -9080,8 +9080,8 @@ async function _logChange(note, type) {
     // Reload activity feed if it's visible
     var actTab = document.getElementById('det-activity');
     if (actTab && actTab.classList.contains('active')) loadActivity(biz);
-    // ── Push activity note to GHL ──
-    _syncNoteToGHL(_bizUuid(biz), _withBizNote(biz, note), byName, type || 'edit');
+    // ── Push activity note to CRM ──
+    _syncNoteToCRM(_bizUuid(biz), _withBizNote(biz, note), byName, type || 'edit');
   } catch(e) { console.warn('Activity log failed:', e); }
 }
 
@@ -9105,8 +9105,8 @@ async function saveNote() {
     if (r.error) throw r.error;
     noteEl.value = '';
     loadActivity(b);
-    // ── Push note to GHL ──
-    _syncNoteToGHL(_bizUuid(b), note, byName, 'note');
+    // ── Push note to CRM ──
+    _syncNoteToCRM(_bizUuid(b), note, byName, 'note');
   } catch(e) { alert('Could not save note: ' + e.message); }
   finally { btn.textContent = 'Add'; btn.disabled = false; }
 }
