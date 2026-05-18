@@ -6575,16 +6575,18 @@ async function saveNewBusiness() {
 
     // Log business creation to activity feed
     var creatorName = currentProfile ? (currentProfile.full_name || '') : '';
+    var creationNote = 'Business added to Vavan' + (creatorName ? ' by ' + creatorName : '');
     sb.from('activity').insert({
       business_id: String(r.data.id),
       type: 'created',
-      note: 'Business added to Vavan' + (creatorName ? ' by ' + creatorName : ''),
+      note: creationNote,
       client_id: currentProfile ? currentProfile.client_id : null,
       created_by: creatorName || 'Unknown'
     });
 
     // ── Create contact in CRM ──
     _syncToCRM(String(r.data.id));
+    _syncNoteToCRM(String(r.data.id), creationNote, creatorName || 'Unknown', 'created');
 
     var pcount = document.getElementById('pcount');
     if (pcount) pcount.textContent = allData.length.toLocaleString();
@@ -7995,13 +7997,16 @@ async function abandonBusiness() {
     _syncToCRM(b.id || b._id);
 
     // Log it — separate type so it's never counted
+    var abandonNote = 'Marked as Abandoned — not a prospect for our products/services';
+    var abandonBy = currentProfile ? (currentProfile.full_name||'Unknown') : 'Unknown';
     await sb.from('activity').insert({
       business_id: _bizUuid(b),
       type: 'abandoned',
-      note: 'Marked as Abandoned — not a prospect for our products/services',
+      note: abandonNote,
       client_id: currentProfile ? currentProfile.client_id : null,
-      created_by: currentProfile ? (currentProfile.full_name||'Unknown') : 'Unknown'
+      created_by: abandonBy
     });
+    _syncNoteToCRM(_bizUuid(b), abandonNote, abandonBy, 'abandoned');
 
     // Remove from local data immediately
     b.is_abandoned = true;
@@ -8531,13 +8536,15 @@ async function saveContact() {
     if (r.error) throw r.error;
 
     // Log contact creation to activity
+    var contactAddNote = _withBizNote(b, 'Contact added: ' + [first, last].filter(Boolean).join(' ') + (title ? ' (' + title + ')' : ''));
     await sb.from('activity').insert({
       business_id: _bizUuid(b),
       type: 'contact',
       client_id: currentProfile ? currentProfile.client_id : null,
-      note: _withBizNote(b, 'Contact added: ' + [first, last].filter(Boolean).join(' ') + (title ? ' (' + title + ')' : '')),
+      note: contactAddNote,
       created_by: byName
     });
+    _syncNoteToCRM(_bizUuid(b), contactAddNote, byName, 'contact_add');
 
     toggleContactForm();
     loadContacts(b);
@@ -8605,13 +8612,15 @@ saveContact = async function() {
     }).eq('id', _editingContactId);
     if (r.error) throw r.error;
 
+    var contactEditNote = _withBizNote(b, 'Contact updated: ' + [first, last].filter(Boolean).join(' ') + (title ? ' (' + title + ')' : ''));
     await sb.from('activity').insert({
       business_id: _bizUuid(b),
       type: 'contact',
       client_id: currentProfile ? currentProfile.client_id : null,
-      note: _withBizNote(b, 'Contact updated: ' + [first, last].filter(Boolean).join(' ') + (title ? ' (' + title + ')' : '')),
+      note: contactEditNote,
       created_by: byName
     });
+    _syncNoteToCRM(_bizUuid(b), contactEditNote, byName, 'contact_edit');
 
     _editingContactId = null;
     toggleContactForm();
@@ -8633,13 +8642,15 @@ async function deleteContact(contactId, contactName) {
     var r = await sb.from('contacts').delete().eq('id', contactId);
     if (r.error) throw r.error;
 
+    var contactDelNote = _withBizNote(b, 'Contact deleted: ' + contactName);
     await sb.from('activity').insert({
       business_id: _bizUuid(b),
       type: 'contact',
       client_id: currentProfile ? currentProfile.client_id : null,
-      note: _withBizNote(b, 'Contact deleted: ' + contactName),
+      note: contactDelNote,
       created_by: byName
     });
+    _syncNoteToCRM(_bizUuid(b), contactDelNote, byName, 'contact_delete');
 
     _showToast('Contact deleted');
     loadContacts(b);
@@ -9048,6 +9059,7 @@ async function _doLogActivity(type, outcome) {
       client_id: currentProfile ? currentProfile.client_id : null,
       created_by: byName
     });
+    _syncNoteToCRM(_bizUuid(biz), fullNote, byName, type);
     _showToast(type === 'contacted' ? 'Logged: Contacted' : 'Logged: Visited');
     renderDetailPanel(biz);
     switchTab('profile');
@@ -9899,13 +9911,15 @@ async function saveOpportunities() {
 
     // Insert all log entries
     for (var i = 0; i < logEntries.length; i++) {
+      var oppNote = _withBizNote(b, logEntries[i].note);
       await sb.from('activity').insert({
         business_id: _bizUuid(b),
         type: 'opportunities',
-        note: _withBizNote(b, logEntries[i].note),
+        note: oppNote,
         client_id: currentProfile ? currentProfile.client_id : null,
         created_by: byName
       });
+      _syncNoteToCRM(_bizUuid(b), oppNote, byName, 'opportunity');
     }
 
     btn.textContent = '✓ Saved';
@@ -11237,12 +11251,14 @@ function _rpFlyTo(idx) {
 function _rpDone(idx) {
   _routeStops[idx].done=true;
   var b=_routeStops[idx].biz;
+  var routeBy = currentProfile?(currentProfile.full_name||''):'';
   sb.from('activity').insert({
     business_id:_bizUuid(b),type:'visited',
     note:'Visited during route',
     client_id:currentProfile?currentProfile.client_id:null,
-    created_by:currentProfile?(currentProfile.full_name||''):''
+    created_by:routeBy
   }).then(function(){});
+  _syncNoteToCRM(_bizUuid(b), 'Visited during route', routeBy, 'visited');
   _saveRoute(); _drawRouteOnMap(); _renderRPStops();
   var allDone=_routeStops.every(function(s){ return s.done; });
   if (allDone) setTimeout(function(){ alert('Route complete. All stops visited.'); },300);
