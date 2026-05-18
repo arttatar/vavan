@@ -1631,9 +1631,9 @@ async function _callFn(fnName, body) {
 }
 
 // ── CRM SYNC MODULE ──────────────────────────────────────────
-// Pushes business changes and activity notes to GoHighLevel CRM
-// via the CRM-sync Edge Function. All calls are fire-and-forget
-// so they never block the UI.
+// Pushes business changes and activity notes to Vavan CRM via the
+// CRM-sync Edge Function. All calls are fire-and-forget so they
+// never block the UI.
 var _crmSyncEnabled = true; // flip to false to disable sync
 
 function _syncToCRM(businessId) {
