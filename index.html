@@ -2591,24 +2591,17 @@ async function loadProfile() {
       var isFirstLogin = !!r.data._isFirstLogin;
       var isAdmin = ['account_owner', 'account_admin', 'vavan_admin'].includes(currentProfile.role);
 
-      // Load the client record so we can name the CRM after the client
-      // (e.g., "Interstate CRM" instead of just "CRM" or anything generic).
-      // Falls back to "CRM" if the client name can't be resolved.
+      // Load the client record for use elsewhere (currentProfile.client_name)
       if (currentProfile.client_id) {
         try {
           var clientRow = await sb.from('clients').select('id, name')
             .eq('id', currentProfile.client_id).single();
-          if (clientRow.data) {
-            currentProfile.client_name = clientRow.data.name;
-            window._crmBrand = (clientRow.data.name || '').trim();
-          }
+          if (clientRow.data) currentProfile.client_name = clientRow.data.name;
         } catch(_) {}
       }
-      // Helper: dynamic label like "Interstate CRM" or just "CRM" if no client name
-      window.crmLabel = function() {
-        var n = (window._crmBrand || '').replace(/\s*(Oil|, Inc\.?|LLC|Corp\.?)\s*$/i, '').trim();
-        return n ? n + ' CRM' : 'CRM';
-      };
+      // CRM is always presented as "Vavan CRM" — the underlying tool is invisible
+      // to every client (Interstate, future tenants, all of them).
+      window.crmLabel = function() { return 'Vavan CRM'; };
 
       // Load client's purchased markets (for admin market assignment UI)
       if (currentProfile.client_id) {
