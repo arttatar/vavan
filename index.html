@@ -2591,6 +2591,25 @@ async function loadProfile() {
       var isFirstLogin = !!r.data._isFirstLogin;
       var isAdmin = ['account_owner', 'account_admin', 'vavan_admin'].includes(currentProfile.role);
 
+      // Load the client record so we can name the CRM after the client
+      // (e.g., "Interstate CRM" instead of just "CRM" or anything generic).
+      // Falls back to "CRM" if the client name can't be resolved.
+      if (currentProfile.client_id) {
+        try {
+          var clientRow = await sb.from('clients').select('id, name')
+            .eq('id', currentProfile.client_id).single();
+          if (clientRow.data) {
+            currentProfile.client_name = clientRow.data.name;
+            window._crmBrand = (clientRow.data.name || '').trim();
+          }
+        } catch(_) {}
+      }
+      // Helper: dynamic label like "Interstate CRM" or just "CRM" if no client name
+      window.crmLabel = function() {
+        var n = (window._crmBrand || '').replace(/\s*(Oil|, Inc\.?|LLC|Corp\.?)\s*$/i, '').trim();
+        return n ? n + ' CRM' : 'CRM';
+      };
+
       // Load client's purchased markets (for admin market assignment UI)
       if (currentProfile.client_id) {
         var mr = await sb.from('client_markets')
@@ -5725,8 +5744,13 @@ async function renderUsersTab(body) {
               });
               var html = '<div><label class="abiz-label">Feature Permissions</label>';
               Object.keys(groups).forEach(function(grp){
+                // Replace generic "CRM" group label with the client-branded name
+                // (e.g., "Interstate CRM") so end users see their own product, not
+                // the underlying tool.
+                var grpLabel = (grp === 'CRM' && typeof window.crmLabel === 'function')
+                  ? window.crmLabel() : grp;
                 html += '<div style="margin-bottom:8px;">';
-                html += '<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">'+grp+'</div>';
+                html += '<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">'+grpLabel+'</div>';
                 html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:.5rem;background:#fff;border:1px solid var(--border);border-radius:8px;">';
                 groups[grp].forEach(function(pd){
                   var val = perms[pd.key] !== undefined ? perms[pd.key] : pd.def;
