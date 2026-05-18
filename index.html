@@ -6927,6 +6927,7 @@ async function _saveBizTags(biz, tags) {
     biz.tags = tags;
     if (_bizById[biz._id]) _bizById[biz._id].tags = tags;
     _logChange('Tags → ' + (tags.length ? tags.map(function(t){ return '#'+t; }).join(', ') : 'cleared'), 'edit');
+    _syncToCRM(bizId);
     renderDetailPanel(biz);
     switchTab('profile');
   } catch(e) { _showToast('Tag save failed'); }
@@ -7061,6 +7062,7 @@ async function _applyTagArea() {
           biz.tags = tags;
           if (_bizById[biz._id]) _bizById[biz._id].tags = tags;
           success++;
+          _syncToCRM(bizId);
         })
         .catch(function(e) { console.error('Tag catch:', biz.name, e); fail++; });
     });
@@ -7990,6 +7992,7 @@ async function abandonBusiness() {
       updated_at: new Date().toISOString()
     }).eq('id', b.id||b._id);
     if (r.error) throw r.error;
+    _syncToCRM(b.id || b._id);
 
     // Log it — separate type so it's never counted
     await sb.from('activity').insert({
@@ -8032,6 +8035,7 @@ async function restoreBusiness(bizId) {
       updated_at: new Date().toISOString()
     }).eq('id', bizId);
     if (r.error) throw r.error;
+    _syncToCRM(bizId);
     alert('Business restored. Refresh to see it on the map.');
   } catch(e) {
     alert('Could not restore: ' + e.message);
@@ -8076,6 +8080,7 @@ async function toggleVisited() {
     if (r.error) throw r.error;
     b.visited = newVal;
     _logChange(newVal ? 'Marked as Visited' : 'Visited status removed', 'visited');
+    _syncToCRM(b.id || b._id);
     renderDetailPanel(b);
     switchTab('profile');
   } catch(e) { alert('Could not update: ' + e.message); }
@@ -8145,6 +8150,7 @@ async function _saveSubInds(arr) {
     biz.sub_industry_inferred = arr;
     if (_bizById[biz._id]) { _bizById[biz._id].sub_industry = arr; _bizById[biz._id].sub_industry_inferred = arr; }
     _logChange('Sub-Industries → ' + (arr.length ? arr.join(', ') : 'cleared'), 'edit');
+    _syncToCRM(biz.id || biz._id);
     _showToast('Sub-industry updated');
     renderDetailPanel(biz);
     switchTab('profile');
@@ -8188,6 +8194,7 @@ function _editSocial(key, label) {
     biz.social_links = newLinks;
     if (_bizById[biz._id]) _bizById[biz._id].social_links = newLinks;
     _logChange(label + (val ? ' → ' + val : ' removed'), 'edit');
+    _syncToCRM(biz.id || biz._id);
     _showToast(label + ' updated');
     renderDetailPanel(biz);
     switchTab('profile');
@@ -8318,6 +8325,7 @@ function _startMovePin() {
         updated_at: new Date().toISOString()
       }).eq('id', b.id || b._id);
       if (r.error) throw r.error;
+      _syncToCRM(b.id || b._id);
 
       // Update local data
       b.lat = newLat;
@@ -9031,6 +9039,7 @@ async function _doLogActivity(type, outcome) {
       await sb.from('businesses').update({visited:true, updated_at:new Date().toISOString()}).eq('id',biz.id||biz._id);
       biz.visited = true;
       if (_bizById[biz._id]) _bizById[biz._id].visited = true;
+      _syncToCRM(biz.id || biz._id);
     }
     await sb.from('activity').insert({
       business_id: _bizUuid(biz),
