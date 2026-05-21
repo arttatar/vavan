@@ -1322,6 +1322,10 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
       How to Use Vavan
     </button>
+    <button id="account-menu-switch-market" onclick="closeAccountMenu();switchMarket();" style="display:none;width:100%;padding:12px 16px;background:none;border:none;border-bottom:1px solid var(--border);cursor:pointer;text-align:left;align-items:center;gap:10px;font-size:13px;font-weight:500;color:var(--ink);font-family:Inter,sans-serif;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      Switch Market
+    </button>
     <button id="account-menu-settings" onclick="closeAccountMenu();openSettings();" style="display:none;width:100%;padding:12px 16px;background:none;border:none;border-bottom:1px solid var(--border);cursor:pointer;text-align:left;align-items:center;gap:10px;font-size:13px;font-weight:500;color:var(--ink);font-family:Inter,sans-serif;">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       Admin Settings
@@ -1662,6 +1666,148 @@ var _bizById = {};
 var currentProfile = null;
 var clientMarkets  = [];
 var userMarkets    = [];
+// Selected market for users with multiple assignments. 'all' or a market_id (uuid string).
+// Stored as null if the user has never chosen — we show the picker only when null.
+var _selectedMarketId = (function(){ try { return localStorage.getItem('vavan_selected_market'); } catch(e){ return null; } })();
+function _setSelectedMarket(id) {
+  _selectedMarketId = id || 'all';
+  try { localStorage.setItem('vavan_selected_market', _selectedMarketId); } catch(e){}
+}
+
+// Effective markets the user can pick from (single source of truth).
+// Returns array of {id, name, state}.
+// Super-users can see every market their client has, regardless of personal assignments.
+function _effectiveMarkets() {
+  var superRoles = ['admin','account_owner','vavan_admin','account_admin'];
+  var isSuperUser = currentProfile && superRoles.indexOf(currentProfile.role) !== -1;
+  var src = isSuperUser ? (clientMarkets || []) : (userMarkets || []);
+  var seen = {}, out = [];
+  src.forEach(function(um){
+    var m = um.markets || {};
+    if (m.id && !seen[m.id]) { seen[m.id] = true; out.push(m); }
+  });
+  return out;
+}
+
+// Show market picker before loadData if the user has >1 assigned markets.
+// Skips the picker entirely if they have one or zero. Stored selection is
+// reused if it's still valid (in case they were granted/revoked since last login).
+async function ensureMarketSelection() {
+  var markets = _effectiveMarkets();
+  if (markets.length <= 1) {
+    _setSelectedMarket('all');
+    return;
+  }
+  // Drop stored selection if it points to a market the user no longer has
+  if (_selectedMarketId && _selectedMarketId !== 'all'
+      && !markets.some(function(m){ return m.id === _selectedMarketId; })) {
+    _selectedMarketId = null;
+    try { localStorage.removeItem('vavan_selected_market'); } catch(e){}
+  }
+  // Show picker only on first session (no stored choice yet)
+  if (_selectedMarketId === null) {
+    return showMarketPicker(markets);
+  }
+  // else use the stored selection
+}
+
+function showMarketPicker(markets) {
+  return new Promise(function(resolve) {
+    var existing = document.getElementById('market-picker-overlay');
+    if (existing) existing.remove();
+
+    var overlay = document.createElement('div');
+    overlay.id = 'market-picker-overlay';
+    overlay.style.cssText =
+      'position:fixed;inset:0;background:rgba(13,13,20,.92);z-index:30000;' +
+      'display:flex;align-items:center;justify-content:center;padding:16px;' +
+      'font-family:Inter,system-ui,sans-serif;';
+
+    var cards = markets.map(function(m){
+      var label = m.name + (m.state ? ' <span style="font-size:12px;color:var(--muted,#888);">('+m.state+')</span>' : '');
+      return '<button class="mp-card" data-mid="'+m.id+'" ' +
+             'style="display:flex;flex-direction:column;align-items:flex-start;' +
+             'background:#fff;border:1px solid #e5e7eb;border-radius:12px;' +
+             'padding:14px 16px;cursor:pointer;font-family:inherit;text-align:left;' +
+             'transition:all .12s;font-size:15px;font-weight:600;color:#0d0d14;">' +
+             label + '</button>';
+    }).join('');
+
+    overlay.innerHTML =
+      '<div style="background:#fff;border-radius:16px;width:100%;max-width:480px;' +
+      'padding:24px;box-shadow:0 24px 80px rgba(0,0,0,.45);max-height:90vh;overflow-y:auto;">' +
+        '<div style="font-size:11px;font-weight:700;color:#666;text-transform:uppercase;' +
+        'letter-spacing:.08em;margin-bottom:6px;">Choose Market</div>' +
+        '<h2 style="margin:0 0 6px;font-size:20px;font-weight:700;color:#0d0d14;font-family:Syne,sans-serif;">' +
+          'Which market would you like to load?' +
+        '</h2>' +
+        '<p style="margin:0 0 16px;font-size:13px;color:#666;line-height:1.4;">' +
+          'You have access to multiple markets. Pick one to load only those pins (faster), ' +
+          'or load all of them. You can switch later from the menu.' +
+        '</p>' +
+        '<div style="display:flex;flex-direction:column;gap:8px;">' +
+          '<button class="mp-card" data-mid="all" ' +
+            'style="display:flex;align-items:center;justify-content:space-between;' +
+            'background:#2a5fff;color:#fff;border:none;border-radius:12px;padding:14px 16px;' +
+            'cursor:pointer;font-family:inherit;font-size:15px;font-weight:700;">' +
+            '<span>All my markets</span>' +
+            '<span style="font-size:12px;font-weight:500;opacity:.75;">' +
+              markets.length + ' markets · slower' +
+            '</span>' +
+          '</button>' +
+          cards +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+
+    overlay.addEventListener('click', function(e) {
+      var btn = e.target.closest('.mp-card');
+      if (!btn) return;
+      _setSelectedMarket(btn.getAttribute('data-mid') || 'all');
+      overlay.remove();
+      resolve();
+    });
+    overlay.querySelectorAll('.mp-card').forEach(function(b){
+      b.addEventListener('mouseenter', function(){
+        if (b.getAttribute('data-mid') !== 'all') {
+          b.style.borderColor = '#2a5fff';
+          b.style.background = '#f3f6ff';
+        }
+      });
+      b.addEventListener('mouseleave', function(){
+        if (b.getAttribute('data-mid') !== 'all') {
+          b.style.borderColor = '#e5e7eb';
+          b.style.background = '#fff';
+        }
+      });
+    });
+  });
+}
+
+// Switch market mid-session — clears data and reloads
+async function switchMarket() {
+  var markets = _effectiveMarkets();
+  if (markets.length <= 1) {
+    alert('You only have access to one market.');
+    return;
+  }
+  await showMarketPicker(markets);
+  // Reset and reload
+  allData = []; filteredData = []; filtersApplied = false;
+  _bizById = {};
+  if (map && map.getSource('biz')) {
+    map.getSource('biz').setData({type:'FeatureCollection',features:[]});
+  }
+  document.getElementById('loader').classList.remove('hidden');
+  prog(30, 'Loading market...');
+  await loadData();
+  prog(70, 'Loading opportunities...');
+  await loadOppCache();
+  prog(80, 'Placing pins...');
+  renderPins();
+  prog(100, 'Ready');
+  setTimeout(function(){ document.getElementById('loader').classList.add('hidden'); }, 300);
+}
 
 // ── PERMISSION SYSTEM ──
 // All available permissions with labels, groups, and defaults for new users
@@ -2430,9 +2576,14 @@ function _updateAccountUI(fullName, isAdmin) {
   var settingsRow = document.getElementById('account-menu-settings');
   if (settingsRow) {
     // Show Admin Settings for account_owner and account_admin, not vavan_admin
-    var isClientAdmin = currentProfile && 
+    var isClientAdmin = currentProfile &&
       ['account_owner', 'account_admin'].includes(currentProfile.role);
     settingsRow.style.display = isClientAdmin ? 'flex' : 'none';
+  }
+  // Show "Switch Market" only when the user has >1 market access
+  var switchRow = document.getElementById('account-menu-switch-market');
+  if (switchRow) {
+    switchRow.style.display = (_effectiveMarkets().length > 1) ? 'flex' : 'none';
   }
 }
 
@@ -2996,6 +3147,7 @@ async function startApp() {
   initMap();
   prog(20, 'Loading profile...');
   await loadProfile();
+  await ensureMarketSelection();
   prog(30, 'Loading businesses...');
   await loadData();
   prog(70, 'Loading opportunities...');
@@ -3384,11 +3536,19 @@ async function loadData() {
 
     var pageSize = 1000; // PostgREST default max — DO NOT exceed (server caps at 1000)
 
+    // If the user picked a single market via the picker, override the filter to that one market_id
+    // (faster than name match + works the same for super-users).
+    var pickedMarketId = (_selectedMarketId && _selectedMarketId !== 'all') ? _selectedMarketId : null;
+
     // Helper: one page fetch
     function fetchPage(from) {
       var q = sb.from('businesses').select(SLIM_COLS).range(from, from + pageSize - 1)
         .eq('is_abandoned', false).order('id', { ascending: true });
-      if (allowedMarketNames.length) q = q.in('market', allowedMarketNames);
+      if (pickedMarketId) {
+        q = q.eq('market_id', pickedMarketId);
+      } else if (allowedMarketNames.length) {
+        q = q.in('market', allowedMarketNames);
+      }
       return q.then(function(r){
         if (r.error) throw r.error;
         return r.data || [];
