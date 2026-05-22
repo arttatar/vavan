@@ -1822,25 +1822,47 @@ async function switchMarket() {
   }
   var prev = _selectedMarketId;
   var result = await showMarketPicker(markets, true);
-  // User cancelled or didn't change selection — do nothing
   if (result && result.cancelled) return;
   if (_selectedMarketId === prev) return;
 
-  // Reset and reload
+  // Reset all in-memory state
   allData = []; filteredData = []; filtersApplied = false;
   _bizById = {};
+  try { if (typeof _oppCache !== 'undefined') _oppCache = {}; } catch(e){}
   if (map && map.getSource('biz')) {
     map.getSource('biz').setData({type:'FeatureCollection',features:[]});
   }
+  if (map && map.getSource('biz-selected')) {
+    map.getSource('biz-selected').setData({type:'FeatureCollection',features:[]});
+  }
+
   document.getElementById('loader').classList.remove('hidden');
   prog(30, 'Loading market...');
-  await loadData();
-  prog(70, 'Loading opportunities...');
-  await loadOppCache();
-  prog(80, 'Placing pins...');
-  renderPins();
-  prog(100, 'Ready');
-  setTimeout(function(){ document.getElementById('loader').classList.add('hidden'); }, 300);
+  try {
+    await loadData();
+    prog(70, 'Loading opportunities...');
+    try { await loadOppCache(); } catch(e) { console.warn('opp cache reload failed (non-blocking):', e); }
+    prog(80, 'Placing pins...');
+    renderPins();
+
+    // Recenter the map to the new market's pins so the user immediately sees them
+    var pts = (allData || []).filter(function(b){ return b.lat && b.lon && !isNaN(b.lat) && !isNaN(b.lon); });
+    if (pts.length && typeof mapboxgl !== 'undefined') {
+      var lats = pts.map(function(b){ return +b.lat; });
+      var lons = pts.map(function(b){ return +b.lon; });
+      var sw = [Math.min.apply(null, lons), Math.min.apply(null, lats)];
+      var ne = [Math.max.apply(null, lons), Math.max.apply(null, lats)];
+      try {
+        map.fitBounds([sw, ne], { padding: 60, duration: 600, maxZoom: 11 });
+      } catch(e) { console.warn('fitBounds failed:', e); }
+    }
+    prog(100, 'Ready');
+  } catch(e) {
+    console.error('switchMarket reload failed:', e);
+    alert('Could not load the new market: ' + (e.message || e));
+  } finally {
+    setTimeout(function(){ document.getElementById('loader').classList.add('hidden'); }, 300);
+  }
 }
 
 // ── PERMISSION SYSTEM ──
