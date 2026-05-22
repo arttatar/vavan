@@ -1711,7 +1711,9 @@ async function ensureMarketSelection() {
   // else use the stored selection
 }
 
-function showMarketPicker(markets) {
+// allowCancel: true means user can dismiss without picking (X button, click outside, Esc).
+// Resolves with { cancelled: true } in that case; resolves with no value when they pick.
+function showMarketPicker(markets, allowCancel) {
   return new Promise(function(resolve) {
     var existing = document.getElementById('market-picker-overlay');
     if (existing) existing.remove();
@@ -1724,18 +1726,29 @@ function showMarketPicker(markets) {
       'font-family:Inter,system-ui,sans-serif;';
 
     var cards = markets.map(function(m){
-      var label = m.name + (m.state ? ' <span style="font-size:12px;color:var(--muted,#888);">('+m.state+')</span>' : '');
+      var isCurrent = (m.id === _selectedMarketId);
+      var label = m.name + (m.state ? ' <span style="font-size:12px;color:#888;">('+m.state+')</span>' : '') +
+                  (isCurrent ? ' <span style="font-size:11px;color:#2a5fff;font-weight:700;margin-left:6px;">• current</span>' : '');
       return '<button class="mp-card" data-mid="'+m.id+'" ' +
              'style="display:flex;flex-direction:column;align-items:flex-start;' +
-             'background:#fff;border:1px solid #e5e7eb;border-radius:12px;' +
+             'background:#fff;border:1px solid '+(isCurrent ? '#2a5fff' : '#e5e7eb')+';border-radius:12px;' +
              'padding:14px 16px;cursor:pointer;font-family:inherit;text-align:left;' +
              'transition:all .12s;font-size:15px;font-weight:600;color:#0d0d14;">' +
              label + '</button>';
     }).join('');
 
+    var allIsCurrent = (_selectedMarketId === 'all');
+    var closeBtnHtml = allowCancel
+      ? '<button id="mp-close" aria-label="Close" ' +
+        'style="position:absolute;top:14px;right:14px;background:rgba(0,0,0,.05);border:none;' +
+        'border-radius:50%;width:30px;height:30px;cursor:pointer;display:flex;align-items:center;' +
+        'justify-content:center;font-size:18px;line-height:1;color:#444;">✕</button>'
+      : '';
+
     overlay.innerHTML =
-      '<div style="background:#fff;border-radius:16px;width:100%;max-width:480px;' +
+      '<div style="position:relative;background:#fff;border-radius:16px;width:100%;max-width:480px;' +
       'padding:24px;box-shadow:0 24px 80px rgba(0,0,0,.45);max-height:90vh;overflow-y:auto;">' +
+        closeBtnHtml +
         '<div style="font-size:11px;font-weight:700;color:#666;text-transform:uppercase;' +
         'letter-spacing:.08em;margin-bottom:6px;">Choose Market</div>' +
         '<h2 style="margin:0 0 6px;font-size:20px;font-weight:700;color:#0d0d14;font-family:Syne,sans-serif;">' +
@@ -1743,14 +1756,14 @@ function showMarketPicker(markets) {
         '</h2>' +
         '<p style="margin:0 0 16px;font-size:13px;color:#666;line-height:1.4;">' +
           'You have access to multiple markets. Pick one to load only those pins (faster), ' +
-          'or load all of them. You can switch later from the menu.' +
+          'or load all of them. You can switch anytime from the menu.' +
         '</p>' +
         '<div style="display:flex;flex-direction:column;gap:8px;">' +
           '<button class="mp-card" data-mid="all" ' +
             'style="display:flex;align-items:center;justify-content:space-between;' +
-            'background:#2a5fff;color:#fff;border:none;border-radius:12px;padding:14px 16px;' +
+            'background:'+(allIsCurrent ? '#1e4eef' : '#2a5fff')+';color:#fff;border:none;border-radius:12px;padding:14px 16px;' +
             'cursor:pointer;font-family:inherit;font-size:15px;font-weight:700;">' +
-            '<span>All my markets</span>' +
+            '<span>All my markets'+(allIsCurrent ? ' • current' : '')+'</span>' +
             '<span style="font-size:12px;font-weight:500;opacity:.75;">' +
               markets.length + ' markets · slower' +
             '</span>' +
@@ -1760,11 +1773,26 @@ function showMarketPicker(markets) {
       '</div>';
     document.body.appendChild(overlay);
 
+    function cancel() {
+      if (!allowCancel) return;
+      overlay.remove();
+      document.removeEventListener('keydown', escHandler);
+      resolve({ cancelled: true });
+    }
+    function escHandler(e) { if (e.key === 'Escape') cancel(); }
+    if (allowCancel) document.addEventListener('keydown', escHandler);
+
     overlay.addEventListener('click', function(e) {
+      // Click on the dark backdrop (outside the white card) = cancel if allowed
+      if (e.target === overlay) { cancel(); return; }
+      // Explicit X button
+      if (e.target.id === 'mp-close' || e.target.closest('#mp-close')) { cancel(); return; }
+      // Market card click
       var btn = e.target.closest('.mp-card');
       if (!btn) return;
       _setSelectedMarket(btn.getAttribute('data-mid') || 'all');
       overlay.remove();
+      document.removeEventListener('keydown', escHandler);
       resolve();
     });
     overlay.querySelectorAll('.mp-card').forEach(function(b){
@@ -1776,7 +1804,8 @@ function showMarketPicker(markets) {
       });
       b.addEventListener('mouseleave', function(){
         if (b.getAttribute('data-mid') !== 'all') {
-          b.style.borderColor = '#e5e7eb';
+          var isCurrent = (b.getAttribute('data-mid') === _selectedMarketId);
+          b.style.borderColor = isCurrent ? '#2a5fff' : '#e5e7eb';
           b.style.background = '#fff';
         }
       });
@@ -1784,14 +1813,19 @@ function showMarketPicker(markets) {
   });
 }
 
-// Switch market mid-session — clears data and reloads
+// Switch market mid-session — clears data and reloads. Cancellable.
 async function switchMarket() {
   var markets = _effectiveMarkets();
   if (markets.length <= 1) {
     alert('You only have access to one market.');
     return;
   }
-  await showMarketPicker(markets);
+  var prev = _selectedMarketId;
+  var result = await showMarketPicker(markets, true);
+  // User cancelled or didn't change selection — do nothing
+  if (result && result.cancelled) return;
+  if (_selectedMarketId === prev) return;
+
   // Reset and reload
   allData = []; filteredData = []; filtersApplied = false;
   _bizById = {};
